@@ -181,14 +181,7 @@ For detailed technical information, see [TECHNICAL.md](docs/TECHNICAL.md).
 ## 📜 License
 
 This project is licensed under the GNU General Public License v2.0 - see the [LICENSE](LICENSE) file for details.
-
 The VMware modules themselves are proprietary software by Broadcom Inc. These patches only modify the open-source components necessary for kernel compatibility.
-
-## ⚠️ Disclaimer
-
-This is an unofficial patch. Use at your own risk. The author is not responsible for any damage to your system.
-
-Always backup your system before applying kernel patches.
 
 ## 📧 Contact
 
