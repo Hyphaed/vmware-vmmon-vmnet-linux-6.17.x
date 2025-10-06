@@ -194,12 +194,6 @@ Always backup your system before applying kernel patches.
 
 - **GitHub**: [@Hyphaed](https://github.com/Hyphaed)
 - **Issues**: [Report a bug](https://github.com/Hyphaed/vmware-vmmon-vmnet-linux-6.17.x/issues)
-
-## 🔮 Future Plans
-
-- [ ] Support for kernel 6.18.x
-- [ ] Automated CI/CD testing
-- [ ] Support for older VMware versions
 - [ ] DKMS integration
 
 ---
