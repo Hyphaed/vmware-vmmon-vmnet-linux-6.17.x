@@ -1,0 +1,13 @@
+--- a/Makefile.kernel
++++ b/Makefile.kernel
+@@ -47,6 +47,10 @@ obj-m += $(DRIVER).o
+ $(DRIVER)-y := $(subst $(SRCROOT)/, , $(patsubst %.c, %.o, \
+ 		$(wildcard $(SRCROOT)/*.c)))
+ 
++# Deshabilitar objtool para archivos problemáticos en kernel 6.17+
++OBJECT_FILES_NON_STANDARD_userif.o := y
++OBJECT_FILES_NON_STANDARD := y
++
+ clean:
+ 	rm -rf $(wildcard $(DRIVER).mod.c $(DRIVER).ko .tmp_versions \
+ 		Module.symvers Modules.symvers Module.markers modules.order \

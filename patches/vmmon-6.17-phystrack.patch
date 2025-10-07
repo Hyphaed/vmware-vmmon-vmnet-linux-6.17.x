@@ -1,0 +1,18 @@
+--- a/common/phystrack.c
++++ b/common/phystrack.c
+@@ -321,7 +321,6 @@ PhysTrack_Test(void)
+          printk(KERN_DEBUG "PhysTracker: All tests passed\n");
+       }
+    }
+-   return;
+ }
+ 
+ 
+@@ -365,7 +364,6 @@ PhysTrack_Cleanup(void)
+       Hash_Free(physTracker.hash);
+       physTracker.hash = NULL;
+    }
+-   return;
+ }
+ 
+ /*
