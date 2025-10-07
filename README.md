@@ -1,34 +1,46 @@
-# VMware Workstation Modules for Linux Kernel 6.17.x
+# VMware Workstation Modules for Linux Kernel 6.16.x & 6.17.x
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
-[![Kernel](https://img.shields.io/badge/Kernel-6.17.x-orange.svg)](https://kernel.org/)
+[![Kernel](https://img.shields.io/badge/Kernel-6.16.x%20%7C%206.17.x-orange.svg)](https://kernel.org/)
 [![VMware](https://img.shields.io/badge/VMware-17.6.4-green.svg)](https://www.vmware.com/)
 
-This repository contains patches to make VMware Workstation modules (`vmmon` and `vmnet`) compatible with Linux kernel 6.17.x series.
+This repository contains patches to make VMware Workstation modules (`vmmon` and `vmnet`) compatible with Linux kernel **6.16.x** and **6.17.x** series.
 
 ## 🎯 Purpose
 
-VMware Workstation modules often lag behind the latest kernel releases. This repository provides the necessary patches to compile and run VMware modules on kernel 6.17.x.
+VMware Workstation modules often lag behind the latest kernel releases. This repository provides the necessary patches to compile and run VMware modules on kernel 6.16.x and 6.17.x with **interactive kernel version selection** during installation.
 
 ## ✨ Features
 
-- **Kernel 6.17.x Support**: Full compatibility with Linux kernel 6.17.x series
+- **Dual Kernel Support**: Compatible with both Linux kernel 6.16.x and 6.17.x series
+- **Interactive Installation**: Prompts you to select target kernel version (6.16 or 6.17) at startup
+- **Smart Patching**: Automatically applies appropriate patches based on your selection
 - **Objtool Fixes**: Resolves objtool validation errors introduced in newer kernels
+- **Multi-Distribution Support**: Works on Ubuntu/Debian and Fedora/RHEL
+- **Compiler Detection**: Auto-detects and uses GCC or Clang toolchain
 - **VMware 17.6.4 Compatible**: Tested with VMware Workstation 17.6.4
-- **Easy Installation**: Automated scripts for patching and compilation
+- **Easy Installation**: Fully automated script for patching and compilation
 
 ## 🔧 What's Fixed
 
-The patches address the following issues specific to kernel 6.17.x:
+### Kernel 6.16.x Patches (from [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x))
+
+1. **Build System**: `EXTRA_CFLAGS` → `ccflags-y`
+2. **Timer API**: `del_timer_sync()` → `timer_delete_sync()`
+3. **MSR API**: `rdmsrl_safe()` → `rdmsrq_safe()`
+4. **Module Init**: `init_module()` → `module_init()` macro
+5. **Function Prototypes**: `function()` → `function(void)`
+
+### Kernel 6.17.x Additional Patches
 
 1. **Objtool validation errors** in `phystrack.c` and `task.c`
-2. **Makefile adjustments** to disable objtool for problematic object files
+2. **Makefile adjustments** to disable objtool for problematic object files (`OBJECT_FILES_NON_STANDARD`)
 3. **Return statement issues** in void functions
-4. **Compatibility with updated kernel APIs**
+4. **Enhanced objtool compatibility** for stricter kernel 6.17 validation
 
 ## 📋 Prerequisites
 
-- Linux kernel 6.17.x headers installed
+- Linux kernel **6.16.x or 6.17.x** headers installed
 - VMware Workstation 17.x installed
 - Build essentials: `gcc`, `make`, `kernel headers`
 - Git (for cloning the repository)
@@ -56,10 +68,23 @@ cd vmware-vmmon-vmnet-linux-6.17.x
 
 2. Run the automated installation script:
 ```bash
-sudo bash install-vmware-modules.sh
+sudo bash scripts/install-vmware-modules.sh
 ```
 
-3. Reboot your system (if required)
+3. **Select your kernel version** when prompted:
+```
+Which kernel version do you want to compile for? (1=6.16 / 2=6.17):
+```
+   - Choose **1** for kernel 6.16.x
+   - Choose **2** for kernel 6.17.x
+
+4. The script will automatically:
+   - Download appropriate patches from GitHub
+   - Apply kernel-specific fixes
+   - Compile and install the modules
+   - Load the modules and restart VMware services
+
+5. Reboot your system (if required)
 
 ### Method 2: Manual Installation
 
@@ -113,6 +138,41 @@ vmware-vmmon-vmnet-linux-6.17.x/
 └── README.md                      # This file
 ```
 
+## 💡 How the Interactive Installation Works
+
+When you run the installation script, it will:
+
+1. **Detect your system**: Automatically identifies your kernel version, distribution (Ubuntu/Debian/Fedora), and compiler (GCC/Clang)
+
+2. **Prompt for kernel version**: Asks you to choose between kernel 6.16.x or 6.17.x patches
+   ```
+   ════════════════════════════════════════
+   KERNEL VERSION SELECTION
+   ════════════════════════════════════════
+   
+   This script supports two kernel versions with specific patches:
+   
+     1) Kernel 6.16.x
+        • Uses patches from: https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x
+        • Patches: timer_delete_sync(), rdmsrq_safe(), module_init()
+   
+     2) Kernel 6.17.x
+        • Uses patches from 6.16.x + additional objtool patches
+        • Additional patches: OBJECT_FILES_NON_STANDARD, returns in void functions
+   
+   Kernel detected on your system: 6.16.9-200.fc42.x86_64
+   
+   Which kernel version do you want to compile for? (1=6.16 / 2=6.17):
+   ```
+
+3. **Apply appropriate patches**: 
+   - For **6.16**: Downloads and applies patches from the GitHub repository
+   - For **6.17**: Applies 6.16 patches + additional objtool fixes
+
+4. **Compile and install**: Automatically compiles, installs, and loads the modules
+
+5. **Verify installation**: Shows loaded modules and service status
+
 ## 🧪 Testing
 
 After installation, verify that the modules are loaded correctly:
@@ -156,19 +216,32 @@ For more troubleshooting tips, see [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
 ## 🔄 Compatibility
 
-| Kernel Version | VMware Version | Status |
-|---------------|----------------|--------|
-| 6.17.0        | 17.6.4         | ✅ Tested |
-| 6.17.1        | 17.6.4         | ✅ Tested |
-| 6.17.2+       | 17.6.4         | ⚠️ Should work |
+| Kernel Version | VMware Version | Status | Notes |
+|---------------|----------------|--------|-------|
+| 6.16.0-6.16.9 | 17.6.4         | ✅ Tested | Fedora 42, uses GitHub patches |
+| 6.17.0        | 17.6.4         | ✅ Tested | Ubuntu, additional objtool patches |
+| 6.17.1        | 17.6.4         | ✅ Tested | Additional objtool patches |
+| 6.17.2+       | 17.6.4         | ⚠️ Should work | May require minor adjustments |
 
 ## 📝 Technical Details
 
-The main changes in kernel 6.17.x that affect VMware modules:
+### Kernel 6.16.x Changes
+
+The script uses patches from [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x) which address:
+
+1. **Build system updates**: Migration from `EXTRA_CFLAGS` to `ccflags-y`
+2. **Timer API changes**: New `timer_delete_sync()` function
+3. **MSR API updates**: New `rdmsrq_safe()` function
+4. **Module initialization**: Deprecation of `init_module()` in favor of `module_init()` macro
+
+### Kernel 6.17.x Additional Changes
+
+Kernel 6.17 introduces stricter validation that requires additional patches:
 
 1. **Enhanced objtool validation**: Kernel 6.17 has stricter objtool checks
 2. **Stack validation changes**: New requirements for stack frame setup
 3. **Function return handling**: Stricter validation of return statements in void functions
+4. **Object file validation**: Requires `OBJECT_FILES_NON_STANDARD` flags for certain files
 
 For detailed technical information, see [TECHNICAL.md](docs/TECHNICAL.md).
 
