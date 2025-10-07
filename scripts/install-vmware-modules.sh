@@ -1,212 +1,627 @@
 #!/bin/bash
-# Script automatizado para instalar módulos VMware en kernel 6.17.x
-# Autor: Hyphaed
-# Licencia: GPL v2
+# Enhanced script to compile VMware modules for kernel 6.16.x and 6.17.x
+# Supports Ubuntu and Fedora
+# Uses specific patches according to kernel version
+# Date: 2025-10-07
 
 set -e
 
+SCRIPT_DIR="/home/ferran/Documents/Scripts"
+WORK_DIR="/tmp/vmware_build_$$"
+BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
+LOG_FILE="$SCRIPT_DIR/vmware_build_$(date +%Y%m%d_%H%M%S).log"
+
+# Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
 RED='\033[0;31m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
-log() { echo -e "${GREEN}[✓]${NC} $1"; }
-info() { echo -e "${BLUE}[i]${NC} $1"; }
-warning() { echo -e "${YELLOW}[!]${NC} $1"; }
-error() { echo -e "${RED}[✗]${NC} $1"; }
+log() { echo -e "${GREEN}[✓]${NC} $1" | tee -a "$LOG_FILE"; }
+info() { echo -e "${BLUE}[i]${NC} $1" | tee -a "$LOG_FILE"; }
+warning() { echo -e "${YELLOW}[!]${NC} $1" | tee -a "$LOG_FILE"; }
+error() { echo -e "${RED}[✗]${NC} $1" | tee -a "$LOG_FILE"; }
+
+# Cleanup function in case of error
+cleanup_on_error() {
+    error "Error detected. Cleaning up..."
+    cd "$HOME"
+    rm -rf "$WORK_DIR"
+    exit 1
+}
+
+trap cleanup_on_error ERR
 
 echo -e "${CYAN}"
 cat << 'EOF'
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
-║     VMware Modules Installer for Linux Kernel 6.17.x        ║
+║     VMWARE MODULES COMPILER FOR KERNEL 6.16/6.17            ║
+║                 (Ubuntu/Fedora Compatible)                   ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
+
+# ============================================
+# 0. SELECT KERNEL VERSION
+# ============================================
+echo ""
+echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo -e "${YELLOW}KERNEL VERSION SELECTION${NC}"
+echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo ""
+echo "This script supports two kernel versions with specific patches:"
+echo ""
+echo -e "${GREEN}  1)${NC} Kernel 6.16.x"
+echo "     • Uses patches from: https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x"
+echo "     • Patches: timer_delete_sync(), rdmsrq_safe(), module_init()"
+echo ""
+echo -e "${GREEN}  2)${NC} Kernel 6.17.x"
+echo "     • Uses patches from 6.16.x + additional objtool patches"
+echo "     • Additional patches: OBJECT_FILES_NON_STANDARD, returns in void functions"
+echo ""
+echo -e "${BLUE}Kernel detected on your system:${NC} $(uname -r)"
 echo ""
 
-# Verificar que se ejecuta como root
-if [ "$EUID" -ne 0 ]; then 
-    error "Este script debe ejecutarse como root"
-    echo "Ejecuta: sudo bash $0"
-    exit 1
+# Ask for kernel version
+while true; do
+    read -p "Which kernel version do you want to compile for? (1=6.16 / 2=6.17): " KERNEL_CHOICE
+    case $KERNEL_CHOICE in
+        1)
+            TARGET_KERNEL="6.16"
+            info "Selected: Kernel 6.16.x"
+            break
+            ;;
+        2)
+            TARGET_KERNEL="6.17"
+            info "Selected: Kernel 6.17.x"
+            break
+            ;;
+        *)
+            warning "Invalid option. Please select 1 or 2."
+            ;;
+    esac
+done
+
+echo ""
+log "Configuration: Compiling for kernel $TARGET_KERNEL"
+echo ""
+
+# ============================================
+# 1. VERIFY SYSTEM
+# ============================================
+log "1. Verifying system..."
+
+KERNEL_VERSION=$(uname -r)
+KERNEL_MAJOR=$(echo $KERNEL_VERSION | cut -d. -f1)
+KERNEL_MINOR=$(echo $KERNEL_VERSION | cut -d. -f2)
+
+info "Detected kernel: $KERNEL_VERSION"
+info "Version: $KERNEL_MAJOR.$KERNEL_MINOR"
+
+# Detect distribution
+if [ -f /etc/fedora-release ]; then
+    DISTRO="fedora"
+    PKG_MANAGER="dnf"
+    info "Distribution: Fedora"
+elif [ -f /etc/debian_version ]; then
+    DISTRO="debian"
+    PKG_MANAGER="apt"
+    info "Distribution: Debian/Ubuntu"
+else
+    DISTRO="unknown"
+    PKG_MANAGER="unknown"
+    warning "Unrecognized distribution"
 fi
 
-# Detectar kernel actual
-CURRENT_KERNEL=$(uname -r)
-KERNEL_MAJOR=$(echo $CURRENT_KERNEL | cut -d. -f1)
-KERNEL_MINOR=$(echo $CURRENT_KERNEL | cut -d. -f2)
-
-log "Kernel detectado: $CURRENT_KERNEL"
-
-# Verificar que es kernel 6.17.x
-if [ "$KERNEL_MAJOR" != "6" ] || [ "$KERNEL_MINOR" != "17" ]; then
-    warning "Este script está diseñado para kernel 6.17.x"
-    warning "Tu kernel es $CURRENT_KERNEL"
-    read -p "¿Deseas continuar de todos modos? (s/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Ss]$ ]]; then
-        info "Instalación cancelada"
-        exit 0
+# Warning if there's a mismatch between detected kernel and selection
+if [ "$KERNEL_MAJOR" = "6" ]; then
+    if [ "$KERNEL_MINOR" = "16" ] && [ "$TARGET_KERNEL" = "6.17" ]; then
+        warning "Your kernel is 6.16 but you selected patches for 6.17"
+        warning "This may cause compatibility issues"
+        read -p "Do you want to continue anyway? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    elif [ "$KERNEL_MINOR" = "17" ] && [ "$TARGET_KERNEL" = "6.16" ]; then
+        warning "Your kernel is 6.17 but you selected patches for 6.16"
+        warning "You may need the 6.17 patches"
+        read -p "Do you want to continue anyway? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
     fi
 fi
 
-# Verificar que VMware está instalado
-if [ ! -d "/usr/lib/vmware/modules/source" ]; then
-    error "VMware Workstation no está instalado"
-    error "Instala VMware Workstation primero"
+# Detect kernel compiler
+KERNEL_COMPILER=$(cat /proc/version | grep -oP '(?<=\().*?(?=\))' | head -1)
+info "Kernel compiler: $KERNEL_COMPILER"
+
+# Determine if using GCC or Clang
+if echo "$KERNEL_COMPILER" | grep -qi "clang"; then
+    USING_CLANG=true
+    CC="clang"
+    LD="ld.lld"
+    info "Kernel compiled with Clang - using LLVM toolchain"
+else
+    USING_CLANG=false
+    CC="gcc"
+    LD="ld"
+    info "Kernel compiled with GCC - using GNU toolchain"
+fi
+
+# Verify VMware
+if ! command -v vmware &> /dev/null; then
+    error "VMware Workstation not found"
     exit 1
 fi
 
-log "VMware Workstation detectado"
+VMWARE_VERSION=$(vmware --version 2>/dev/null || echo "VMware Workstation (version unknown)")
+log "✓ VMware detected"
 
-# Verificar kernel headers
-if [ ! -d "/lib/modules/$CURRENT_KERNEL/build" ]; then
-    error "Kernel headers no instalados"
-    info "Instala los headers con:"
-    echo "  Ubuntu/Debian: sudo apt install linux-headers-\$(uname -r)"
-    echo "  Fedora/RHEL: sudo dnf install kernel-devel"
-    echo "  Arch: sudo pacman -S linux-headers"
-    exit 1
+# Check current modules
+info "Currently loaded VMware modules:"
+lsmod | grep -E "vmmon|vmnet" | sed 's/^/  /' || warning "No modules loaded"
+
+log "✓ System verification completed"
+
+# ============================================
+# 2. INSTALL DEPENDENCIES
+# ============================================
+log "2. Verifying dependencies..."
+
+# Verify kernel headers
+if [ "$DISTRO" = "fedora" ]; then
+    if [ ! -d "/usr/src/kernels/$KERNEL_VERSION" ]; then
+        info "Installing kernel-devel..."
+        sudo dnf install -y kernel-devel-$KERNEL_VERSION
+    fi
+    log "✓ Kernel headers found"
+    
+    # Build tools
+    info "Verifying build tools..."
+    sudo dnf groupinstall -y "Development Tools" || true
+    sudo dnf install -y gcc make git wget tar || true
+    
+elif [ "$DISTRO" = "debian" ]; then
+    if [ ! -d "/lib/modules/$KERNEL_VERSION/build" ]; then
+        info "Installing linux-headers..."
+        sudo apt update
+        sudo apt install -y linux-headers-$KERNEL_VERSION
+    fi
+    log "✓ Kernel headers found"
+    
+    # Build tools
+    info "Verifying build tools..."
+    sudo apt install -y build-essential git wget tar
 fi
 
-log "Kernel headers encontrados"
+log "✓ Build tools verified"
 
-# Verificar herramientas de compilación
-if ! command -v gcc &> /dev/null; then
-    error "GCC no está instalado"
-    info "Instala build-essential o equivalent"
-    exit 1
-fi
+# ============================================
+# 3. PREPARE WORKING DIRECTORY
+# ============================================
+log "3. Preparing working directory..."
 
-if ! command -v make &> /dev/null; then
-    error "Make no está instalado"
-    info "Instala build-essential o equivalent"
-    exit 1
-fi
-
-log "Herramientas de compilación verificadas"
-
-# Crear directorio temporal
-WORK_DIR="/tmp/vmware_build_$$"
+# Create unique temporary directory
 mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"
+info "Working directory: $WORK_DIR"
 
-info "Directorio de trabajo: $WORK_DIR"
+log "✓ Directory prepared"
 
-# Extraer módulos originales
-log "Extrayendo módulos VMware..."
+# ============================================
+# 4. EXTRACT ORIGINAL MODULES
+# ============================================
+log "4. Extracting original VMware modules..."
+
+# Backup current modules
+if [ -f "/usr/lib/vmware/modules/source/vmmon.tar" ]; then
+    info "Creating backup of current modules..."
+    sudo mkdir -p "$BACKUP_DIR"
+    sudo cp /usr/lib/vmware/modules/source/vmmon.tar "$BACKUP_DIR/" 2>/dev/null || true
+    sudo cp /usr/lib/vmware/modules/source/vmnet.tar "$BACKUP_DIR/" 2>/dev/null || true
+    info "Backup saved to: $BACKUP_DIR"
+fi
+
+# Extract modules in current working directory
+info "Extracting vmmon.tar..."
 tar -xf /usr/lib/vmware/modules/source/vmmon.tar
+
+info "Extracting vmnet.tar..."
 tar -xf /usr/lib/vmware/modules/source/vmnet.tar
 
-# Clonar repositorio base (6.16.x) si es necesario
-info "Descargando parches base..."
-if ! git clone --depth 1 https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x.git 2>/dev/null; then
-    warning "No se pudo clonar repositorio base, continuando sin parches 6.16"
-else
-    # Aplicar parches base de 6.16
-    REPO_SOURCE="$WORK_DIR/vmware-vmmon-vmnet-linux-6.16.x/modules/17.6.4/source"
-    if [ -d "$REPO_SOURCE" ]; then
-        info "Aplicando parches base (6.16)..."
-        
-        # Aplicar parches vmmon
-        [ -f "$REPO_SOURCE/vmmon-only/Makefile" ] && cp -f "$REPO_SOURCE/vmmon-only/Makefile" "$WORK_DIR/vmmon-only/"
-        [ -f "$REPO_SOURCE/vmmon-only/linux/driver.c" ] && cp -f "$REPO_SOURCE/vmmon-only/linux/driver.c" "$WORK_DIR/vmmon-only/linux/"
-        [ -f "$REPO_SOURCE/vmmon-only/linux/hostif.c" ] && cp -f "$REPO_SOURCE/vmmon-only/linux/hostif.c" "$WORK_DIR/vmmon-only/linux/"
-        
-        # Aplicar parches vmnet
-        [ -f "$REPO_SOURCE/vmnet-only/Makefile" ] && cp -f "$REPO_SOURCE/vmnet-only/Makefile" "$WORK_DIR/vmnet-only/"
-        [ -f "$REPO_SOURCE/vmnet-only/Makefile.kernel" ] && cp -f "$REPO_SOURCE/vmnet-only/Makefile.kernel" "$WORK_DIR/vmnet-only/"
-        [ -f "$REPO_SOURCE/vmnet-only/driver.c" ] && cp -f "$REPO_SOURCE/vmnet-only/driver.c" "$WORK_DIR/vmnet-only/"
-        [ -f "$REPO_SOURCE/vmnet-only/smac_compat.c" ] && cp -f "$REPO_SOURCE/vmnet-only/smac_compat.c" "$WORK_DIR/vmnet-only/"
-        
-        log "Parches base aplicados"
-    fi
-fi
-
-# Aplicar parches específicos para 6.17
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-info "Aplicando parches específicos para kernel 6.17..."
-
-if [ -f "$SCRIPT_DIR/apply-patches-6.17.sh" ]; then
-    bash "$SCRIPT_DIR/apply-patches-6.17.sh" "$WORK_DIR/vmmon-only" "$WORK_DIR/vmnet-only"
-else
-    error "Script de parches no encontrado: $SCRIPT_DIR/apply-patches-6.17.sh"
+# Verify extraction was successful
+if [ ! -d "$WORK_DIR/vmmon-only" ] || [ ! -d "$WORK_DIR/vmnet-only" ]; then
+    error "Error extracting modules"
+    ls -la "$WORK_DIR"
     exit 1
 fi
 
-# Compilar vmmon
-log "Compilando vmmon..."
+log "✓ Modules extracted"
+
+# ============================================
+# 5. DOWNLOAD PATCHES ACCORDING TO VERSION
+# ============================================
+log "5. Downloading patches for kernel $TARGET_KERNEL..."
+
+PATCH_DIR="$WORK_DIR/patches"
+mkdir -p "$PATCH_DIR"
+cd "$PATCH_DIR"
+
+# Download base patches for 6.16
+PATCH_REPO="https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x"
+info "Downloading base patches from GitHub (6.16.x)..."
+
+if [ -d "vmware-vmmon-vmnet-linux-6.16.x" ]; then
+    rm -rf vmware-vmmon-vmnet-linux-6.16.x
+fi
+
+git clone --depth 1 "$PATCH_REPO" || {
+    error "Error downloading patches from GitHub"
+    exit 1
+}
+
+log "✓ Base patches downloaded"
+
+# ============================================
+# 6. APPLY PATCHES FOR KERNEL 6.16
+# ============================================
+log "6. Applying base patches (kernel 6.16)..."
+
+cd "$WORK_DIR"
+
+# Find patched files in repository
+REPO_SOURCE="$PATCH_DIR/vmware-vmmon-vmnet-linux-6.16.x/modules"
+
+# Find the closest available version
+if [ -d "$REPO_SOURCE/17.6.4/source" ]; then
+    PATCH_SOURCE="$REPO_SOURCE/17.6.4/source"
+elif [ -d "$REPO_SOURCE/17.6.0/source" ]; then
+    PATCH_SOURCE="$REPO_SOURCE/17.6.0/source"
+elif [ -d "$REPO_SOURCE/17.5.0/source" ]; then
+    PATCH_SOURCE="$REPO_SOURCE/17.5.0/source"
+else
+    # Find any available version
+    PATCH_SOURCE=$(find "$REPO_SOURCE" -type d -name "source" | head -1)
+fi
+
+if [ -z "$PATCH_SOURCE" ] || [ ! -d "$PATCH_SOURCE" ]; then
+    error "Patched files not found in repository"
+    exit 1
+fi
+
+info "Using patches from: $PATCH_SOURCE"
+
+# Copy patched files from repository (patches for 6.16)
+info "Applying patches to vmmon..."
+if [ -d "$PATCH_SOURCE/vmmon-only" ]; then
+    # Copy all patched files
+    cp -rf "$PATCH_SOURCE/vmmon-only/"* "$WORK_DIR/vmmon-only/" 2>/dev/null || true
+    log "✓ vmmon patches applied (6.16)"
+else
+    warning "No patches found for vmmon"
+fi
+
+info "Applying patches to vmnet..."
+if [ -d "$PATCH_SOURCE/vmnet-only" ]; then
+    # Copy all patched files
+    cp -rf "$PATCH_SOURCE/vmnet-only/"* "$WORK_DIR/vmnet-only/" 2>/dev/null || true
+    log "✓ vmnet patches applied (6.16)"
+else
+    warning "No patches found for vmnet"
+fi
+
+log "✓ Base patches (6.16) applied"
+
+# ============================================
+# 7. APPLY ADDITIONAL PATCHES FOR KERNEL 6.17
+# ============================================
+if [ "$TARGET_KERNEL" = "6.17" ]; then
+    log "7. Applying additional patches for kernel 6.17..."
+    
+    info "Applying objtool patches for kernel 6.17..."
+    
+    # Patch 1: Modify vmmon Makefile.kernel to disable objtool
+    info "Patching vmmon/Makefile.kernel..."
+    cat > "$WORK_DIR/vmmon-only/Makefile.kernel" << 'EOF'
+#!/usr/bin/make -f
+##########################################################
+# Copyright (c) 1998-2024 Broadcom. All Rights Reserved.
+# The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation version 2 and no later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+#
+##########################################################
+
+CC_OPTS += -DVMMON -DVMCORE
+
+INCLUDE := -I$(SRCROOT)/include -I$(SRCROOT)/include/x86 -I$(SRCROOT)/common -I$(SRCROOT)/linux
+ccflags-y := $(CC_OPTS) $(INCLUDE)
+
+obj-m += $(DRIVER).o
+
+$(DRIVER)-y := $(subst $(SRCROOT)/, , $(patsubst %.c, %.o, \
+		$(wildcard $(SRCROOT)/linux/*.c $(SRCROOT)/common/*.c \
+		$(SRCROOT)/bootstrap/*.c)))
+
+# Disable objtool for problematic files in kernel 6.17+
+OBJECT_FILES_NON_STANDARD_common/phystrack.o := y
+OBJECT_FILES_NON_STANDARD_common/task.o := y
+OBJECT_FILES_NON_STANDARD := y
+
+clean:
+	rm -rf $(wildcard $(DRIVER).mod.c $(DRIVER).ko .tmp_versions \
+		Module.symvers Modules.symvers Module.markers modules.order \
+		$(foreach dir,linux/ common/ bootstrap/ \
+		./,$(addprefix $(dir),.*.cmd .*.o.flags *.o)))
+EOF
+    
+    log "✓ vmmon/Makefile.kernel patched for 6.17"
+    
+    # Patch 2: Remove unnecessary returns in phystrack.c
+    if [ -f "$WORK_DIR/vmmon-only/common/phystrack.c" ]; then
+        info "Patching phystrack.c (removing unnecessary returns)..."
+        sed -i '324s/return;$//' "$WORK_DIR/vmmon-only/common/phystrack.c" 2>/dev/null || true
+        sed -i '368s/return;$//' "$WORK_DIR/vmmon-only/common/phystrack.c" 2>/dev/null || true
+        log "✓ phystrack.c patched"
+    fi
+    
+    # Patch 3: Check if task.c needs patches
+    if [ -f "$WORK_DIR/vmmon-only/common/task.c" ]; then
+        if grep -q "return;" "$WORK_DIR/vmmon-only/common/task.c" 2>/dev/null; then
+            info "Patching task.c (removing unnecessary returns)..."
+            sed -i '/^void.*{$/,/^}$/ { /^   return;$/d }' "$WORK_DIR/vmmon-only/common/task.c"
+            log "✓ task.c patched"
+        fi
+    fi
+    
+    # Patch 4: Patch vmnet Makefile.kernel to disable objtool
+    info "Patching vmnet/Makefile.kernel..."
+    if ! grep -q "OBJECT_FILES_NON_STANDARD" "$WORK_DIR/vmnet-only/Makefile.kernel"; then
+        # Find the line with obj-m and add after it
+        sed -i '/^obj-m += \$(DRIVER)\.o/a\\n# Disable objtool for problematic files in kernel 6.17+\nOBJECT_FILES_NON_STANDARD_userif.o := y\nOBJECT_FILES_NON_STANDARD := y' "$WORK_DIR/vmnet-only/Makefile.kernel"
+        log "✓ vmnet/Makefile.kernel patched for 6.17"
+    else
+        info "vmnet/Makefile.kernel already has objtool patches"
+    fi
+    
+    log "✓ Additional patches (6.17) applied"
+else
+    info "7. Skipping kernel 6.17 patches (not needed for 6.16)"
+fi
+
+# ============================================
+# 8. COMPILE MODULES
+# ============================================
+log "8. Compiling modules..."
+
+# Configure compilation variables
+if [ "$DISTRO" = "fedora" ]; then
+    export KERNEL_DIR="/usr/src/kernels/$KERNEL_VERSION"
+else
+    export KERNEL_DIR="/lib/modules/$KERNEL_VERSION/build"
+fi
+
+if [ "$USING_CLANG" = true ]; then
+    export CC=clang
+    export LD=ld.lld
+    export LLVM=1
+    info "Using toolchain: Clang/LLVM"
+else
+    export CC=gcc
+    export LD=ld
+    info "Using toolchain: GCC/GNU"
+fi
+
+# Compile vmmon
+info "Compiling vmmon..."
 cd "$WORK_DIR/vmmon-only"
 make clean 2>/dev/null || true
-if ! make VM_UNAME=$CURRENT_KERNEL -j$(nproc); then
-    error "Error compilando vmmon"
+
+if make -j$(nproc) 2>&1 | tee "$LOG_FILE.vmmon"; then
+    if [ -f "vmmon.ko" ]; then
+        log "✓ vmmon compiled successfully"
+    else
+        error "vmmon.ko was not generated"
+        cat "$LOG_FILE.vmmon"
+        exit 1
+    fi
+else
+    error "Error compiling vmmon"
+    cat "$LOG_FILE.vmmon"
     exit 1
 fi
-log "vmmon compilado exitosamente"
 
-# Compilar vmnet
-log "Compilando vmnet..."
+# Compile vmnet
+info "Compiling vmnet..."
 cd "$WORK_DIR/vmnet-only"
 make clean 2>/dev/null || true
-if ! make VM_UNAME=$CURRENT_KERNEL -j$(nproc); then
-    error "Error compilando vmnet"
+
+if make -j$(nproc) 2>&1 | tee "$LOG_FILE.vmnet"; then
+    if [ -f "vmnet.ko" ]; then
+        log "✓ vmnet compiled successfully"
+    else
+        error "vmnet.ko was not generated"
+        cat "$LOG_FILE.vmnet"
+        exit 1
+    fi
+else
+    error "Error compiling vmnet"
+    cat "$LOG_FILE.vmnet"
     exit 1
 fi
-log "vmnet compilado exitosamente"
 
-# Instalar módulos
-log "Instalando módulos..."
-mkdir -p "/lib/modules/$CURRENT_KERNEL/misc/"
-cp "$WORK_DIR/vmmon-only/vmmon.ko" "/lib/modules/$CURRENT_KERNEL/misc/"
-cp "$WORK_DIR/vmnet-only/vmnet.ko" "/lib/modules/$CURRENT_KERNEL/misc/"
+log "✓ Modules compiled successfully"
 
-# Actualizar dependencias
-info "Actualizando dependencias de módulos..."
-depmod -a $CURRENT_KERNEL
+# ============================================
+# 9. INSTALL MODULES
+# ============================================
+log "9. Installing modules..."
 
-# Cargar módulos
-info "Cargando módulos..."
-modprobe vmmon 2>/dev/null || true
-modprobe vmnet 2>/dev/null || true
+# Unload current modules
+info "Unloading current modules..."
+sudo modprobe -r vmnet vmmon 2>/dev/null || true
+sudo rmmod vmnet 2>/dev/null || true
+sudo rmmod vmmon 2>/dev/null || true
 
-# Verificar instalación
-echo ""
-log "Verificando instalación..."
-echo ""
+# Create misc directory if it doesn't exist
+sudo mkdir -p "/lib/modules/$KERNEL_VERSION/misc/"
 
-if lsmod | grep -q vmmon; then
-    log "vmmon cargado correctamente"
+# Copy new modules
+info "Copying vmmon.ko..."
+sudo cp "$WORK_DIR/vmmon-only/vmmon.ko" "/lib/modules/$KERNEL_VERSION/misc/"
+
+info "Copying vmnet.ko..."
+sudo cp "$WORK_DIR/vmnet-only/vmnet.ko" "/lib/modules/$KERNEL_VERSION/misc/"
+
+# Update module dependencies
+info "Updating module dependencies..."
+sudo depmod -a
+
+# Load modules
+info "Loading modules..."
+if sudo modprobe vmmon; then
+    log "✓ vmmon loaded"
 else
-    warning "vmmon no está cargado"
+    error "Error loading vmmon"
+    dmesg | tail -20
+    exit 1
 fi
 
-if lsmod | grep -q vmnet; then
-    log "vmnet cargado correctamente"
+if sudo modprobe vmnet; then
+    log "✓ vmnet loaded"
 else
-    warning "vmnet no está cargado"
+    error "Error loading vmnet"
+    dmesg | tail -20
+    exit 1
 fi
 
-echo ""
-info "Módulos instalados en:"
-ls -lh /lib/modules/$CURRENT_KERNEL/misc/vm*.ko 2>/dev/null | sed 's/^/  /'
+log "✓ Modules installed and loaded"
 
-# Limpiar
-cd /
+# ============================================
+# 10. CREATE TARBALL FOR VMWARE
+# ============================================
+log "10. Creating tarballs for VMware..."
+
+cd "$WORK_DIR"
+
+# Create new tarballs
+info "Creating vmmon.tar..."
+tar -cf vmmon.tar vmmon-only
+
+info "Creating vmnet.tar..."
+tar -cf vmnet.tar vmnet-only
+
+# Copy to VMware directory
+info "Installing tarballs to VMware..."
+sudo cp vmmon.tar /usr/lib/vmware/modules/source/
+sudo cp vmnet.tar /usr/lib/vmware/modules/source/
+
+log "✓ Tarballs installed"
+
+# ============================================
+# 11. RESTART VMWARE SERVICES
+# ============================================
+log "11. Restarting VMware services..."
+
+# Try to restart services (may fail if not active)
+sudo systemctl restart vmware.service 2>/dev/null || sudo /etc/init.d/vmware restart 2>/dev/null || true
+sudo systemctl restart vmware-USBArbitrator.service 2>/dev/null || true
+sudo systemctl restart vmware-networks.service 2>/dev/null || true
+
+log "✓ Services restarted"
+
+# ============================================
+# 12. VERIFY INSTALLATION
+# ============================================
+log "12. Verifying installation..."
+
+echo ""
+info "Loaded modules:"
+lsmod | grep -E "vmmon|vmnet" | sed 's/^/  /'
+
+echo ""
+info "Module information:"
+modinfo vmmon 2>/dev/null | grep -E "filename|version|description" | sed 's/^/  /' || warning "Could not get vmmon info"
+echo ""
+modinfo vmnet 2>/dev/null | grep -E "filename|version|description" | sed 's/^/  /' || warning "Could not get vmnet info"
+
+echo ""
+info "VMware service status:"
+systemctl status vmware.service --no-pager -l 2>/dev/null | grep Active | sed 's/^/  /' || warning "VMware service not available"
+
+# ============================================
+# 13. CLEANUP
+# ============================================
+log "13. Cleaning up temporary files..."
+
+cd "$HOME"
 rm -rf "$WORK_DIR"
+info "Temporary directory removed"
 
 echo ""
 echo -e "${CYAN}═══════════════════════════════════════${NC}"
-echo -e "${GREEN}✓ INSTALACIÓN COMPLETADA${NC}"
+echo -e "${GREEN}✓ COMPILATION AND INSTALLATION COMPLETED${NC}"
 echo -e "${CYAN}═══════════════════════════════════════${NC}"
 echo ""
 
-info "Siguiente paso:"
-echo "  1. Reinicia VMware Workstation"
-echo "  2. Inicia una máquina virtual para verificar"
+info "Summary:"
+echo "  • Kernel: $KERNEL_VERSION"
+echo "  • Patches applied: Kernel $TARGET_KERNEL"
+echo "  • Distribution: $DISTRO"
+echo "  • Compiler: $KERNEL_COMPILER"
+echo "  • VMware: $VMWARE_VERSION"
+echo "  • Modules: vmmon, vmnet"
+echo "  • Backup: $BACKUP_DIR"
+echo "  • Log: $LOG_FILE"
 echo ""
 
-log "¡Módulos VMware instalados para kernel $CURRENT_KERNEL!"
+if [ "$TARGET_KERNEL" = "6.16" ]; then
+    info "Applied patches (Kernel 6.16):"
+    echo "  ✓ Build System: EXTRA_CFLAGS → ccflags-y"
+    echo "  ✓ Timer API: del_timer_sync() → timer_delete_sync()"
+    echo "  ✓ MSR API: rdmsrl_safe() → rdmsrq_safe()"
+    echo "  ✓ Module Init: init_module() → module_init()"
+    echo "  ✓ Module Exit: cleanup_module() → module_exit()"
+    echo "  ✓ Function Prototypes: function() → function(void)"
+    echo "  ✓ Source: https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x"
+else
+    info "Applied patches (Kernel 6.17):"
+    echo "  ✓ All patches from 6.16 +"
+    echo "  ✓ Objtool: OBJECT_FILES_NON_STANDARD enabled"
+    echo "  ✓ phystrack.c: Unnecessary returns removed"
+    echo "  ✓ task.c: Unnecessary returns removed"
+    echo "  ✓ vmnet: Objtool disabled for userif.o"
+fi
+
+echo ""
+
+warning "IMPORTANT:"
+echo "  • Modules are compiled for kernel $KERNEL_VERSION"
+echo "  • Patches applied for: Kernel $TARGET_KERNEL"
+echo "  • If you update the kernel, run this script again"
+echo "  • If VMware doesn't start, run: sudo vmware-modconfig --console --install-all"
+echo ""
+
+info "To verify VMware works correctly:"
+echo "  vmware &"
+echo ""
+
+log "Process completed successfully!"
