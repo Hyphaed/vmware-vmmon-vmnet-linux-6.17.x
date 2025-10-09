@@ -6,7 +6,8 @@
 
 set -e
 
-SCRIPT_DIR="/home/ferran/Documents/Scripts"
+# Detectar automáticamente el directorio del script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="/tmp/vmware_build_$$"
 BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
 LOG_FILE="$SCRIPT_DIR/vmware_build_$(date +%Y%m%d_%H%M%S).log"
@@ -320,12 +321,34 @@ fi
 log "✓ Base patches (6.16) applied"
 
 # ============================================
-# 7. APPLY ADDITIONAL PATCHES FOR KERNEL 6.17
+# 7. DETECT IF OBJTOOL PATCHES ARE NEEDED
 # ============================================
+log "7. Detecting if objtool patches are needed..."
+
+# Check if kernel version is 6.16.3+ or 6.17+
+# These kernels have stricter objtool validation
+NEED_OBJTOOL_PATCHES=false
+
 if [ "$TARGET_KERNEL" = "6.17" ]; then
-    log "7. Applying additional patches for kernel 6.17..."
+    NEED_OBJTOOL_PATCHES=true
+    info "Kernel 6.17 selected - objtool patches will be applied"
+elif [ "$KERNEL_MAJOR" = "6" ] && [ "$KERNEL_MINOR" = "16" ]; then
+    # Check if it's 6.16.3 or higher (which has stricter objtool)
+    KERNEL_PATCH=$(echo $KERNEL_VERSION | cut -d. -f3 | cut -d- -f1)
+    if [ "$KERNEL_PATCH" -ge 3 ] 2>/dev/null; then
+        NEED_OBJTOOL_PATCHES=true
+        warning "Kernel 6.16.$KERNEL_PATCH detected - this version has strict objtool validation"
+        info "Objtool patches will be applied automatically"
+    fi
+fi
+
+# ============================================
+# 8. APPLY OBJTOOL PATCHES IF NEEDED
+# ============================================
+if [ "$NEED_OBJTOOL_PATCHES" = true ]; then
+    log "8. Applying objtool patches..."
     
-    info "Applying objtool patches for kernel 6.17..."
+    info "These patches disable objtool validation for problematic files..."
     
     # Patch 1: Modify vmmon Makefile.kernel to disable objtool
     info "Patching vmmon/Makefile.kernel..."
@@ -402,15 +425,15 @@ EOF
         info "vmnet/Makefile.kernel already has objtool patches"
     fi
     
-    log "✓ Additional patches (6.17) applied"
+    log "✓ Objtool patches applied"
 else
-    info "7. Skipping kernel 6.17 patches (not needed for 6.16)"
+    info "8. Objtool patches not needed for this kernel version"
 fi
 
 # ============================================
-# 8. COMPILE MODULES
+# 9. COMPILE MODULES
 # ============================================
-log "8. Compiling modules..."
+log "9. Compiling modules..."
 
 # Configure compilation variables
 if [ "$DISTRO" = "fedora" ]; then
@@ -471,9 +494,9 @@ fi
 log "✓ Modules compiled successfully"
 
 # ============================================
-# 9. INSTALL MODULES
+# 10. INSTALL MODULES
 # ============================================
-log "9. Installing modules..."
+log "10. Installing modules..."
 
 # Unload current modules
 info "Unloading current modules..."
@@ -516,9 +539,9 @@ fi
 log "✓ Modules installed and loaded"
 
 # ============================================
-# 10. CREATE TARBALL FOR VMWARE
+# 11. CREATE TARBALL FOR VMWARE
 # ============================================
-log "10. Creating tarballs for VMware..."
+log "11. Creating tarballs for VMware..."
 
 cd "$WORK_DIR"
 
@@ -537,9 +560,9 @@ sudo cp vmnet.tar /usr/lib/vmware/modules/source/
 log "✓ Tarballs installed"
 
 # ============================================
-# 11. RESTART VMWARE SERVICES
+# 12. RESTART VMWARE SERVICES
 # ============================================
-log "11. Restarting VMware services..."
+log "12. Restarting VMware services..."
 
 # Try to restart services (may fail if not active)
 sudo systemctl restart vmware.service 2>/dev/null || sudo /etc/init.d/vmware restart 2>/dev/null || true
@@ -549,9 +572,9 @@ sudo systemctl restart vmware-networks.service 2>/dev/null || true
 log "✓ Services restarted"
 
 # ============================================
-# 12. VERIFY INSTALLATION
+# 13. VERIFY INSTALLATION
 # ============================================
-log "12. Verifying installation..."
+log "13. Verifying installation..."
 
 echo ""
 info "Loaded modules:"
@@ -568,9 +591,9 @@ info "VMware service status:"
 systemctl status vmware.service --no-pager -l 2>/dev/null | grep Active | sed 's/^/  /' || warning "VMware service not available"
 
 # ============================================
-# 13. CLEANUP
+# 14. CLEANUP
 # ============================================
-log "13. Cleaning up temporary files..."
+log "14. Cleaning up temporary files..."
 
 cd "$HOME"
 rm -rf "$WORK_DIR"
@@ -585,6 +608,7 @@ echo ""
 info "Summary:"
 echo "  • Kernel: $KERNEL_VERSION"
 echo "  • Patches applied: Kernel $TARGET_KERNEL"
+echo "  • Objtool patches: $([ "$NEED_OBJTOOL_PATCHES" = true ] && echo "YES (auto-detected)" || echo "NO (not needed)")"
 echo "  • Distribution: $DISTRO"
 echo "  • Compiler: $KERNEL_COMPILER"
 echo "  • VMware: $VMWARE_VERSION"
@@ -593,29 +617,30 @@ echo "  • Backup: $BACKUP_DIR"
 echo "  • Log: $LOG_FILE"
 echo ""
 
-if [ "$TARGET_KERNEL" = "6.16" ]; then
-    info "Applied patches (Kernel 6.16):"
-    echo "  ✓ Build System: EXTRA_CFLAGS → ccflags-y"
-    echo "  ✓ Timer API: del_timer_sync() → timer_delete_sync()"
-    echo "  ✓ MSR API: rdmsrl_safe() → rdmsrq_safe()"
-    echo "  ✓ Module Init: init_module() → module_init()"
-    echo "  ✓ Module Exit: cleanup_module() → module_exit()"
-    echo "  ✓ Function Prototypes: function() → function(void)"
-    echo "  ✓ Source: https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x"
-else
-    info "Applied patches (Kernel 6.17):"
-    echo "  ✓ All patches from 6.16 +"
+info "Applied patches:"
+echo "  ✓ Build System: EXTRA_CFLAGS → ccflags-y"
+echo "  ✓ Timer API: del_timer_sync() → timer_delete_sync()"
+echo "  ✓ MSR API: rdmsrl_safe() → rdmsrq_safe()"
+echo "  ✓ Module Init: init_module() → module_init()"
+echo "  ✓ Module Exit: cleanup_module() → module_exit()"
+echo "  ✓ Function Prototypes: function() → function(void)"
+echo "  ✓ Source: https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x"
+
+if [ "$NEED_OBJTOOL_PATCHES" = true ]; then
+    echo ""
+    info "Additional objtool patches (auto-detected):"
     echo "  ✓ Objtool: OBJECT_FILES_NON_STANDARD enabled"
     echo "  ✓ phystrack.c: Unnecessary returns removed"
     echo "  ✓ task.c: Unnecessary returns removed"
     echo "  ✓ vmnet: Objtool disabled for userif.o"
+    echo "  ℹ  These patches were automatically applied for kernel $KERNEL_VERSION"
 fi
 
 echo ""
 
 warning "IMPORTANT:"
 echo "  • Modules are compiled for kernel $KERNEL_VERSION"
-echo "  • Patches applied for: Kernel $TARGET_KERNEL"
+echo "  • Patches applied for: Kernel $TARGET_KERNEL (with auto-detected objtool fixes)"
 echo "  • If you update the kernel, run this script again"
 echo "  • If VMware doesn't start, run: sudo vmware-modconfig --console --install-all"
 echo ""

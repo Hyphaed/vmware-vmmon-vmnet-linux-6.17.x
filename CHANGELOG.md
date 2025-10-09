@@ -1,0 +1,70 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Fixed
+- Fixed hardcoded log file path in `install-vmware-modules.sh` (Issue #2)
+  - Changed from hardcoded `/home/ferran/Documents/Scripts` to dynamic path detection
+  - Script now automatically detects its location using `$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)`
+  - Log files are now saved in the `scripts/` directory where the script resides
+  - Script can now be run from any directory without modification
+  - Updated `test-vmware-modules.sh` to use relative path instead of hardcoded path
+
+- Fixed vmmon.ko compilation failure on kernel 6.16.3+ (Issue #3)
+  - Added intelligent objtool patch detection
+  - Script now automatically detects if kernel version requires objtool patches
+  - Kernel 6.16.3+ automatically gets objtool patches even when selecting "6.16" option
+  - Fixes objtool errors: "PhysTrack_Add() falls through to next function"
+  - Fixes objtool errors: "Task_Switch(): unexpected end of section"
+
+### Added
+- Automatic objtool patch detection for kernel 6.16.3 and higher
+  - Script checks kernel patch version and applies objtool fixes automatically
+  - Works for both user selection "6.16" and "6.17"
+  - Displays clear warning when objtool patches are auto-applied
+- Enhanced summary output showing objtool patch status (auto-detected vs manual)
+
+### Changed
+- Updated README.md with multiple installation options (from scripts directory, from root, or from anywhere)
+- Added note about automatic log file location detection
+- Updated README.md to document automatic objtool detection feature
+- Updated compatibility matrix to reflect kernel 6.16.3+ objtool requirements
+- Renumbered installation steps (now 14 steps instead of 13) to include objtool detection phase
+
+## [1.0.0] - 2025-10-09
+
+### Added
+- Initial release with support for Linux kernel 6.16.x and 6.17.x
+- Interactive kernel version selection during installation
+- Automated installation script (`install-vmware-modules.sh`)
+- Patch application script (`apply-patches-6.17.sh`)
+- Module testing script (`test-vmware-modules.sh`)
+- Comprehensive documentation:
+  - README.md with installation instructions
+  - TECHNICAL.md with technical details
+  - TROUBLESHOOTING.md with common issues and solutions
+- Support for Ubuntu/Debian and Fedora/RHEL distributions
+- Automatic compiler detection (GCC/Clang)
+- Objtool patches for kernel 6.17.x
+- Module backup functionality
+
+### Features
+- Dual kernel support (6.16.x and 6.17.x)
+- Interactive installation with kernel version selection
+- Smart patching based on kernel version
+- Multi-distribution support
+- Automatic service restart
+- Comprehensive error handling and logging
+
+---
+
+## Issue References
+
+- #2 - Hardcoded log file path preventing automatic method to succeed
+- #3 - vmmon.ko was not generated (objtool errors on kernel 6.16.3+)
+

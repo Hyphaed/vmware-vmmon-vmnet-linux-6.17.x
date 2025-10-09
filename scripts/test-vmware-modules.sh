@@ -132,7 +132,7 @@ else
     echo ""
     if [ $MODULES_OK -eq 0 ]; then
         echo "Solución: Recompila los módulos con:"
-        echo "  sudo /home/ferran/Documents/Scripts/compilar-modulos-vmware-kernel-6.16-6.17.sh"
+        echo "  sudo ./install-vmware-modules.sh"
     fi
     if [ $SERVICES_OK -eq 0 ]; then
         echo "Solución: Reinicia los servicios con:"

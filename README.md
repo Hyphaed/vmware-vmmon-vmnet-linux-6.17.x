@@ -15,6 +15,7 @@ VMware Workstation modules often lag behind the latest kernel releases. This rep
 - **Dual Kernel Support**: Compatible with both Linux kernel 6.16.x and 6.17.x series
 - **Interactive Installation**: Prompts you to select target kernel version (6.16 or 6.17) at startup
 - **Smart Patching**: Automatically applies appropriate patches based on your selection
+- **Intelligent Objtool Detection**: Automatically detects if objtool patches are needed (e.g., kernel 6.16.3+)
 - **Objtool Fixes**: Resolves objtool validation errors introduced in newer kernels
 - **Multi-Distribution Support**: Works on Ubuntu/Debian and Fedora/RHEL
 - **Compiler Detection**: Auto-detects and uses GCC or Clang toolchain
@@ -31,12 +32,16 @@ VMware Workstation modules often lag behind the latest kernel releases. This rep
 4. **Module Init**: `init_module()` → `module_init()` macro
 5. **Function Prototypes**: `function()` → `function(void)`
 
-### Kernel 6.17.x Additional Patches
+### Kernel 6.16.3+ and 6.17.x Additional Patches (Auto-Detected)
+
+Starting with kernel 6.16.3, stricter objtool validation was introduced. The script automatically detects if these patches are needed:
 
 1. **Objtool validation errors** in `phystrack.c` and `task.c`
 2. **Makefile adjustments** to disable objtool for problematic object files (`OBJECT_FILES_NON_STANDARD`)
 3. **Return statement issues** in void functions
-4. **Enhanced objtool compatibility** for stricter kernel 6.17 validation
+4. **Enhanced objtool compatibility** for stricter kernel validation
+
+> **Note**: Even if you select "Kernel 6.16", the script will automatically apply objtool patches if you're running kernel 6.16.3 or higher.
 
 ## 📋 Prerequisites
 
@@ -66,10 +71,20 @@ git clone https://github.com/Hyphaed/vmware-vmmon-vmnet-linux-6.17.x.git
 cd vmware-vmmon-vmnet-linux-6.17.x
 ```
 
-2. Run the automated installation script:
+2. Run the automated installation script (from the scripts directory or anywhere):
 ```bash
+# Option A: Run from scripts directory
+cd scripts
+sudo bash install-vmware-modules.sh
+
+# Option B: Run from repository root
 sudo bash scripts/install-vmware-modules.sh
+
+# Option C: Run from anywhere with absolute path
+sudo bash /path/to/vmware-vmmon-vmnet-linux-6.17.x/scripts/install-vmware-modules.sh
 ```
+
+> **Note**: The script automatically detects its location, so log files will be saved in the `scripts/` directory regardless of where you run it from.
 
 3. **Select your kernel version** when prompted:
 ```
@@ -168,6 +183,7 @@ When you run the installation script, it will:
 3. **Apply appropriate patches**: 
    - For **6.16**: Downloads and applies patches from the GitHub repository
    - For **6.17**: Applies 6.16 patches + additional objtool fixes
+   - **Auto-detection**: If kernel 6.16.3+ is detected, objtool patches are applied automatically
 
 4. **Compile and install**: Automatically compiles, installs, and loads the modules
 
@@ -218,10 +234,11 @@ For more troubleshooting tips, see [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
 | Kernel Version | VMware Version | Status | Notes |
 |---------------|----------------|--------|-------|
-| 6.16.0-6.16.9 | 17.6.4         | ✅ Tested | Fedora 42, uses GitHub patches |
+| 6.16.0-6.16.2 | 17.6.4         | ✅ Tested | Uses GitHub patches only |
+| 6.16.3-6.16.9 | 17.6.4         | ✅ Tested | Auto-applies objtool patches (Pop!_OS, Ubuntu) |
 | 6.17.0        | 17.6.4         | ✅ Tested | Ubuntu, additional objtool patches |
-| 6.17.1        | 17.6.4         | ✅ Tested | Additional objtool patches |
-| 6.17.2+       | 17.6.4         | ⚠️ Should work | May require minor adjustments |
+| 6.17.1+       | 17.6.4         | ✅ Tested | Additional objtool patches |
+| 6.17.5+       | 17.6.4         | ⚠️ Should work | May require minor adjustments |
 
 ## 📝 Technical Details
 
