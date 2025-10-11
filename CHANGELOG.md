@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2025-10-11
+
+### Improved
+- Enhanced error messages in `install-vmware-modules.sh` for module extraction failures
+  - Added detailed warning about broken modules from previous patching attempts
+  - Added clear explanation that other internet scripts may have corrupted VMware files
+  - Added step-by-step reinstallation instructions directly in error output
+  - Users now see immediate guidance when tar extraction fails
+  - Emphasizes that manual modifications or previous patches are common causes
+
 ## [1.0.1] - 2025-10-11
 
 ### Fixed
