@@ -14,6 +14,53 @@ This guide covers common issues when installing VMware modules on kernel 6.17.x 
 
 ## Compilation Issues
 
+### Error: "Error extracting modules"
+
+**Symptom:**
+```
+[✗] Error extracting modules
+```
+
+**Cause:** VMware module tar files are missing, corrupted, or inaccessible.
+
+**Solution:**
+
+1. **Verify VMware Installation:**
+   ```bash
+   ls -l /usr/lib/vmware/modules/source/
+   ```
+   You should see `vmmon.tar` and `vmnet.tar` files.
+
+2. **Check File Permissions:**
+   ```bash
+   sudo ls -l /usr/lib/vmware/modules/source/
+   ```
+   If the files exist but can't be accessed, you may need to run the script with sudo:
+   ```bash
+   sudo bash scripts/install-vmware-modules.sh
+   ```
+
+3. **Reinstall VMware Workstation:**
+   If the tar files are missing or corrupted:
+   ```bash
+   # Download VMware Workstation from official website
+   # Then reinstall:
+   sudo bash VMware-Workstation-*.bundle
+   ```
+
+4. **Check for Disk Space:**
+   ```bash
+   df -h /tmp
+   ```
+   Ensure you have at least 500MB free space in /tmp.
+
+5. **Verify Tar Command:**
+   ```bash
+   which tar
+   tar --version
+   ```
+   Ensure tar is installed and working.
+
 ### Error: "No such file or directory: linux/version.h"
 
 **Symptom:**

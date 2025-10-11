@@ -232,15 +232,37 @@ fi
 
 # Extract modules in current working directory
 info "Extracting vmmon.tar..."
-tar -xf /usr/lib/vmware/modules/source/vmmon.tar
+if [ ! -f "/usr/lib/vmware/modules/source/vmmon.tar" ]; then
+    error "vmmon.tar not found at /usr/lib/vmware/modules/source/vmmon.tar"
+    error "Please verify VMware Workstation is properly installed"
+    exit 1
+fi
+
+if ! tar -xf /usr/lib/vmware/modules/source/vmmon.tar 2>&1 | tee -a "$LOG_FILE"; then
+    error "Failed to extract vmmon.tar"
+    error "The tar file may be corrupted or inaccessible"
+    exit 1
+fi
 
 info "Extracting vmnet.tar..."
-tar -xf /usr/lib/vmware/modules/source/vmnet.tar
+if [ ! -f "/usr/lib/vmware/modules/source/vmnet.tar" ]; then
+    error "vmnet.tar not found at /usr/lib/vmware/modules/source/vmnet.tar"
+    error "Please verify VMware Workstation is properly installed"
+    exit 1
+fi
+
+if ! tar -xf /usr/lib/vmware/modules/source/vmnet.tar 2>&1 | tee -a "$LOG_FILE"; then
+    error "Failed to extract vmnet.tar"
+    error "The tar file may be corrupted or inaccessible"
+    exit 1
+fi
 
 # Verify extraction was successful
 if [ ! -d "$WORK_DIR/vmmon-only" ] || [ ! -d "$WORK_DIR/vmnet-only" ]; then
     error "Error extracting modules"
-    ls -la "$WORK_DIR"
+    error "Expected directories vmmon-only and/or vmnet-only not found"
+    info "Working directory contents:"
+    ls -la "$WORK_DIR" | tee -a "$LOG_FILE"
     exit 1
 fi
 

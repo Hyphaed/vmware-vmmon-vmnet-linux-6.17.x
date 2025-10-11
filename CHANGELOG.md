@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2025-10-11
+
 ### Fixed
+- Fixed module extraction error handling in `install-vmware-modules.sh` (Issue #4)
+  - Added explicit check for existence of vmmon.tar and vmnet.tar before extraction
+  - Added proper error handling for tar extraction failures
+  - Improved error messages to guide users when tar files are missing or corrupted
+  - Added detailed working directory listing on extraction failure for debugging
+  - Script now exits gracefully with clear error messages instead of cryptic "Error extracting modules"
+  - Added comprehensive troubleshooting entry in TROUBLESHOOTING.md for extraction errors
+
 - Fixed hardcoded log file path in `install-vmware-modules.sh` (Issue #2)
   - Changed from hardcoded `/home/ferran/Documents/Scripts` to dynamic path detection
   - Script now automatically detects its location using `$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)`
@@ -67,4 +77,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - #2 - Hardcoded log file path preventing automatic method to succeed
 - #3 - vmmon.ko was not generated (objtool errors on kernel 6.16.3+)
+- #4 - Error extracting modules (missing error handling for tar extraction)
 
