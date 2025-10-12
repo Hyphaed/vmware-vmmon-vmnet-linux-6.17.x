@@ -268,6 +268,14 @@ For detailed technical information, see [TECHNICAL.md](docs/TECHNICAL.md).
 - VMware community for continuous support
 - Linux kernel developers
 
+## 💖 Support This Project
+
+If this project saved you hours of troubleshooting and helped you get VMware Workstation running on the latest kernel, consider buying me a coffee! Your support helps maintain this project and keep it updated with new kernel releases.
+
+**Cash donations are welcomed and appreciated!** Every contribution, no matter how small, motivates continued development and support.
+
+[![Sponsor](https://img.shields.io/badge/Sponsor-💖-ff69b4)](https://github.com/sponsors/Hyphaed)
+
 ## 📜 License
 
 This project is licensed under the GNU General Public License v2.0 - see the [LICENSE](LICENSE) file for details.
