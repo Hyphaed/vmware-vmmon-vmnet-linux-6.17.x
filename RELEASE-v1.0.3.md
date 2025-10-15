@@ -8,26 +8,16 @@ This release fixes a critical bug in the tarball creation process and adds donat
 
 ### Fixed: Tarball Contamination (Issue #5)
 
-**Problem:** Step 11 of the installation script was creating tarballs (`vmmon.tar` and `vmnet.tar`) that included compilation artifacts (`.ko`, `.o`, `.cmd` files, etc.) instead of clean source code.
+**Problem:** Step 11 of the installation script was creating tarballs that included compilation artifacts instead of clean source code.
 
 **Impact:** 
-- When users upgraded their kernel, VMware would extract contaminated tarballs
-- Stale compiled modules from old kernel versions would conflict with new kernel
-- Module rebuilding would fail with version mismatch errors
-- Tarballs were 5-10x larger than necessary
+- Module rebuilding would fail after kernel upgrades
+- Tarballs were 5x larger than necessary
 
 **Solution:**
 - Added `make clean` step before creating tarballs
-- Added explicit removal of all build artifacts:
-  - `*.o` (object files)
-  - `*.ko` (kernel modules)
-  - `*.cmd` (command files)
-  - `*.mod` and `*.mod.c` (module metadata)
-  - `.tmp_versions/` directories
-  - `Module.symvers`, `modules.order`, etc.
-- Tarballs now contain only clean source code as VMware expects
-
-**User Impact:** Module rebuilding now works correctly across kernel upgrades!
+- Added explicit removal of all build artifacts
+- Tarballs now contain only clean source code
 
 ## 🧹 Repository Cleanup
 
