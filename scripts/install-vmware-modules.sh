@@ -641,7 +641,24 @@ log "11. Creating tarballs for VMware..."
 
 cd "$WORK_DIR"
 
-# Create new tarballs
+# Clean compilation artifacts before creating tarballs
+info "Cleaning vmmon build artifacts..."
+cd "$WORK_DIR/vmmon-only"
+make clean 2>/dev/null || true
+# Remove any remaining build artifacts
+find . -name "*.o" -o -name "*.ko" -o -name "*.cmd" -o -name "*.mod" -o -name "*.mod.c" -o -name ".*.d" | xargs rm -f 2>/dev/null || true
+rm -rf .tmp_versions Module.symvers Modules.symvers Module.markers modules.order 2>/dev/null || true
+
+info "Cleaning vmnet build artifacts..."
+cd "$WORK_DIR/vmnet-only"
+make clean 2>/dev/null || true
+# Remove any remaining build artifacts
+find . -name "*.o" -o -name "*.ko" -o -name "*.cmd" -o -name "*.mod" -o -name "*.mod.c" -o -name ".*.d" | xargs rm -f 2>/dev/null || true
+rm -rf .tmp_versions Module.symvers Modules.symvers Module.markers modules.order 2>/dev/null || true
+
+cd "$WORK_DIR"
+
+# Create new tarballs (now clean, without build artifacts)
 info "Creating vmmon.tar..."
 tar -cf vmmon.tar vmmon-only
 
@@ -653,7 +670,7 @@ info "Installing tarballs to VMware..."
 sudo cp vmmon.tar /usr/lib/vmware/modules/source/
 sudo cp vmnet.tar /usr/lib/vmware/modules/source/
 
-log "✓ Tarballs installed"
+log "✓ Tarballs installed (cleaned source code only)"
 
 # ============================================
 # 12. RESTART VMWARE SERVICES

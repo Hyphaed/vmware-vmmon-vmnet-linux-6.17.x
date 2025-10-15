@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed tarball creation in step 11 of `install-vmware-modules.sh` (Issue #5)
+  - Tarballs now properly cleaned before creation to remove compilation artifacts
+  - Added `make clean` step before creating vmmon.tar and vmnet.tar
+  - Added explicit removal of build artifacts (*.o, *.ko, *.cmd, *.mod, .tmp_versions, etc.)
+  - Previously, tarballs included compiled .ko files and build artifacts
+  - Now tarballs only contain clean source code as intended
+  - Prevents issues when VMware tries to rebuild modules from contaminated tarballs
+
 ## [1.0.2] - 2025-10-11
 
 ### Improved
