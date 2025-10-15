@@ -29,6 +29,24 @@ This release fixes a critical bug in the tarball creation process and adds donat
 
 **User Impact:** Module rebuilding now works correctly across kernel upgrades!
 
+## 🧹 Repository Cleanup
+
+### Removed Obsolete Scripts
+
+**Removed:** `scripts/apply-patches-6.17.sh`
+
+- This script is no longer needed as all patching functionality has been fully integrated into `install-vmware-modules.sh` since v1.0.0
+- Simplifies the repository structure
+- Reduces maintenance overhead
+- Users only need to run one script: `install-vmware-modules.sh`
+
+### Improved Documentation
+
+- Enhanced testing section in README.md with comprehensive script usage
+- Updated repository structure diagram
+- Added detailed description of what `test-vmware-modules.sh` checks
+- Clarified the all-in-one nature of the installation script
+
 ## 💖 New Features
 
 ### GitHub Sponsors Support
