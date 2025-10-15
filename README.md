@@ -143,9 +143,8 @@ vmware-vmmon-vmnet-linux-6.17.x/
 │   ├── vmnet-6.17.patch          # Patch for vmnet module
 │   └── README.md                 # Patch documentation
 ├── scripts/
-│   ├── install-vmware-modules.sh # Automated installation script
-│   ├── apply-patches-6.17.sh     # Patch application script
-│   └── test-vmware-modules.sh    # Module testing script
+│   ├── install-vmware-modules.sh # Automated installation script (all-in-one)
+│   └── test-vmware-modules.sh    # Module testing utility
 ├── docs/
 │   ├── TROUBLESHOOTING.md        # Common issues and solutions
 │   └── TECHNICAL.md              # Technical details about patches
@@ -191,6 +190,8 @@ When you run the installation script, it will:
 
 ## 🧪 Testing
 
+### Quick Manual Test
+
 After installation, verify that the modules are loaded correctly:
 
 ```bash
@@ -202,6 +203,22 @@ You should see output similar to:
 vmnet                  86016  13
 vmmon                 122880  0
 ```
+
+### Comprehensive Test Script
+
+Use the included test utility for a complete system check:
+
+```bash
+bash scripts/test-vmware-modules.sh
+```
+
+This script will verify:
+- ✓ Loaded modules (vmmon, vmnet)
+- ✓ Module information and versions
+- ✓ Device files (/dev/vmmon, /dev/vmnet0)
+- ✓ VMware service status
+- ✓ Source tarball integrity
+- ✓ Available backups
 
 Test VMware Workstation by launching a virtual machine.
 

@@ -18,11 +18,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Now tarballs only contain clean source code as intended
   - Prevents issues when VMware tries to rebuild modules from contaminated tarballs
 
+### Removed
+- Removed obsolete `apply-patches-6.17.sh` script
+  - Functionality fully integrated into `install-vmware-modules.sh` since v1.0.0
+  - All patching is now handled by the main installation script
+  - Simplifies repository structure and reduces maintenance overhead
+
 ### Added
 - Added GitHub Sponsors donation support
   - Created `.github/FUNDING.yml` for GitHub Sponsors integration
   - Added sponsorship section to README.md with donation badge
   - Cash donations are welcomed and appreciated for continued maintenance
+
+### Improved
+- Enhanced `test-vmware-modules.sh` documentation in README.md
+  - Added comprehensive testing section with script usage
+  - Documented all checks performed by the test utility
+  - Clarified distinction between quick manual tests and comprehensive script-based tests
 
 ## [1.0.2] - 2025-10-11
 
