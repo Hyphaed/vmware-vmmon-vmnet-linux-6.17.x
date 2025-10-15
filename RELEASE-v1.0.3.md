@@ -1,12 +1,12 @@
-# Release v1.0.3 - Critical Tarball Fix
+# Release v1.0.3 - Tarball Fix & Cleanup
 
 **Release Date:** October 15, 2025
 
-This release fixes a critical bug in the tarball creation process and adds donation support.
+This release fixes a bug in the tarball creation process, cleans up obsolete scripts, and adds donation support.
 
-## 🐛 Critical Bug Fix
+## 🐛 Bug Fix
 
-### Fixed: Tarball Contamination (Issue #5)
+### Fixed: Tarball Contamination
 
 **Problem:** Step 11 of the installation script was creating tarballs that included compilation artifacts instead of clean source code.
 
