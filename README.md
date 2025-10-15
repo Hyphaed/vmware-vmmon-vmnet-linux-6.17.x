@@ -292,6 +292,8 @@ If this project saved you hours of troubleshooting and helped you get VMware Wor
 
 [![Sponsor](https://img.shields.io/badge/Sponsor-💖-ff69b4)](https://github.com/sponsors/Hyphaed)
 
+\* Awaiting for Github Sponsors check
+
 ## 📜 License
 
 This project is licensed under the GNU General Public License v2.0 - see the [LICENSE](LICENSE) file for details.
