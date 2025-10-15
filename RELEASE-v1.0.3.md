@@ -45,7 +45,7 @@ Added donation support to help maintain and update this project:
 - Created `.github/FUNDING.yml` for GitHub Sponsors integration
 - Added sponsorship section in README.md with donation badge
 - Users can now support the project with cash donations via credit card
-- Zero platform fees through GitHub Sponsors (Stripe/PayPal fees still apply)
+- Waiting for GitHub Sponsors check
 
 **Support the project:** Cash donations are welcomed and appreciated for continued kernel compatibility maintenance!
 
