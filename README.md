@@ -255,7 +255,6 @@ For more troubleshooting tips, see [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 | 6.16.3-6.16.9 | 17.6.4         | ✅ Tested | Auto-applies objtool patches (Pop!_OS, Ubuntu) |
 | 6.17.0        | 17.6.4         | ✅ Tested | Ubuntu, additional objtool patches |
 | 6.17.1+       | 17.6.4         | ✅ Tested | Additional objtool patches |
-| 6.17.5+       | 17.6.4         | ⚠️ Should work | May require minor adjustments |
 
 ## 📝 Technical Details
 
