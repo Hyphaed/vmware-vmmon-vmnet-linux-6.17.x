@@ -11,7 +11,6 @@ This release fixes a bug in the tarball creation process, cleans up obsolete scr
 **Problem:** Step 11 of the installation script was creating tarballs that included compilation artifacts instead of clean source code.
 
 **Impact:** 
-- Module rebuilding would fail after kernel upgrades
 - Tarballs were 5x larger than necessary
 
 **Solution:**
