@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2025-10-15
+
 ### Fixed
 - Fixed tarball creation in step 11 of `install-vmware-modules.sh` (Issue #5)
   - Tarballs now properly cleaned before creation to remove compilation artifacts
@@ -15,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Previously, tarballs included compiled .ko files and build artifacts
   - Now tarballs only contain clean source code as intended
   - Prevents issues when VMware tries to rebuild modules from contaminated tarballs
+
+### Added
+- Added GitHub Sponsors donation support
+  - Created `.github/FUNDING.yml` for GitHub Sponsors integration
+  - Added sponsorship section to README.md with donation badge
+  - Cash donations are welcomed and appreciated for continued maintenance
 
 ## [1.0.2] - 2025-10-11
 
@@ -97,4 +105,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #2 - Hardcoded log file path preventing automatic method to succeed
 - #3 - vmmon.ko was not generated (objtool errors on kernel 6.16.3+)
 - #4 - Error extracting modules (missing error handling for tar extraction)
+- #5 - Tarballs contain compilation artifacts causing module rebuild issues
 
