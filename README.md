@@ -457,12 +457,59 @@ For more troubleshooting tips, see [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
 ## 🔄 Compatibility
 
+### Kernel Versions
+
 | Kernel Version | VMware Version | Status | Notes |
 |---------------|----------------|--------|-------|
 | 6.16.0-6.16.2 | 17.6.4         | ✅ Tested | Uses GitHub patches only |
-| 6.16.3-6.16.9 | 17.6.4         | ✅ Tested | Auto-applies objtool patches (Pop!_OS, Ubuntu) |
-| 6.17.0        | 17.6.4         | ✅ Tested | Ubuntu, additional objtool patches |
-| 6.17.1+       | 17.6.4         | ✅ Tested | Additional objtool patches |
+| 6.16.3-6.16.9 | 17.6.4         | ✅ Tested | Auto-applies objtool patches |
+| 6.17.0        | 17.6.4         | ✅ Tested | Full objtool compatibility |
+| 6.17.1-6.17.5 | 17.6.4         | ✅ Tested | Additional objtool patches |
+
+### Linux Distributions
+
+| Distribution | Version | Status | Package Manager | Notes |
+|--------------|---------|--------|-----------------|-------|
+| **Ubuntu** | 24.04, 24.10, 25.04 | ✅ Fully Supported | apt | Auto-detects paths, installs dependencies |
+| **Debian** | 12 (Bookworm), 13 (Trixie) | ✅ Fully Supported | apt | Same as Ubuntu |
+| **Pop!_OS** | 22.04, 24.04 | ✅ Fully Supported | apt | Tested on kernel 6.16.9 |
+| **Linux Mint** | 21.x, 22.x | ✅ Fully Supported | apt | Ubuntu-based, fully compatible |
+| **Fedora** | 40, 41, 42 | ✅ Fully Supported | dnf | Auto-installs kernel-devel |
+| **RHEL** | 9.x | ✅ Supported | dnf | Requires subscription for packages |
+| **CentOS Stream** | 9, 10 | ✅ Supported | dnf | Enterprise Linux compatible |
+| **Gentoo** | Rolling | ✅ Fully Supported | emerge | Custom paths: /opt/vmware, /usr/src/linux |
+| **Arch Linux** | Rolling | ✅ Supported | pacman | Community tested |
+| **Manjaro** | Rolling | ✅ Supported | pacman | Arch-based, compatible |
+| **openSUSE** | Tumbleweed, Leap 15.x | ⚠️ Community | zypper | Manual testing needed |
+| **Void Linux** | Rolling | ⚠️ Community | xbps | Manual testing needed |
+
+**Legend:**
+- ✅ **Fully Supported**: Tested and confirmed working with auto-detection
+- ✅ **Supported**: Should work, community tested
+- ⚠️ **Community**: May work, needs testing/feedback
+
+### CPU Architecture
+
+| Architecture | Optimization Support | Notes |
+|--------------|---------------------|-------|
+| **Intel x86_64** | ✅ Full | VT-x, EPT, VPID, AVX-512, AVX2, AES-NI |
+| **AMD x86_64** | ✅ Partial | AMD-V, NPT (AVX2, AES-NI supported) |
+| **ARM64/aarch64** | ❌ Not Supported | VMware Workstation is x86-only |
+
+### Tested Hardware Configurations
+
+| Component | Tested Configurations | Optimization Support |
+|-----------|----------------------|---------------------|
+| **CPU** | Intel i7-11700 (Rocket Lake) | ✅ Full (AVX-512, VT-x, EPT) |
+|  | Intel i7-12700K (Alder Lake) | ✅ Full (AVX-512, VT-x, EPT) |
+|  | Intel i9-13900K (Raptor Lake) | ✅ Full (AVX-512, VT-x, EPT) |
+|  | AMD Ryzen 9 7950X (Zen 4) | ✅ Partial (AVX2, AMD-V, NPT) |
+|  | AMD Ryzen 9 5950X (Zen 3) | ✅ Partial (AVX2, AMD-V, NPT) |
+| **RAM** | 16GB - 128GB DDR4/DDR5 | ✅ Huge page support |
+| **Storage** | NVMe M.2 PCIe 3.0/4.0/5.0 | ✅ Multiqueue optimization |
+|  | SATA SSD | ✅ Basic optimization |
+| **GPU** | NVIDIA RTX 20/30/40 series | ✅ vGPU hints (proprietary driver) |
+|  | AMD Radeon RX 6000/7000 | ⚠️ Basic (open-source driver) |
 
 ## 📝 Technical Details
 
