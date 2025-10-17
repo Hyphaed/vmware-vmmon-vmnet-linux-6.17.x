@@ -111,7 +111,9 @@
 +
 +/* Cache line size for x86_64 CPUs (Intel, AMD) */
 +#define CACHE_LINE_SIZE 64
++#ifndef __cacheline_aligned
 +#define __cacheline_aligned __attribute__((__aligned__(CACHE_LINE_SIZE)))
++#endif
 +
  /*
   * Attributes placed before the return type in a function declaration.

@@ -701,11 +701,12 @@ if [ -f "$PYTHON_DETECTOR" ]; then
         
         # Run Python detector with enhanced detection
         info "Running comprehensive hardware analysis..."
-        if $PYTHON_CMD "$PYTHON_DETECTOR" 2>/dev/null; then
+        # Run detector and check if JSON was generated (more reliable than exit code)
+        $PYTHON_CMD "$PYTHON_DETECTOR" >/dev/null 2>&1
+        
+        # Check if JSON was generated successfully
+        if [ -f "/tmp/vmware_hw_capabilities.json" ]; then
             USE_PYTHON_DETECTION=true
-            
-            # Load detected capabilities from JSON
-            if [ -f "/tmp/vmware_hw_capabilities.json" ]; then
                 # Extract key values using grep/sed (portable)
                 PYTHON_OPT_SCORE=$(grep -o '"optimization_score":[[:space:]]*[0-9]*' /tmp/vmware_hw_capabilities.json | grep -o '[0-9]*$')
                 PYTHON_RECOMMENDED=$(grep -o '"recommended_mode":[[:space:]]*"[^"]*"' /tmp/vmware_hw_capabilities.json | sed 's/.*"\([^"]*\)".*/\1/')
@@ -723,9 +724,8 @@ if [ -f "$PYTHON_DETECTOR" ]; then
                 echo "  • VT-x/EPT Support: $([ "$PYTHON_HAS_VTX" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
                 echo "  • NVMe Storage: $([ "$PYTHON_HAS_NVME" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
                 echo ""
-            fi
         else
-            warning "Python detection encountered errors, falling back to bash detection"
+            warning "Python detection did not generate expected output, falling back to bash detection"
         fi
     fi
 fi
@@ -1813,11 +1813,11 @@ if eval make -j$(nproc) $MAKE_FLAGS 2>&1 | tee "$LOG_FILE.vmmon"; then
     if [ -f "vmmon.ko" ]; then
         log "✓ vmmon compiled successfully"
         
-        # Show optimization summary from build output
+        # Show optimization summary from build output (only once, not duplicates)
         if [ "$OPTIM_CHOICE" = "1" ]; then
             echo ""
-            echo -e "${GREEN}Build Optimization Summary:${NC}"
-            grep "^\[VMMON\]" "$LOG_FILE.vmmon" | sed 's/^/  /' || true
+            echo -e "${GREEN}Build Optimization Summary (vmmon):${NC}"
+            grep "^\[VMMON\]" "$LOG_FILE.vmmon" | head -n 5 | sed 's/^/  /' || true
             echo ""
         fi
     else
@@ -1841,11 +1841,11 @@ if eval make -j$(nproc) $MAKE_FLAGS 2>&1 | tee "$LOG_FILE.vmnet"; then
     if [ -f "vmnet.ko" ]; then
         log "✓ vmnet compiled successfully"
         
-        # Show optimization summary from build output
+        # Show optimization summary from build output (only once, not duplicates)
         if [ "$OPTIM_CHOICE" = "1" ]; then
             echo ""
-            echo -e "${GREEN}Build Optimization Summary:${NC}"
-            grep "^\[VMNET\]" "$LOG_FILE.vmnet" | sed 's/^/  /' || true
+            echo -e "${GREEN}Build Optimization Summary (vmnet):${NC}"
+            grep "^\[VMNET\]" "$LOG_FILE.vmnet" | head -n 5 | sed 's/^/  /' || true
             echo ""
         fi
     else
@@ -2153,9 +2153,10 @@ echo -e "${YELLOW}Note:${NC} System tuning requires a reboot to take full effect
 echo -e "${YELLOW}Note:${NC} You can run this anytime with: ${GREEN}sudo bash scripts/tune-system.sh${NC}"
 echo ""
 
-read -p "Optimize system now? (y/N): " -n 1 -r
+read -p "Optimize system now? (Y/n): " -n 1 -r
 echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+# Default to Yes if user just presses Enter
+if [[ -z $REPLY ]] || [[ $REPLY =~ ^[Yy]$ ]]; then
     echo ""
     info "Launching system optimizer..."
     echo ""

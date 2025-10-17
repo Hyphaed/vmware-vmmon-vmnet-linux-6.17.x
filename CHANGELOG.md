@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.5] - 2025-10-17
 
-### 🎯 Production Release - System Optimizer Integration
+### 🎯 Production Release - System Optimizer Integration + Modern UI
 
 **Results: Enjoy 20-35% faster VMware performance + Better Wayland support + Optimized Linux System!** 🚀
 
-This release introduces a comprehensive **System Optimizer** that automatically tunes your Linux system for maximum VMware Workstation performance. The optimizer is offered automatically after module installation/updates, or can be run standalone at any time.
+This release introduces a comprehensive **System Optimizer** that automatically tunes your Linux system for maximum VMware Workstation performance, plus a **modern interactive UI** powered by Questionary. The optimizer is offered automatically after module installation/updates (defaults to Yes), or can be run standalone at any time.
 
 Better VM performance and improved Wayland integration (top bar hiding works ~90% of the time) comes from hardware-specific compiler optimizations and proper module initialization timing applied during compilation (**Optimized mode** - the default choice, though **Vanilla mode** is available for portable modules).
+
+**NEW in this release**: All Python scripts now use **conda/mamba environments** for dependency isolation, ensuring system Python is never modified (PEP 668 compliant for Python 3.13+).
 
 #### 🎯 NEW: System Optimizer (`tune-system.sh` + `tune_system.py`)
 
@@ -50,9 +52,45 @@ A comprehensive **Python-based system tuning tool** that optimizes your entire L
 - Reboot recommended after optimization (manual command provided)
 
 **Integration:**
-- Offered automatically after successful module installation/update
+- Offered automatically after successful module installation/update (defaults to **Yes**)
 - Can be run standalone anytime: `sudo bash scripts/tune-system.sh`
 - Compatible with 18+ Linux distributions
+- **Correct optimization order**: Modify GRUB → update-grub → update-initramfs → reboot
+
+#### 🎨 NEW: Modern Interactive UI (Questionary)
+
+**Upgraded from Rich prompts to Questionary** for a more intuitive user experience:
+- **Arrow key navigation** - Select options with ↑/↓ keys instead of typing numbers
+- **Visual feedback** - Highlighted selections with custom Hyphaed green theme (#B0D56A)
+- **Disabled options** - Clearly marked (e.g., kernels without headers)
+- **Emoji indicators** - 🚀 Optimized, 🔒 Vanilla, ✓/✗ status markers
+- **Smooth transitions** - Better visual flow through installation steps
+- **Consistent styling** - Unified theme across wizard, optimizer, and all tools
+
+**Benefits**:
+- More accessible and user-friendly
+- Reduces input errors (no typos)
+- Modern terminal UI experience
+- Better visual hierarchy
+
+#### 🐍 NEW: Conda/Mamba Environment Integration (PEP 668 Compliant)
+
+**Zero system Python modification** - All dependencies isolated in conda environment:
+- **Automatic setup** - Detects miniforge, installs if missing, creates `vmware-optimizer` environment
+- **Transparent operation** - User just runs the script, everything handled automatically
+- **Python 3.13+ compatible** - Respects PEP 668 (externally-managed-environment)
+- **Never uses `--break-system-packages`** - Safe and proper dependency management
+- **Sudo-aware** - Correctly detects user's home directory even when running with sudo
+- **Fallback support** - Gracefully degrades to system Python if conda unavailable
+
+**Environment includes**:
+- Python 3.12 (latest stable)
+- questionary (interactive UI)
+- rich (beautiful terminal output)
+- psutil, pynvml, py-cpuinfo (hardware detection)
+- distro, pyudev (system information)
+
+**Location**: `~/.miniforge3/envs/vmware-optimizer/`
 
 #### Advanced Python Hardware Detection
 - **State-of-the-art Python detector**: Complete rewrite with advanced capabilities
