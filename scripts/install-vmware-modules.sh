@@ -114,12 +114,14 @@ echo ""
 info "Starting Python-powered installation wizard..."
 echo ""
 
+# Initialize wizard flag
+USE_WIZARD=false
+
 # Check if wizard exists
 WIZARD_SCRIPT="$SCRIPT_DIR/vmware_wizard.py"
 if [ ! -f "$WIZARD_SCRIPT" ]; then
     error "Python wizard not found at: $WIZARD_SCRIPT"
     warning "Falling back to legacy installation mode..."
-    USE_WIZARD=false
 else
     # Check for Python 3
     if command -v python3 &>/dev/null; then
