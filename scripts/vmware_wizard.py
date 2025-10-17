@@ -167,10 +167,10 @@ class VMwareWizard:
             
             # Show installation steps
             steps = [
+                "System Tuning Decision (Applied FIRST - saves time!)",
                 "Kernel Detection & Selection",
                 "Hardware Detection & Analysis",
                 "Optimization Mode Selection (Optimized vs Vanilla)",
-                "System Tuning Decision (Applied BEFORE compilation)",
                 "Module Compilation & Installation (initramfs updated once)",
             ]
             self.ui.show_welcome_steps(steps)
@@ -180,8 +180,27 @@ class VMwareWizard:
                 self.ui.show_warning("Installation cancelled by user")
                 return 1
             
-            # STEP 1: Kernel Detection & Selection
-            self.ui.show_step(1, 5, "Kernel Detection & Selection")
+            # STEP 1: System Tuning Decision (FIRST - before everything)
+            self.ui.show_step(1, 5, "System Tuning Decision")
+            
+            self.ui.console.print("[success]💡 Smart Workflow:[/] Deciding on tuning FIRST")
+            self.ui.console.print("[info]✨ Benefit:[/] Tuning applied before compilation = initramfs rebuilt only once!")
+            self.ui.console.print()
+            
+            apply_tuning = self.ui.confirm(
+                "Apply system tuning optimizations before compilation?\n"
+                "  (GRUB parameters, CPU governor, I/O scheduler, kernel parameters)",
+                default=True
+            )
+            
+            self.ui.console.print()
+            if apply_tuning:
+                self.ui.show_success("✓ Tuning will be applied FIRST, then compilation")
+            else:
+                self.ui.show_info("Tuning skipped - you can apply it later with: sudo bash scripts/tune-system.sh")
+            
+            # STEP 2: Kernel Detection & Selection
+            self.ui.show_step(2, 5, "Kernel Detection & Selection")
             
             self.detected_kernels = self.detect_installed_kernels()
             if not self.detected_kernels:
@@ -229,8 +248,8 @@ class VMwareWizard:
             for k in self.selected_kernels:
                 self.ui.show_info(f"  • {k.full_version} (kernel {k.version})")
             
-            # STEP 2: Hardware Detection & Analysis
-            self.ui.show_step(2, 5, "Hardware Detection & Analysis")
+            # STEP 3: Hardware Detection & Analysis
+            self.ui.show_step(3, 5, "Hardware Detection & Analysis")
             self.ui.show_info("Analyzing your hardware...")
             
             self.run_hardware_detection()
@@ -238,8 +257,8 @@ class VMwareWizard:
             if self.hw_capabilities:
                 self.ui.show_hardware_summary(self.hw_capabilities)
             
-            # STEP 3: Optimization Mode Selection
-            self.ui.show_step(3, 5, "Optimization Mode Selection")
+            # STEP 4: Optimization Mode Selection
+            self.ui.show_step(4, 5, "Optimization Mode Selection")
             
             # Get recommendation
             recommended = self.hw_capabilities.get('optimization', {}).get('recommended_mode', 'optimized')
@@ -290,20 +309,8 @@ class VMwareWizard:
             
             self.ui.show_success(f"Selected: {self.optimization_mode.upper()} mode")
             
-            # STEP 4: System Tuning Decision (BEFORE compilation)
-            self.ui.show_step(4, 5, "System Tuning Decision")
-            
-            self.ui.console.print("[success]💡 Smart Workflow:[/] Tuning will be applied BEFORE compilation")
-            self.ui.console.print("[info]✨ Benefit:[/] initramfs will only be rebuilt once (after compilation)")
-            self.ui.console.print()
-            
-            apply_tuning = self.ui.confirm(
-                "Apply system tuning optimizations before compilation?\n"
-                "  (GRUB parameters, CPU governor, I/O scheduler, kernel parameters)",
-                default=True
-            )
-            
             # STEP 5: Final Review & Confirmation
+            self.ui.show_step(5, 5, "Final Review & Confirmation")
             self.ui.console.print()
             self.ui.show_panel(
                 f"[primary]Installation Plan:[/]\n\n"
