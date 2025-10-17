@@ -279,7 +279,8 @@ vmware-vmmon-vmnet-linux-6.17.x/
 ## 🔧 Technical Details
 
 ### **Kernel 6.16.x Patches**
-(from [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x))
+
+This project includes patches from [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x):
 
 1. **Build System:** `EXTRA_CFLAGS` → `ccflags-y`
 2. **Timer API:** `del_timer_sync()` → `timer_delete_sync()`
@@ -344,7 +345,7 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues and sol
 
 ## 🙏 Credits
 
-- Based on patches from [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x)
+- **Includes patches from** [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x)
 - Gentoo support thanks to community contributions
 - VMware community for continuous feedback
 - Thanks to all users for testing and bug reports
