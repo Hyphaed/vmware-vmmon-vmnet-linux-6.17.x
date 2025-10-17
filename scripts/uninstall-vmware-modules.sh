@@ -12,11 +12,36 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 CYAN='\033[0;36m'
 NC='\033[0m'
+HYPHAED_GREEN='\033[38;2;176;213;106m'
 
 log() { echo -e "${GREEN}[✓]${NC} $1"; }
 info() { echo -e "${BLUE}[i]${NC} $1"; }
 warning() { echo -e "${YELLOW}[!]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; }
+
+# Animation
+ANIMATION_PID=""
+ANIMATION_ENABLED=false
+[ -t 1 ] && command -v tput &>/dev/null && ANIMATION_ENABLED=true
+
+start_animation() {
+    [ "$ANIMATION_ENABLED" = false ] && return
+    local frames=("    ╭─○" "   ╭──○" "  ╭───○" " ╭────○" "╭─────○" "│─────○" "╰─────○" " ╰────○" "  ╰───○" "   ╰──○" "    ╰─○" "    ○─╯" "    ○──╯" "    ○───╯" "    ○────╯" "    ○─────╯" "    ○─────│" "    ○─────╮" "    ○────╮" "    ○───╮" "    ○──╮" "    ○─╮")
+    ( local cols=$(tput cols) frame_idx=0 total_frames=${#frames[@]}
+      while true; do local x=$((cols - 15)) y=2; tput sc; tput cup $y $x
+        echo -ne "${HYPHAED_GREEN}${frames[$frame_idx]}${NC}"; tput cup $((y + 1)) $((x + 1))
+        echo -ne "${HYPHAED_GREEN}Hyphaed${NC}"; tput rc; frame_idx=$(( (frame_idx + 1) % total_frames )); sleep 0.1
+      done ) &
+    ANIMATION_PID=$!
+}
+
+stop_animation() {
+    [ -n "$ANIMATION_PID" ] && { kill $ANIMATION_PID 2>/dev/null || true; wait $ANIMATION_PID 2>/dev/null || true; ANIMATION_PID=""
+    [ "$ANIMATION_ENABLED" = true ] && { local cols=$(tput cols) x=$((cols - 15)) y=2
+    tput sc; tput cup $y $x; echo -ne "          "; tput cup $((y + 1)) $x; echo -ne "          "; tput rc; }; }
+}
+
+trap stop_animation EXIT
 
 echo -e "${CYAN}"
 cat << 'EOF'
@@ -28,6 +53,8 @@ cat << 'EOF'
 ╚══════════════════════════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
+
+start_animation
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
