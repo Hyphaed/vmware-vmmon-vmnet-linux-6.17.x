@@ -2026,8 +2026,81 @@ echo -e "${GREEN}✓ INSTALLATION AND TESTING COMPLETED${NC}"
 echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
+# ============================================
+# OFFER SYSTEM TUNING
+# ============================================
+echo ""
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
+echo -e "${YELLOW}SYSTEM OPTIMIZATION AVAILABLE${NC}"
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
+echo ""
+echo -e "${CYAN}Would you like to optimize your system for VMware Workstation?${NC}"
+echo ""
+echo "This will tune your system to maximize VMware performance:"
+echo ""
+echo "  • GRUB boot parameters (IOMMU, hugepages, CPU mitigations)"
+echo "  • Kernel parameters (memory management, network, scheduler)"
+echo "  • CPU governor (performance mode)"
+echo "  • I/O scheduler (NVMe/SSD optimization)"
+echo "  • Install performance packages (tuned, cpufrequtils)"
+echo ""
+echo -e "${YELLOW}Note:${NC} System tuning requires a reboot to take full effect"
+echo -e "${YELLOW}Note:${NC} You can run this anytime with: ${GREEN}sudo bash scripts/tune-system.sh${NC}"
+echo ""
+
+read -p "Optimize system now? (y/N): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo ""
+    info "Launching system optimizer..."
+    echo ""
+    
+    TUNE_SCRIPT="$SCRIPT_DIR/tune-system.sh"
+    if [ -f "$TUNE_SCRIPT" ]; then
+        bash "$TUNE_SCRIPT"
+        TUNE_EXIT_CODE=$?
+        
+        if [ $TUNE_EXIT_CODE -eq 0 ]; then
+            echo ""
+            log "System optimization completed successfully!"
+        else
+            echo ""
+            warning "System optimization exited with code: $TUNE_EXIT_CODE"
+            info "You can try again later with: sudo bash scripts/tune-system.sh"
+        fi
+    else
+        error "System optimizer not found at: $TUNE_SCRIPT"
+        info "Please ensure all project files are present"
+    fi
+else
+    echo ""
+    info "System optimization skipped"
+    info "You can optimize your system anytime with:"
+    echo "  ${GREEN}sudo bash scripts/tune-system.sh${NC}"
+fi
+
+echo ""
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
+echo ""
+
 info "To start VMware:"
 echo "  vmware &"
 echo ""
+
+# Show reboot recommendation if system was tuned
+if [[ $REPLY =~ ^[Yy]$ ]] 2>/dev/null && [ -f "$SCRIPT_DIR/tune-system.sh" ] && [ $TUNE_EXIT_CODE -eq 0 ] 2>/dev/null; then
+    echo ""
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW}REBOOT RECOMMENDED${NC}"
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    warning "System optimizations require a reboot to take full effect"
+    info "Some tuning (GRUB parameters, hugepages, IOMMU) will not be active until reboot"
+    echo ""
+    info "Recommended next steps:"
+    echo "  1. Reboot your system: ${GREEN}sudo reboot${NC}"
+    echo "  2. After reboot, start VMware: ${GREEN}vmware &${NC}"
+    echo ""
+fi
 
 log "Process completed successfully!"

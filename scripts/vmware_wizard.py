@@ -544,7 +544,8 @@ class VMwareWizard:
             'selected_kernels': kernel_configs,
             'optimization_mode': self.optimization_mode,
             'hw_capabilities': self.hw_capabilities,
-            'timestamp': time.time()
+            'timestamp': time.time(),
+            'offer_system_tuning': True  # Flag to offer system tuning after installation
         }
         
         config_file = Path("/tmp/vmware_wizard_config.json")

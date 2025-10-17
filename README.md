@@ -7,6 +7,7 @@
 ### 🐍 **Interactive Python Wizard** that guides you through installation
 ### 🚀 **Enjoy 20-35% faster VMware performance**
 ### ✨ **Better Wayland integration - top bar hiding works ~90% of the time**
+### 🎯 **NEW: System Optimizer** - Automatically tune your Linux system for VMware
 
 Hardware-specific compiler optimizations provide real performance improvements through CPU-specific instructions (AVX-512, AVX2, AES-NI), better memory management, and improved virtualization hardware utilization. Lower CPU overhead means smoother compositor performance on Wayland.
 
@@ -20,8 +21,9 @@ This project provides:
 2. **🔬 Advanced Hardware Detection** - Deep analysis of CPU, GPU, storage, virtualization features
 3. **⚡ Performance Optimizations** - 20-35% faster VMs through hardware-specific compilation
 4. **✨ Better Wayland Support** - Top bar hiding works ~90% of the time (includes automatic race condition fix)
-5. **🐧 Universal Linux Support** - Works on 18+ distributions (Ubuntu, Fedora, Arch, Gentoo, etc.)
-6. **🛡️ Smart Backup System** - Hash-verified backups with automatic cleanup
+5. **🎯 System Optimizer** - Automatically tune GRUB, kernel parameters, CPU governor, I/O scheduler for VMware
+6. **🐧 Universal Linux Support** - Works on 18+ distributions (Ubuntu, Fedora, Arch, Gentoo, etc.)
+7. **🛡️ Smart Backup System** - Hash-verified backups with automatic cleanup
 
 ## 📦 Quick Install
 
@@ -180,6 +182,33 @@ Comprehensive module testing.
 ```bash
 sudo bash scripts/test-vmware-modules.sh
 ```
+
+### **6. System Optimizer** (`tune-system.sh`) ⭐ **NEW in v1.0.5**
+Automatically tune your Linux system for optimal VMware performance.
+
+```bash
+sudo bash scripts/tune-system.sh
+```
+
+**What it optimizes:**
+- **GRUB boot parameters** - IOMMU, hugepages (25% RAM), transparent hugepages, CPU mitigations
+- **Kernel parameters** - Memory management, network stack, scheduler tuning
+- **CPU governor** - Set to performance mode (maximum frequency)
+- **I/O scheduler** - Optimize for NVMe/SSD (set to 'none' scheduler)
+- **Performance packages** - Install tuned, cpufrequtils, profiling tools
+
+**Offered automatically after installation/update** or run standalone anytime.
+
+**Safety features:**
+- All changes backed up automatically to `/root/vmware-tune-backup-<timestamp>/`
+- Reboot required for GRUB changes to take effect
+- Compatible with 18+ Linux distributions
+
+**Hardware-aware optimizations:**
+- Detects Intel VT-x/VT-d or AMD-V/AMD-Vi and configures IOMMU accordingly
+- Calculates optimal hugepage allocation based on your RAM
+- Configures NVMe-specific I/O scheduler settings
+- Applies tuned `virtual-host` profile for virtualization workloads
 
 ---
 

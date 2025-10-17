@@ -7,11 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.5] - 2025-10-17
 
-### 🎯 Production Release - Advanced Detection & Multi-Distribution Support
+### 🎯 Production Release - System Optimizer Integration
 
-**Results: Enjoy 20-35% faster VMware performance + Better Wayland support!** 🚀
+**Results: Enjoy 20-35% faster VMware performance + Better Wayland support + Optimized Linux System!** 🚀
+
+This release introduces a comprehensive **System Optimizer** that automatically tunes your Linux system for maximum VMware Workstation performance. The optimizer is offered automatically after module installation/updates, or can be run standalone at any time.
 
 Better VM performance and improved Wayland integration (top bar hiding works ~90% of the time) comes from hardware-specific compiler optimizations and proper module initialization timing applied during compilation (**Optimized mode** - the default choice, though **Vanilla mode** is available for portable modules).
+
+#### 🎯 NEW: System Optimizer (`tune-system.sh` + `tune_system.py`)
+
+A comprehensive **Python-based system tuning tool** that optimizes your entire Linux system for VMware workloads:
+
+**GRUB Boot Parameters:**
+- **IOMMU configuration** - Auto-detects Intel VT-d or AMD-Vi and enables appropriate settings
+- **Hugepages allocation** - Automatically calculates and reserves 25% of system RAM as 1GB hugepages
+- **Transparent hugepages** - Disabled for better VM memory management
+- **CPU mitigations** - Disabled for maximum performance (trade security for speed)
+
+**Kernel Parameter Tuning (sysctl):**
+- **Memory management** - `vm.swappiness=10`, `vm.dirty_ratio=15`, `vm.vfs_cache_pressure=50`
+- **Network stack** - Increased buffer sizes for better throughput
+- **Scheduler** - Reduced CPU migration cost for better VM performance
+
+**CPU Governor:**
+- Automatically sets all CPUs to **performance mode** (maximum frequency)
+- Creates systemd service for persistence across reboots
+
+**I/O Scheduler:**
+- Detects NVMe devices and sets scheduler to **'none'** for best SSD/NVMe performance
+- Creates udev rules for automatic configuration
+
+**Performance Packages:**
+- **Debian/Ubuntu**: `cpufrequtils`, `linux-tools-generic`, `tuned`
+- **Fedora/RHEL**: `kernel-tools`, `tuned`
+- **Arch Linux**: `cpupower`, `tuned`
+- Automatically enables and configures **tuned** with `virtual-host` profile
+
+**Safety Features:**
+- All changes backed up to `/root/vmware-tune-backup-<timestamp>/`
+- Full rollback capability
+- Reboot recommended after optimization (manual command provided)
+
+**Integration:**
+- Offered automatically after successful module installation/update
+- Can be run standalone anytime: `sudo bash scripts/tune-system.sh`
+- Compatible with 18+ Linux distributions
 
 #### Advanced Python Hardware Detection
 - **State-of-the-art Python detector**: Complete rewrite with advanced capabilities
@@ -186,6 +227,8 @@ Better VM performance and improved Wayland integration (top bar hiding works ~90
 
 ```
 scripts/
+  ├── tune_system.py              # ⭐ NEW: System optimizer (706 lines)
+  ├── tune-system.sh              # ⭐ NEW: Standalone optimizer wrapper (85 lines)
   ├── detect_hardware.py          # Python hardware detector (800+ lines)
   ├── setup_python_env.sh         # Mamba environment setup
   └── activate_optimizer_env.sh   # Auto-generated activation script
@@ -194,8 +237,11 @@ patches/
   ├── vmmon-vtx-ept-optimizations.patch  # VT-x/EPT runtime detection
   └── vmnet-optimizations.patch          # Network module optimizations
 
+releases/
+  └── RELEASE-v1.0.5.md           # ⭐ NEW: Release notes for v1.0.5
+
 OPTIMIZATION_GUIDE.md              # Comprehensive optimization guide (600+ lines)
-CHANGELOG.md                       # This file
+CHANGELOG.md                       # This file (updated with v1.0.5 changes)
 ```
 
 ### 🐛 Bug Fixes
