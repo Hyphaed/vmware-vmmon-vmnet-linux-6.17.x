@@ -111,7 +111,19 @@ if grep -q "iommu=pt.*iommu=pt" /etc/default/grub; then
     HAS_DUPLICATES=true
 fi
 
-if [ "$HAS_DUPLICATES" = false ]; then
+# Also check if iommu=pt is missing when intel_iommu=on or amd_iommu=on is present
+NEEDS_PT=false
+if grep -q "intel_iommu=on" /etc/default/grub && ! grep -q "iommu=pt" /etc/default/grub; then
+    warning "Found intel_iommu=on but missing iommu=pt (passthrough mode)"
+    NEEDS_PT=true
+fi
+
+if grep -q "amd_iommu=on" /etc/default/grub && ! grep -q "iommu=pt" /etc/default/grub; then
+    warning "Found amd_iommu=on but missing iommu=pt (passthrough mode)"
+    NEEDS_PT=true
+fi
+
+if [ "$HAS_DUPLICATES" = false ] && [ "$NEEDS_PT" = false ]; then
     echo ""
     log "No duplicate IOMMU parameters found!"
     info "Your GRUB configuration is clean"
