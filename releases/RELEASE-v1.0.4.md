@@ -100,7 +100,7 @@ Work is underway on a **major enhancement** to the optimization system:
 - Intel VT-x/EPT and AMD-V/NPT comprehensive detection
 - NVMe PCIe bandwidth calculation
 - GPU detection with VRAM analysis
-- Intelligent hardware scoring (0-100) with performance predictions
+- Intelligent hardware analysis with optimization recommendations
 
 **Multi-Distribution Expansion:**
 - 18+ distributions (Arch, Manjaro, Rocky, AlmaLinux, openSUSE, etc.)

@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - NUMA topology and memory channel detection
   - Comprehensive virtualization feature detection (EPT, VPID, VMFUNC, Posted Interrupts)
   - GPU detection with PCIe bandwidth analysis
-  - Intelligent optimization score calculation (0-100)
+  - Intelligent hardware analysis and optimization recommendations
   - Per-hardware compilation flag recommendations
 - **Mamba/Miniforge integration**: Prioritizes optimized Python environment
   - Auto-detects existing miniforge environment
@@ -66,21 +66,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Troubleshooting suggestions on failure
 - **Module runtime verification**: Confirms modules are active and functional
 
-#### Hyphaed Branding & UI
-- **Consistent Hyphaed green (#B0D56A)**: All UI elements branded
-  - Main banner and section dividers
-  - Distribution detection output
-  - Hardware analysis results
-  - Success/info messages
-- **Professional terminal output**: Clean, organized display
-  - Distribution family and approach clearly shown
-  - Hardware detection results formatted
-  - Optimization recommendations highlighted
-  - Clear visual hierarchy
-
 #### User Experience Improvements
 - **Interactive optimization choice**: User decides after seeing hardware analysis
-  - Python detector shows optimization score
+  - Python detector provides optimization recommendations
   - Displays expected performance improvement percentage
   - Provides clear recommendation (OPTIMIZED vs VANILLA)
   - Explains benefits based on detected hardware
@@ -99,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Memory bandwidth estimation and NUMA topology detection
   - GPU detection (NVIDIA with nvidia-smi, AMD planned)
   - Automatic dependency installation (psutil, distro, pynvml)
-  - Generates optimization score (0-100) and recommendations
+  - Generates optimization recommendations based on hardware analysis
   - Outputs JSON for script consumption
 
 #### Makefile-Based Optimization System

@@ -24,9 +24,8 @@ The **interactive terminal wizard** handles everything:
   - NVMe detection: PCIe generation, lanes, bandwidth, queue depth
   - Memory topology: NUMA nodes, channels, huge page support
   - GPU analysis: VRAM, PCIe lanes, driver detection
-- 📊 **Intelligent optimization scoring** (0-100) with performance prediction
-- 🏗️ **Auto-generates compilation flags** (CFLAGS, LDFLAGS, Make variables)
-- 💬 **Asks 2 simple questions** (kernel version, optimization mode)
+- 🏗️ **Auto-generates optimal compilation flags** (CFLAGS, LDFLAGS, Make variables)
+- 💬 **Interactive Python wizard** (beautiful TUI, kernel selection, optimization mode)
 - 🚀 **Compiles modules** with optimal flags for your hardware
 - 🛡️ **Creates automatic backups** for safety
 - 🧪 **Runs comprehensive tests** automatically after installation
@@ -78,10 +77,9 @@ The heart of this project is a sophisticated **Python-based hardware detection e
   - vGPU capability hints
 
 #### **What It Does:**
-1. **Optimization Scoring (0-100)**: Calculates a performance score based on your hardware
-2. **Intelligent Recommendations**: Suggests "optimized" or "vanilla" mode based on capabilities
-3. **Auto-Generated Compilation Flags**: Creates architecture-specific CFLAGS, LDFLAGS, and Make variables
-4. **Performance Prediction**: Estimates performance gains for your specific hardware
+1. **Intelligent Recommendations**: Analyzes hardware and suggests "optimized" or "vanilla" mode
+2. **Auto-Generated Compilation Flags**: Creates architecture-specific CFLAGS, LDFLAGS, and Make variables
+3. **Performance Prediction**: Estimates performance gains for your specific hardware
 
 #### **How It Works:**
 ```bash
@@ -144,9 +142,9 @@ The defining feature that sets this project apart:
   - **GPU**: Model, VRAM, PCIe gen/lanes, NVIDIA/AMD driver detection, CUDA/ROCm support
 
 - **📊 Intelligent Optimization Engine**
-  - Calculates optimization score (0-100) based on hardware capabilities
-  - Weighs factors: CPU features (30%), virtualization (25%), storage (20%), memory (15%), GPU (10%)
-  - Recommends "optimized" (score ≥40) or "vanilla" (score <40) mode
+  - Analyzes hardware capabilities comprehensively
+  - Weighs factors: CPU features, virtualization tech, storage, memory, GPU
+  - Recommends "optimized" or "vanilla" mode based on detected hardware
   - Predicts performance gains for specific hardware configuration
 
 - **🏗️ Compilation Flag Generator**
@@ -169,8 +167,7 @@ The defining feature that sets this project apart:
   - SUSE family: openSUSE, SUSE Linux Enterprise
   - Independent: Gentoo, Void Linux, Alpine Linux
 - **Package manager integration**: Auto-installs dependencies via apt, dnf, yum, pacman, emerge, zypper, xbps, apk
-- **2 simple questions**: Kernel version (6.16/6.17), Optimization mode (Optimized/Vanilla)
-- **Hyphaed branded UI**: Clean terminal output with consistent green (#B0D56A) theme
+- **Interactive Python wizard**: Beautiful terminal UI for kernel selection and optimization mode
 - **Automatic testing**: Runs comprehensive tests after installation completes
 
 ### 🚀 **Performance Optimizations**
@@ -401,17 +398,17 @@ The Python script performs deep hardware analysis:
 - Checks for NVIDIA/AMD proprietary drivers
 - Identifies CUDA/ROCm support
 
-#### **Step 3: Optimization Scoring**
-The script calculates a score (0-100) based on:
-- **CPU features (30%)**: AVX-512 (100), AVX2 (70), SSE4.2 (40), baseline (20)
-- **Virtualization (25%)**: VT-x/AMD-V + EPT/NPT (100), VT-x/AMD-V only (50), none (0)
-- **Storage (20%)**: NVMe PCIe 4.0+ (100), NVMe PCIe 3.0 (70), SATA SSD (40), HDD (20)
-- **Memory (15%)**: 64GB+ (100), 32GB (80), 16GB (60), 8GB (40)
-- **GPU (10%)**: High-end (100), Mid-range (70), Integrated (40), none (0)
+#### **Step 3: Optimization Recommendation**
+The script analyzes hardware comprehensively:
+- **CPU features**: AVX-512, AVX2, SSE4.2, AES-NI, SHA-NI
+- **Virtualization**: VT-x/AMD-V, EPT/NPT, VPID, VMFUNC
+- **Storage**: NVMe PCIe generation, lanes, bandwidth
+- **Memory**: Capacity, NUMA topology, hugepages
+- **GPU**: NVIDIA/AMD, VRAM, PCIe, CUDA/ROCm
 
-**Example Score:**
+**Example Analysis:**
 ```
-i7-11700 + 64GB RAM + NVMe PCIe 4.0 + RTX 3060 = 85/100 → "optimized" recommended
+i7-11700 + 64GB RAM + NVMe PCIe 4.0 + RTX 3060 → "optimized" recommended (predicted 25-35% gain)
 ```
 
 #### **Step 4: Compilation Flag Generation**
@@ -477,7 +474,6 @@ All data is exported to `/tmp/vmware_hw_capabilities.json`:
     ]
   },
   "optimization": {
-    "score": 85,
     "recommended_mode": "optimized",
     "predicted_gains": "25-35%"
   },
@@ -559,7 +555,6 @@ The wizard runs deep hardware detection and displays results in organized panels
 │  └───────────────────────────────────────────────┘ │
 │                                                     │
 │  ┌─ Performance Analysis ────────────────────────┐ │
-│  │ Optimization Score: 85/100                    │ │
 │  │ Recommended Mode: OPTIMIZED                   │ │
 │  │ Predicted Gains: 25-35%                       │ │
 │  └───────────────────────────────────────────────┘ │

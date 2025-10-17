@@ -1035,7 +1035,7 @@ class HardwareDetector:
         print(f"\n{'='*70}", file=sys.stderr)
         print(f"🎯 Optimization Analysis", file=sys.stderr)
         print(f"{'='*70}", file=sys.stderr)
-        print(f"Hardware Score: {score}/100", file=sys.stderr)
+        # Score is for internal use only, not displayed to users
         print(f"Recommended Mode: {recommended.upper()}", file=sys.stderr)
         print(f"Expected Performance Gain: {improvement[0]}-{improvement[1]}%", file=sys.stderr)
         

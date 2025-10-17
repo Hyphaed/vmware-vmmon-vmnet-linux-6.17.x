@@ -418,31 +418,20 @@ class VMwareWizard:
             self.console.print(Panel(storage_table, title=f"[bold]NVMe Storage ({storage.get('nvme_count', 0)} device(s))[/bold]", border_style=HYPHAED_GREEN))
             self.console.print()
         
-        # Optimization Score
+        # Performance Analysis (no score display - internal only)
         opt = self.hw_capabilities.get('optimization', {})
         if opt:
-            score = opt.get('score', 0)
             recommended = opt.get('recommended_mode', 'vanilla')
             
-            # Color based on score
-            if score >= 70:
-                score_color = "green"
-            elif score >= 40:
-                score_color = "yellow"
-            else:
-                score_color = "red"
-            
-            score_text = Text()
-            score_text.append("Optimization Score: ", style="cyan")
-            score_text.append(f"{score}/100", style=f"bold {score_color}")
-            score_text.append(f"\nRecommended Mode: ", style="cyan")
-            score_text.append(recommended.upper(), style=f"bold {HYPHAED_GREEN}")
+            analysis_text = Text()
+            analysis_text.append("Recommended Mode: ", style="cyan")
+            analysis_text.append(recommended.upper(), style=f"bold {HYPHAED_GREEN}")
             
             if opt.get('predicted_gains'):
-                score_text.append(f"\nPredicted Gains: ", style="cyan")
-                score_text.append(opt.get('predicted_gains'), style="bold yellow")
+                analysis_text.append(f"\nPredicted Gains: ", style="cyan")
+                analysis_text.append(opt.get('predicted_gains'), style="bold yellow")
             
-            self.console.print(Panel(score_text, title="[bold]Performance Analysis[/bold]", border_style=HYPHAED_GREEN))
+            self.console.print(Panel(analysis_text, title="[bold]Performance Analysis[/bold]", border_style=HYPHAED_GREEN))
             self.console.print()
     
     def select_optimization_mode(self):

@@ -612,7 +612,7 @@ if [ -f "$PYTHON_DETECTOR" ]; then
                 log "✓ Advanced Python hardware detection completed"
                 echo ""
                 info "Hardware Analysis Results:"
-                echo "  • Optimization Score: ${HYPHAED_GREEN}$PYTHON_OPT_SCORE/100${NC}"
+                # Optimization score is internal - don't display to users
                 echo "  • Recommended Mode: ${HYPHAED_GREEN}$PYTHON_RECOMMENDED${NC}"
                 echo "  • AVX-512 Support: $([ "$PYTHON_HAS_AVX512" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
                 echo "  • VT-x/EPT Support: $([ "$PYTHON_HAS_VTX" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
