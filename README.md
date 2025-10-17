@@ -38,7 +38,7 @@ The **interactive terminal wizard** handles everything:
 
 This project goes beyond simple kernel compatibility - it's an **intelligent hardware detection and optimization system** for VMware Workstation.
 
-### 🐍 **Core Feature: Python Hardware Intelligence** (NEW in v1.0.5)
+### 🐍 **Core Feature: Interactive Python Wizard** (NEW in v1.0.5)
 
 The heart of this project is a sophisticated **Python-based hardware detection engine** that automatically analyzes your system and generates optimal compilation flags:
 
