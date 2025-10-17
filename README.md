@@ -4,15 +4,13 @@
 [![Gentoo](https://img.shields.io/badge/Gentoo-Supported-purple.svg)](https://www.gentoo.org/)
 
 ### ⚡ VMware Workstation Modules for Linux Kernel 6.16.x & 6.17.x + Better Wayland support
-### 🐍 **Interactive Python Wizard** - Beautiful terminal UI that guides you through installation
+### 🐍 **Interactive Python Wizard** that guides you through installation
 ### 🚀 **Enjoy 20-40% faster VMware performance**
 ### ✨ **Top bar auto-hiding now works perfectly on Wayland**
 
 No more stuck top bars when running VMs in fullscreen - this has been **fixed** by applying hardware-specific optimizations during module compilation.
 
 **This breakthrough comes from the Optimized mode** (the default choice during installation, though Vanilla mode is also available if you want to skip optimizations).
-
----
 
 ## 🎯 What This Does
 
@@ -23,8 +21,6 @@ This project provides:
 3. **⚡ Performance Optimizations** - 20-40% faster VMs through hardware-specific compilation
 4. **🐧 Universal Linux Support** - Works on 18+ distributions (Ubuntu, Fedora, Arch, Gentoo, etc.)
 5. **🛡️ Smart Backup System** - Hash-verified backups with automatic cleanup
-
----
 
 ## 📦 Quick Install
 
