@@ -15,8 +15,10 @@ HYPHAED_GREEN='\033[38;2;176;213;106m'
 # Detectar directorio del script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo -e "${HYPHAED_GREEN}"
-cat << 'EOF'
+# Skip banner if called with --auto-confirm (already shown in wizard)
+if [ "$1" != "--auto-confirm" ]; then
+    echo -e "${HYPHAED_GREEN}"
+    cat << 'EOF'
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║       VMware WORKSTATION SYSTEM OPTIMIZER                   ║
@@ -24,19 +26,20 @@ cat << 'EOF'
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 EOF
-echo -e "${NC}"
+    echo -e "${NC}"
 
-echo ""
-echo -e "${YELLOW}This tool will optimize your Linux system for VMware Workstation:${NC}"
-echo ""
-echo "  • GRUB boot parameters (IOMMU, hugepages, mitigations)"
-echo "  • Kernel parameters (memory, network, scheduler)"
-echo "  • CPU governor (performance mode)"
-echo "  • I/O scheduler (NVMe/SSD optimization)"
-echo "  • Install performance packages"
-echo ""
-echo -e "${YELLOW}All changes are backed up automatically.${NC}"
-echo ""
+    echo ""
+    echo -e "${YELLOW}This tool will optimize your Linux system for VMware Workstation:${NC}"
+    echo ""
+    echo "  • GRUB boot parameters (IOMMU, hugepages, mitigations)"
+    echo "  • Kernel parameters (memory, network, scheduler)"
+    echo "  • CPU governor (performance mode)"
+    echo "  • I/O scheduler (NVMe/SSD optimization)"
+    echo "  • Install performance packages"
+    echo ""
+    echo -e "${YELLOW}All changes are backed up automatically.${NC}"
+    echo ""
+fi
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
