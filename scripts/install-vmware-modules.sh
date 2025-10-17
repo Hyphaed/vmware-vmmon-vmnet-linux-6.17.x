@@ -405,6 +405,48 @@ else
                                 log "✓ AMD-Vi parameters added: amd_iommu=on iommu=pt"
                             fi
                             
+                            # Add VMware-specific kernel optimizations (if not already present)
+                            info "Adding VMware-specific kernel optimizations..."
+                            
+                            # Function to add parameter if not present
+                            add_kernel_param() {
+                                local param="$1"
+                                local param_name="${param%%=*}"
+                                
+                                # Check if parameter already exists in the command line
+                                if grep "GRUB_CMDLINE_LINUX_DEFAULT=" /etc/default/grub | grep -q "$param_name"; then
+                                    info "  ℹ Parameter $param_name already present, skipping"
+                                    return 0
+                                fi
+                                
+                                # Add the parameter
+                                sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"/&$param /" /etc/default/grub
+                                return 0
+                            }
+                            
+                            # ACPI optimizations for VMware
+                            add_kernel_param "acpi_osi=Linux"
+                            info "  → ACPI: Tells BIOS we're running Linux (better compatibility)"
+                            
+                            # EFI optimizations
+                            if [ -d "/sys/firmware/efi" ]; then
+                                add_kernel_param "efi=runtime"
+                                info "  → EFI: Runtime services enabled (better UEFI integration)"
+                            fi
+                            
+                            # Timer optimization for VMware (critical for VMs)
+                            add_kernel_param "clocksource=tsc"
+                            info "  → Clock: TSC (Time Stamp Counter - best for virtualization)"
+                            
+                            add_kernel_param "tsc=reliable"
+                            info "  → TSC: Reliable mode (stable VM timing)"
+                            
+                            # Disable unnecessary kernel features that slow down VMs
+                            add_kernel_param "nmi_watchdog=0"
+                            info "  → NMI watchdog: Disabled (reduces overhead)"
+                            
+                            log "✓ VMware-specific optimizations added"
+                            
                             info "GRUB will be updated after module compilation (single initramfs rebuild)"
                         fi
                         
