@@ -7,29 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.5] - 2025-10-17
 
-### 🎯 Final Release Improvements
+### 🎯 Production Release - Advanced Detection & Multi-Distribution Support
 
-#### Installation Safety
-- **VMware process detection**: Script now checks if VMware is running before installation
-  - Detects vmware, vmware-vmx, and vmplayer processes
-  - Lists all running VMware processes
-  - Warns user to close applications and exit cleanly
-  - Prevents module conflicts and system instability
+#### Advanced Python Hardware Detection
+- **State-of-the-art Python detector**: Complete rewrite with advanced capabilities
+  - Automatic compilation flag generation based on detected hardware
+  - Deep CPU topology analysis (microarchitecture, generation, features)
+  - Real-time PCIe bandwidth calculation for NVMe devices
+  - NUMA topology and memory channel detection
+  - Comprehensive virtualization feature detection (EPT, VPID, VMFUNC, Posted Interrupts)
+  - GPU detection with PCIe bandwidth analysis
+  - Intelligent optimization score calculation (0-100)
+  - Per-hardware compilation flag recommendations
+- **Mamba/Miniforge integration**: Prioritizes optimized Python environment
+  - Auto-detects existing miniforge environment
+  - Offers to set up environment if missing
+  - Falls back to system Python gracefully
+  - Uses latest libraries: psutil, pynvml, distro, py-cpuinfo
+- **JSON output with compilation flags**: Exports optimized CFLAGS, LDFLAGS, Make variables
+  - Architecture-specific flags (-march=native, -mavx512f, -mavx2)
+  - Feature-specific flags (-maes, -msha, -mbmi2, -flto)
+  - Optimization level selection (-O3 for high-end, -O2 for basic)
+  - Make variables for conditional compilation
 
-#### Automatic Testing
-- **Post-installation test suite**: Automatically runs comprehensive tests after installation
-  - Tests module loading (vmmon, vmnet)
-  - Verifies /dev/vmmon and /dev/vmnet* device files
-  - Checks virtualization hardware (VT-x/AMD-V)
-  - Tests VMware services readiness
-  - Provides detailed pass/fail report
-  - Suggests fixes if tests fail
+#### Comprehensive Distribution Detection (18+ Distributions)
+- **Distribution family identification**: Detects and displays Linux branch/family
+  - **Debian family**: Debian, Ubuntu, Pop!_OS, Linux Mint, elementary OS
+  - **Red Hat family**: Fedora, CentOS, RHEL, Rocky Linux, AlmaLinux
+  - **Arch family**: Arch Linux, Manjaro
+  - **SUSE family**: openSUSE (Leap/Tumbleweed), SUSE Linux Enterprise
+  - **Independent**: Gentoo, Void Linux, Alpine Linux
+- **Distribution-specific strategies**: Shows approach and paths per family
+  - Gentoo: Source-based with Portage, custom paths (/opt/vmware)
+  - Arch: Rolling release with pacman
+  - Red Hat: Enterprise RPM with DNF/YUM
+  - Debian: DEB-based with APT
+  - SUSE: RPM-based with Zypper
+- **Package manager auto-detection**: apt, dnf, yum, pacman, emerge, zypper, xbps, apk
+- **Kernel headers detection**: Distribution-specific package names
+  - Debian/Ubuntu: linux-headers-$(uname -r)
+  - Fedora/RHEL/CentOS: kernel-devel
+  - Arch: linux-headers
+  - SUSE: kernel-default-devel
+  - Gentoo: /usr/src/linux
 
-#### User Experience
-- **Clean terminal output**: Removed all animations for professional appearance
-- **Hyphaed branding**: Green color (#B0D56A) used for highlighting key information
-- **Better error handling**: Clear instructions when issues are detected
-- **Improved section numbering**: Better flow through installation steps
+#### Installation Safety & Verification
+- **VMware process detection**: Pre-installation check prevents conflicts
+  - Detects vmware, vmware-vmx, vmplayer processes
+  - Lists all running VMware applications
+  - Provides clear shutdown instructions
+  - Exits cleanly if VMware is running
+- **Automatic comprehensive testing**: Post-installation verification
+  - Module loading tests (vmmon, vmnet)
+  - Device file verification (/dev/vmmon, /dev/vmnet*)
+  - Virtualization hardware checks (VT-x/AMD-V, EPT/NPT)
+  - VMware services readiness
+  - Detailed pass/fail reporting
+  - Troubleshooting suggestions on failure
+- **Module runtime verification**: Confirms modules are active and functional
+
+#### Hyphaed Branding & UI
+- **Consistent Hyphaed green (#B0D56A)**: All UI elements branded
+  - Main banner and section dividers
+  - Distribution detection output
+  - Hardware analysis results
+  - Success/info messages
+- **Professional terminal output**: Clean, organized display
+  - Distribution family and approach clearly shown
+  - Hardware detection results formatted
+  - Optimization recommendations highlighted
+  - Clear visual hierarchy
+
+#### User Experience Improvements
+- **Interactive optimization choice**: User decides after seeing hardware analysis
+  - Python detector shows optimization score
+  - Displays expected performance improvement percentage
+  - Provides clear recommendation (OPTIMIZED vs VANILLA)
+  - Explains benefits based on detected hardware
+- **Distribution branch awareness**: Script explains approach for detected family
+- **Better error messages**: Clear guidance for all error conditions
+- **Improved flow**: Logical progression through installation steps
 
 ### 🚀 Major Features Added
 

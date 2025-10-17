@@ -789,53 +789,150 @@ class HardwareDetector:
         
         return score, recommended, improvement
     
+    def generate_compilation_flags(self, cpu: CPUCapabilities, virt: VirtualizationCapabilities, 
+                                   memory: MemoryCapabilities) -> Dict[str, any]:
+        """Generate optimal compilation flags based on hardware"""
+        
+        flags = {
+            'base_optimization': '-O2',
+            'architecture_flags': [],
+            'feature_flags': [],
+            'link_flags': [],
+            'make_flags': {}
+        }
+        
+        # Base optimization level
+        if cpu.has_avx512f or cpu.has_avx2:
+            flags['base_optimization'] = '-O3'
+        
+        # Architecture-specific flags
+        if cpu.has_avx512f:
+            flags['architecture_flags'].extend([
+                '-march=native',
+                '-mtune=native',
+                '-mavx512f',
+                '-mavx512dq',
+                '-mfma'
+            ])
+        elif cpu.has_avx2:
+            flags['architecture_flags'].extend([
+                '-march=native',
+                '-mtune=native',
+                '-mavx2',
+                '-mfma'
+            ])
+        else:
+            flags['architecture_flags'].append('-mtune=generic')
+        
+        # Feature-specific compilation flags
+        if cpu.has_aes_ni:
+            flags['feature_flags'].append('-maes')
+        
+        if cpu.has_bmi2:
+            flags['feature_flags'].extend(['-mbmi', '-mbmi2'])
+        
+        if cpu.has_sha_ni:
+            flags['feature_flags'].append('-msha')
+        
+        # Optimization flags
+        flags['feature_flags'].extend([
+            '-ffast-math',
+            '-funroll-loops',
+            '-fomit-frame-pointer',
+            '-fno-strict-aliasing',
+            '-fno-common'
+        ])
+        
+        # Link-time optimization
+        if cpu.cores >= 4:
+            flags['feature_flags'].append('-flto')
+            flags['link_flags'].append('-flto')
+        
+        # Make flags for module compilation
+        flags['make_flags'] = {
+            'VMWARE_OPTIMIZE': '1' if cpu.has_avx2 or cpu.has_avx512f else '0',
+            'HAS_VTX_EPT': '1' if virt.ept_supported else '0',
+            'HAS_VPID': '1' if virt.vpid_supported else '0',
+            'HAS_AVX512': '1' if cpu.has_avx512f else '0',
+            'HAS_AVX2': '1' if cpu.has_avx2 else '0',
+            'HAS_AES_NI': '1' if cpu.has_aes_ni else '0',
+            'ENABLE_HUGEPAGES': '1' if memory.hugepages_1gb_supported else '0'
+        }
+        
+        return flags
+    
     def detect_all(self) -> SystemCapabilities:
         """Detect all hardware capabilities"""
         
-        print("🔍 Detecting hardware capabilities with Python...\n")
+        print("🔍 Advanced Hardware Detection with Python\n", file=sys.stderr)
         
         cpu = self.detect_cpu()
-        print(f"✓ CPU: {cpu.model_name}")
-        print(f"  Generation: {cpu.cpu_generation} ({cpu.microarchitecture})")
-        print(f"  Cores/Threads: {cpu.cores}C/{cpu.threads}T")
-        print(f"  SIMD: AVX-512={cpu.has_avx512f}, AVX2={cpu.has_avx2}, AES-NI={cpu.has_aes_ni}")
+        print(f"✓ CPU: {cpu.model_name}", file=sys.stderr)
+        print(f"  Architecture: {cpu.microarchitecture}", file=sys.stderr)
+        print(f"  Cores/Threads: {cpu.cores}C/{cpu.threads}T @ {cpu.max_freq_mhz:.0f} MHz", file=sys.stderr)
+        print(f"  SIMD: AVX-512={cpu.has_avx512f}, AVX2={cpu.has_avx2}, SSE4.2={cpu.has_sse42}", file=sys.stderr)
+        print(f"  Crypto: AES-NI={cpu.has_aes_ni}, SHA-NI={cpu.has_sha_ni}", file=sys.stderr)
+        print(f"  Features: BMI1={cpu.has_bmi1}, BMI2={cpu.has_bmi2}", file=sys.stderr)
         
         virt = self.detect_virtualization(cpu)
-        print(f"\n✓ Virtualization: {virt.technology}")
+        print(f"\n✓ Virtualization: {virt.technology}", file=sys.stderr)
         if virt.enabled:
-            print(f"  EPT: {virt.ept_supported}, VPID: {virt.vpid_supported}")
-            print(f"  EPT 1GB Pages: {virt.ept_1gb_pages}")
-            print(f"  Estimated VM exit overhead: {virt.estimated_vm_switch_overhead_ns}ns")
+            print(f"  EPT: {virt.ept_supported}, VPID: {virt.vpid_supported}", file=sys.stderr)
+            print(f"  EPT 1GB Pages: {virt.ept_1gb_pages}, EPT A/D bits: {virt.ept_accessed_dirty}", file=sys.stderr)
+            print(f"  VMFUNC: {virt.vmfunc_supported}, Posted Interrupts: {virt.posted_interrupts}", file=sys.stderr)
+            print(f"  Estimated VM switch: {virt.estimated_vm_switch_overhead_ns}ns", file=sys.stderr)
+        else:
+            print(f"  ⚠️  Virtualization not enabled in BIOS", file=sys.stderr)
         
         storage = self.detect_storage()
-        print(f"\n✓ Storage: {len(storage)} NVMe device(s)")
+        print(f"\n✓ Storage: {len(storage)} NVMe device(s)", file=sys.stderr)
         for dev in storage:
-            print(f"  {dev.device_name}: {dev.model} ({dev.size_gb:.1f} GB)")
+            print(f"  {dev.device_name}: {dev.model} ({dev.size_gb:.1f} GB)", file=sys.stderr)
             if dev.pcie_generation and dev.pcie_lanes:
-                print(f"    PCIe Gen{dev.pcie_generation} x{dev.pcie_lanes} "
-                      f"({dev.max_bandwidth_mbps} MB/s theoretical)")
+                print(f"    PCIe Gen{dev.pcie_generation} x{dev.pcie_lanes} → {dev.max_bandwidth_mbps} MB/s", file=sys.stderr)
+                print(f"    Queues: {dev.num_queues}, Depth: {dev.queue_depth}", file=sys.stderr)
         
         memory = self.detect_memory()
-        print(f"\n✓ Memory: {memory.total_gb:.1f} GB {memory.type}-{memory.speed_mhz}")
-        print(f"  Channels: {memory.channels}, Bandwidth: ~{memory.estimated_bandwidth_gbps} GB/s")
-        print(f"  Huge Pages: 2MB={memory.hugepages_2mb_supported}, "
-              f"1GB={memory.hugepages_1gb_supported}")
+        print(f"\n✓ Memory: {memory.total_gb:.1f} GB {memory.type}-{memory.speed_mhz}", file=sys.stderr)
+        print(f"  Channels: {memory.channels}, Bandwidth: ~{memory.estimated_bandwidth_gbps} GB/s", file=sys.stderr)
+        print(f"  NUMA Nodes: {memory.numa_nodes}", file=sys.stderr)
+        print(f"  Huge Pages: 2MB={memory.hugepages_2mb_supported}, 1GB={memory.hugepages_1gb_supported}", file=sys.stderr)
         
         gpu = self.detect_gpu()
         if gpu:
-            print(f"\n✓ GPU: {gpu.vendor} {gpu.model}")
-            print(f"  VRAM: {gpu.vram_gb:.1f} GB, Driver: {gpu.driver_version}")
+            print(f"\n✓ GPU: {gpu.vendor} {gpu.model}", file=sys.stderr)
+            print(f"  VRAM: {gpu.vram_gb:.1f} GB, Driver: {gpu.driver_version}", file=sys.stderr)
+            print(f"  PCIe: Gen{gpu.pcie_generation} x{gpu.pcie_lanes}", file=sys.stderr)
         
         # Calculate optimization score
         score, recommended, improvement = self.calculate_optimization_score(
             cpu, virt, storage, memory
         )
         
-        print(f"\n{'='*60}")
-        print(f"Optimization Score: {score}/100")
-        print(f"Recommended Mode: {recommended.upper()}")
-        print(f"Expected Improvement: {improvement[0]}-{improvement[1]}%")
-        print(f"{'='*60}\n")
+        # Generate compilation flags
+        comp_flags = self.generate_compilation_flags(cpu, virt, memory)
+        
+        print(f"\n{'='*70}", file=sys.stderr)
+        print(f"🎯 Optimization Analysis", file=sys.stderr)
+        print(f"{'='*70}", file=sys.stderr)
+        print(f"Hardware Score: {score}/100", file=sys.stderr)
+        print(f"Recommended Mode: {recommended.upper()}", file=sys.stderr)
+        print(f"Expected Performance Gain: {improvement[0]}-{improvement[1]}%", file=sys.stderr)
+        
+        if score >= 70:
+            print(f"\n✅ Excellent hardware for optimization!", file=sys.stderr)
+            print(f"   Your system has high-end features that will significantly benefit", file=sys.stderr)
+            print(f"   from optimized compilation. Strongly recommend OPTIMIZED mode.", file=sys.stderr)
+        elif score >= 50:
+            print(f"\n✓ Good hardware for optimization", file=sys.stderr)
+            print(f"   Your system will see moderate improvements with optimizations.", file=sys.stderr)
+            print(f"   Recommend OPTIMIZED mode for better performance.", file=sys.stderr)
+        else:
+            print(f"\n⚠️  Basic hardware detected", file=sys.stderr)
+            print(f"   Limited optimization features available.", file=sys.stderr)
+            print(f"   VANILLA mode may be more stable.", file=sys.stderr)
+        
+        print(f"{'='*70}\n", file=sys.stderr)
         
         return SystemCapabilities(
             cpu=cpu,
@@ -846,37 +943,54 @@ class HardwareDetector:
             optimization_score=score,
             recommended_mode=recommended,
             estimated_improvement_percent=improvement
-        )
+        ), comp_flags
 
 
 def main():
     """Main entry point"""
     
-    # Check if running as root (for some detections)
     if os.geteuid() != 0:
-        print("Note: Running without root. Some detections may be limited.\n")
+        print("Note: Running without root. Some detections may be limited.\n", file=sys.stderr)
     
     detector = HardwareDetector()
-    capabilities = detector.detect_all()
+    capabilities, comp_flags = detector.detect_all()
+    
+    # Convert dataclasses to dict recursively
+    def dataclass_to_dict(obj):
+        if hasattr(obj, '__dataclass_fields__'):
+            return {k: dataclass_to_dict(v) for k, v in asdict(obj).items()}
+        elif isinstance(obj, list):
+            return [dataclass_to_dict(item) for item in obj]
+        else:
+            return obj
+    
+    # Build comprehensive output
+    output_data = {
+        'capabilities': dataclass_to_dict(capabilities),
+        'compilation_flags': comp_flags,
+        'optimized_cflags': ' '.join([
+            comp_flags['base_optimization'],
+            *comp_flags['architecture_flags'],
+            *comp_flags['feature_flags']
+        ]),
+        'optimized_ldflags': ' '.join(comp_flags['link_flags']),
+        'make_variables': comp_flags['make_flags']
+    }
     
     # Output JSON for script consumption
     output_file = Path('/tmp/vmware_hw_capabilities.json')
     with open(output_file, 'w') as f:
-        # Convert dataclasses to dict recursively
-        def dataclass_to_dict(obj):
-            if hasattr(obj, '__dataclass_fields__'):
-                return {k: dataclass_to_dict(v) for k, v in asdict(obj).items()}
-            elif isinstance(obj, list):
-                return [dataclass_to_dict(item) for item in obj]
-            else:
-                return obj
-        
-        json.dump(dataclass_to_dict(capabilities), f, indent=2)
+        json.dump(output_data, f, indent=2)
     
-    print(f"✓ Hardware capabilities saved to: {output_file}")
-    print(f"\nExport variables for bash:")
-    print(f"export VMWARE_OPT_SCORE={capabilities.optimization_score}")
-    print(f"export VMWARE_RECOMMENDED_MODE={capabilities.recommended_mode}")
+    print(f"\n✓ Hardware analysis complete: {output_file}", file=sys.stderr)
+    print(f"\nBash export commands:", file=sys.stderr)
+    print(f"export VMWARE_OPT_SCORE={capabilities.optimization_score}", file=sys.stderr)
+    print(f"export VMWARE_RECOMMENDED_MODE={capabilities.recommended_mode}", file=sys.stderr)
+    print(f"export VMWARE_CFLAGS=\"{output_data['optimized_cflags']}\"", file=sys.stderr)
+    print(f"export VMWARE_LDFLAGS=\"{output_data['optimized_ldflags']}\"", file=sys.stderr)
+    
+    for key, value in comp_flags['make_flags'].items():
+        print(f"export {key}={value}", file=sys.stderr)
     print(f"export VMWARE_HAS_AVX512={1 if capabilities.cpu.has_avx512f else 0}")
     print(f"export VMWARE_HAS_VTX_EPT={1 if capabilities.virtualization.ept_supported else 0}")
     print(f"export VMWARE_NVME_COUNT={len(capabilities.storage_devices)}")

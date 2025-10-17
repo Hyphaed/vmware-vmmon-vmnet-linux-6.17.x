@@ -17,14 +17,16 @@ sudo bash scripts/install-vmware-modules.sh
 
 The **interactive terminal wizard** handles everything:
 - 🔍 **Checks if VMware is running** (prevents conflicts)
-- ✨ **Detects your hardware** (CPU, NVMe drives, kernel features)
+- 🐧 **Detects Linux distribution** (18+ distributions, shows family/branch)
+- ✨ **Analyzes hardware with Python** (CPU, VT-x/EPT, NVMe, memory, GPU)
+- 📊 **Calculates optimization score** (0-100) and recommends mode
+- 🏗️ **Generates compilation flags** (architecture-specific optimizations)
 - 💬 **Asks 2 simple questions** (kernel version, optimization mode)
-- 🚀 **Compiles modules** with your choices
-- 📊 **Shows performance impact** (20-40% boost available)
+- 🚀 **Compiles modules** with optimal flags for your hardware
 - 🛡️ **Creates automatic backups** for safety
 - 🧪 **Runs comprehensive tests** automatically after installation
 
-**No manual configuration. No complex setup. Just answer and go!**
+**Advanced Python detection. Distribution-aware. Maximum performance. One command.**
 
 ---
 
@@ -57,11 +59,18 @@ Guides you step-by-step:
 
 ### 🧙 **Wizard-Driven Installation**
 - **VMware safety check**: Detects and warns if VMware is running before installation
-- **Interactive terminal assistant** guides you through all steps
+- **Distribution detection**: Identifies Linux family/branch (Debian, Red Hat, Arch, SUSE, Gentoo, etc.)
+- **Advanced Python hardware analysis**: Deep detection with mamba/miniforge environment
+  - CPU microarchitecture, generation, SIMD features (AVX-512, AVX2, AES-NI)
+  - Virtualization capabilities (VT-x, EPT, VPID, VMFUNC, Posted Interrupts)
+  - NVMe storage with PCIe bandwidth calculation
+  - Memory channels, NUMA topology, huge page support
+  - GPU detection with VRAM and driver info
+- **Intelligent optimization scoring**: 0-100 score with performance prediction
+- **Auto-generated compilation flags**: Architecture-specific CFLAGS, LDFLAGS, Make variables
 - **2 simple questions**: Kernel version (6.16/6.17), Optimization mode (Optimized/Vanilla)
-- **Automatic hardware detection**: CPU features, NVMe drives, kernel capabilities
-- **Color-coded output**: Green for success, yellow for warnings, blue for info
-- **Progress indicators**: Clear feedback at every step
+- **Distribution-aware compilation**: Uses appropriate paths and package managers
+- **Hyphaed branded UI**: Clean terminal output with consistent green (#B0D56A) theme
 - **Automatic testing**: Runs comprehensive tests after installation completes
 
 ### 🚀 **Performance Optimizations**
@@ -78,11 +87,15 @@ Guides you step-by-step:
 - **uninstall-vmware-modules.sh**: Clean module removal
 - **test-vmware-modules.sh**: Comprehensive system checks
 
-### 🐧 **Multi-Distribution Support**
-- **Ubuntu/Debian**: Full support with automatic path detection
-- **Fedora/RHEL**: Full support with DNF package manager
-- **Gentoo**: Custom paths (`/opt/vmware`, `/usr/src/linux`)
-- **Auto-detection**: Script detects your distribution automatically
+### 🐧 **Multi-Distribution Support (18+ Distributions)**
+- **Debian family**: Debian, Ubuntu, Pop!_OS, Linux Mint, elementary OS
+- **Red Hat family**: Fedora, CentOS, RHEL, Rocky Linux, AlmaLinux
+- **Arch family**: Arch Linux, Manjaro
+- **SUSE family**: openSUSE (Leap/Tumbleweed), SUSE Linux Enterprise
+- **Independent**: Gentoo, Void Linux, Alpine Linux
+- **Auto-detection**: Identifies distribution family/branch and adapts approach
+- **Distribution-specific paths**: Gentoo uses /opt/vmware, others use /usr/lib/vmware
+- **Package manager integration**: apt, dnf, yum, pacman, emerge, zypper, xbps, apk
 
 ### 🛡️ **Safety Features**
 - **Automatic backups**: Created before every installation/update
