@@ -348,52 +348,87 @@ The uninstall script will:
 
 **Note:** This removes only the kernel modules, not VMware Workstation itself.
 
-## ⚡ Module Compilation Options
+## ⚡ Hardware & VM Performance Optimizations
 
-During installation, choose between **2 simple options**:
+### 🔍 **What the Wizard Detects**
 
-### 🚀 **Option 1: Optimized (Recommended)**
-**20-40% better performance** across CPU, memory, graphics, storage, and network.
+The installation wizard automatically detects your hardware and kernel capabilities:
 
-**What you get:**
-- **CPU**: 20-30% faster (O3 optimization + CPU-specific instructions)
+- **CPU model and architecture** (e.g., Intel i7-11700, AMD Ryzen)
+- **CPU features:** AVX2, SSE4.2, AES-NI hardware acceleration
+- **NVMe/M.2 storage drives** (counts and displays them)
+- **Kernel features:** 6.16+/6.17+ optimizations, LTO, frame pointer
+- **Memory management capabilities**
+- **DMA optimization support**
+- **Current kernel compiler** (GCC or Clang)
+
+### 🚀 **Optimization Modes**
+
+During installation, the wizard presents **2 clear choices** (simplified from 4 confusing options):
+
+---
+
+#### **🚀 Option 1: Optimized (Recommended)**
+
+**Performance gains: 20-40% faster across all VM operations**
+
+- **CPU**: 20-30% faster (O3 + AVX2/SSE4.2/AES-NI)
+  - *Flags:* `-O3 -ffast-math -funroll-loops -march=native -mtune=native`
+  - *Why:* Aggressive loop unrolling, function inlining, vectorization
+  - *Best for:* Compilation, encoding, data processing
+
 - **Memory**: 10-15% faster allocation and access
-- **Graphics/Wayland**: 15-25% smoother (low latency + DMA optimizations)
-- **Storage (NVMe/M.2)**: 15-25% faster I/O (multiqueue + PCIe optimizations)
+  - *Optimization:* `-DVMW_OPTIMIZE_MEMORY_ALLOC`
+  - *Why:* Modern memory management, efficient buffer allocation
+  - *Best for:* Application launches, file operations
+
+- **Graphics/Wayland**: 15-25% smoother desktop experience
+  - *Optimizations:* `-DVMW_LOW_LATENCY_MODE` + `-DVMW_DMA_OPTIMIZATIONS`
+  - *Why:* Low latency mode reduces scheduler delays, DMA speeds up GPU-memory transfers
+  - *Best for:* Desktop animations, reduced cursor lag, video playback
+
+- **NVMe/M.2 Storage**: 15-25% faster I/O
+  - *Optimization:* `-DVMW_NVME_OPTIMIZATIONS`
+  - *Why:* NVMe multiqueue support, PCIe 3.0/4.0 bandwidth optimization
+  - *Best for:* VM boot, snapshots, disk-intensive workloads
+
 - **Network**: 5-10% better throughput
-- **DMA/GPU**: 20-40% faster transfers
+  - *Why:* Reduced memory copy overhead, better DMA handling
+  - *Best for:* File transfers, network responsiveness
 
-**What gets optimized:**
-- Uses YOUR CPU features (AVX2, SSE4.2, AES-NI)
-- Enables modern kernel 6.16+/6.17+ features
-- NVMe/M.2 multiqueue and PCIe 3.0/4.0 bandwidth optimizations
-- Modern memory management and efficient buffer allocation
-- Low latency mode for VM responsiveness
-- Direct Memory Access (DMA) for GPU operations
+- **GPU/DMA Transfers**: 20-40% faster
+  - *Why:* Direct Memory Access bypasses CPU for GPU data transfers
+  - *Best for:* 3D acceleration, hardware video decoding, OpenGL/Vulkan
 
-**Trade-off:** Modules only work on your CPU type (e.g., can't move Intel → AMD or different generations)
+**VM Performance Features Enabled:**
+- **Memory Management Optimizations:** Better buffer allocation (benefits graphics rendering)
+- **DMA Optimizations:** Improved graphics buffer sharing between host and guest
+- **Low Latency Mode:** Reduced operation latency for better responsiveness
+- **Modern Kernel Features:** Efficient unaligned memory access, modern MM for 6.16+/6.17+
+- **Frame Pointer Optimization:** Performance gain when kernel supports it
 
----
+**Trade-off:** Modules only work on your CPU type (not portable to AMD ↔ Intel or different generations)
 
-### 🔒 **Option 2: Vanilla (Standard VMware)**
-**Baseline performance** - no modifications, just kernel compatibility patches.
-
-**What you get:**
-- Standard VMware module compilation
-- Works on any x86_64 CPU (portable)
-- 0% performance gain over default
-
-**Choose this if:**
-- You need to copy modules between different systems
-- You want unmodified VMware behavior
+**Best for:** Desktop VMs, graphics workloads, Wayland compositing, NVMe systems
 
 ---
 
-### 💡 **Which Should I Choose?**
+#### **🔒 Option 2: Vanilla (Standard VMware)**
 
-**For 99% of users: Choose Optimized.** You're compiling for YOUR system - use your hardware's full capabilities! There's no stability downside, only performance gains.
+- Baseline performance (0% gain)
+- Standard VMware compilation with kernel compatibility patches only
+- Works on any x86_64 CPU (fully portable)
+- Uses same flags as your kernel (safest option)
 
-**Choose Vanilla only if** you need to move compiled modules to a different CPU architecture.
+**Choose this if:** You need to move compiled modules between different CPU architectures
+
+---
+
+### 💡 **Recommendation**
+
+**For 99% of users:** Choose **Optimized**! You're compiling for YOUR system - use your hardware's full capabilities! There's no stability downside, only performance gains.
+
+These optimizations improve VM performance at the kernel level, which indirectly benefits Wayland compositors and graphics-intensive applications.
 
 ## 🐛 Troubleshooting
 
