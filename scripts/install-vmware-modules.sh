@@ -459,7 +459,7 @@ fi
 
 echo ""
 info "Distribution details:"
-echo "  • Name: ${HYPHAED_GREEN}$DISTRO_NAME${NC}"
+echo -e "  • Name: ${HYPHAED_GREEN}$DISTRO_NAME${NC}"
 echo "  • Version: $DISTRO_VERSION"
 
 # Determine distribution family/branch
@@ -467,47 +467,47 @@ case "$DISTRO" in
     "gentoo")
         DISTRO_FAMILY="Gentoo"
         DISTRO_APPROACH="Source-based compilation with Portage"
-        echo "  • Family: ${HYPHAED_GREEN}Gentoo Branch${NC} (Source-based)"
+        echo -e "  • Family: ${HYPHAED_GREEN}Gentoo Branch${NC} (Source-based)"
         ;;
     "arch")
         DISTRO_FAMILY="Arch"
         DISTRO_APPROACH="Rolling release with pacman"
-        echo "  • Family: ${HYPHAED_GREEN}Arch Branch${NC} (Rolling release)"
+        echo -e "  • Family: ${HYPHAED_GREEN}Arch Branch${NC} (Rolling release)"
         ;;
     "fedora")
         DISTRO_FAMILY="Red Hat"
         DISTRO_APPROACH="RPM-based with DNF package manager"
-        echo "  • Family: ${HYPHAED_GREEN}Red Hat Branch${NC} (Fedora/RPM-based)"
+        echo -e "  • Family: ${HYPHAED_GREEN}Red Hat Branch${NC} (Fedora/RPM-based)"
         ;;
     "centos")
         DISTRO_FAMILY="Red Hat"
         DISTRO_APPROACH="Enterprise RPM-based with DNF/YUM"
-        echo "  • Family: ${HYPHAED_GREEN}Red Hat Branch${NC} (RHEL/CentOS/RPM-based)"
+        echo -e "  • Family: ${HYPHAED_GREEN}Red Hat Branch${NC} (RHEL/CentOS/RPM-based)"
         ;;
     "ubuntu")
         DISTRO_FAMILY="Debian"
         DISTRO_APPROACH="DEB-based with APT, LTS releases"
-        echo "  • Family: ${HYPHAED_GREEN}Debian Branch${NC} (Ubuntu/DEB-based)"
+        echo -e "  • Family: ${HYPHAED_GREEN}Debian Branch${NC} (Ubuntu/DEB-based)"
         ;;
     "debian")
         DISTRO_FAMILY="Debian"
         DISTRO_APPROACH="Pure DEB-based with APT"
-        echo "  • Family: ${HYPHAED_GREEN}Debian Branch${NC} (Pure Debian)"
+        echo -e "  • Family: ${HYPHAED_GREEN}Debian Branch${NC} (Pure Debian)"
         ;;
     "suse")
         DISTRO_FAMILY="SUSE"
         DISTRO_APPROACH="RPM-based with Zypper package manager"
-        echo "  • Family: ${HYPHAED_GREEN}SUSE Branch${NC} (openSUSE/RPM-based)"
+        echo -e "  • Family: ${HYPHAED_GREEN}SUSE Branch${NC} (openSUSE/RPM-based)"
         ;;
     "void")
         DISTRO_FAMILY="Independent"
         DISTRO_APPROACH="XBPS package manager, musl/glibc options"
-        echo "  • Family: ${HYPHAED_GREEN}Void Branch${NC} (Independent)"
+        echo -e "  • Family: ${HYPHAED_GREEN}Void Branch${NC} (Independent)"
         ;;
     "alpine")
         DISTRO_FAMILY="Independent"
         DISTRO_APPROACH="APK package manager, musl-based"
-        echo "  • Family: ${HYPHAED_GREEN}Alpine Branch${NC} (Independent/musl)"
+        echo -e "  • Family: ${HYPHAED_GREEN}Alpine Branch${NC} (Independent/musl)"
         ;;
     *)
         DISTRO_FAMILY="Unknown"
@@ -661,15 +661,8 @@ PYTHON_ENV_SETUP="$SCRIPT_DIR/setup_python_env.sh"
 PYTHON_ENV_ACTIVATE="$SCRIPT_DIR/activate_optimizer_env.sh"
 USE_PYTHON_DETECTION=false
 
-# Use actual user's home when running with sudo (same as wizard section)
-if [ -n "$SUDO_USER" ]; then
-    ACTUAL_HOME=$(eval echo ~$SUDO_USER)
-else
-    ACTUAL_HOME="$HOME"
-fi
-
-MINIFORGE_DIR="$ACTUAL_HOME/.miniforge3"
-ENV_NAME="vmware-optimizer"
+# Reuse MINIFORGE_DIR and ENV_NAME from wizard section (already defined above)
+# They were set when the wizard ran, no need to redefine
 
 if [ -f "$PYTHON_DETECTOR" ]; then
     info "Attempting advanced Python-based hardware detection..."
@@ -707,23 +700,24 @@ if [ -f "$PYTHON_DETECTOR" ]; then
         # Check if JSON was generated successfully
         if [ -f "/tmp/vmware_hw_capabilities.json" ]; then
             USE_PYTHON_DETECTION=true
-                # Extract key values using grep/sed (portable)
-                PYTHON_OPT_SCORE=$(grep -o '"optimization_score":[[:space:]]*[0-9]*' /tmp/vmware_hw_capabilities.json | grep -o '[0-9]*$')
-                PYTHON_RECOMMENDED=$(grep -o '"recommended_mode":[[:space:]]*"[^"]*"' /tmp/vmware_hw_capabilities.json | sed 's/.*"\([^"]*\)".*/\1/')
-                PYTHON_HAS_AVX512=$(grep -o '"has_avx512f":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
-                PYTHON_HAS_VTX=$(grep -o '"has_vtx":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
-                PYTHON_HAS_EPT=$(grep -o '"has_ept":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
-                PYTHON_HAS_NVME=$(grep -o '"has_nvme":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
-                
-                log "✓ Advanced Python hardware detection completed"
-                echo ""
-                info "Hardware Analysis Results:"
-                # Optimization score is internal - don't display to users
-                echo "  • Recommended Mode: ${HYPHAED_GREEN}$PYTHON_RECOMMENDED${NC}"
-                echo "  • AVX-512 Support: $([ "$PYTHON_HAS_AVX512" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
-                echo "  • VT-x/EPT Support: $([ "$PYTHON_HAS_VTX" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
-                echo "  • NVMe Storage: $([ "$PYTHON_HAS_NVME" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
-                echo ""
+            
+            # Extract key values using grep/sed (portable)
+            PYTHON_OPT_SCORE=$(grep -o '"optimization_score":[[:space:]]*[0-9]*' /tmp/vmware_hw_capabilities.json | grep -o '[0-9]*$')
+            PYTHON_RECOMMENDED=$(grep -o '"recommended_mode":[[:space:]]*"[^"]*"' /tmp/vmware_hw_capabilities.json | sed 's/.*"\([^"]*\)".*/\1/')
+            PYTHON_HAS_AVX512=$(grep -o '"has_avx512f":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
+            PYTHON_HAS_VTX=$(grep -o '"has_vtx":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
+            PYTHON_HAS_EPT=$(grep -o '"has_ept":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
+            PYTHON_HAS_NVME=$(grep -o '"has_nvme":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
+            
+            log "✓ Advanced Python hardware detection completed"
+            echo ""
+            info "Hardware Analysis Results:"
+            # Optimization score is internal - don't display to users
+            echo "  • Recommended Mode: ${HYPHAED_GREEN}$PYTHON_RECOMMENDED${NC}"
+            echo "  • AVX-512 Support: $([ "$PYTHON_HAS_AVX512" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
+            echo "  • VT-x/EPT Support: $([ "$PYTHON_HAS_VTX" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
+            echo "  • NVMe Storage: $([ "$PYTHON_HAS_NVME" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
+            echo ""
         else
             warning "Python detection did not generate expected output, falling back to bash detection"
         fi
