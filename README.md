@@ -19,7 +19,7 @@ This project provides:
 1. **🐍 Interactive Python Wizard** - Beautiful terminal UI that guides you through installation
 2. **🔬 Advanced Hardware Detection** - Deep analysis of CPU, GPU, storage, virtualization features
 3. **⚡ Performance Optimizations** - 20-35% faster VMs through hardware-specific compilation
-4. **✨ Better Wayland Support** - Top bar hiding works ~90% of the time (vs unreliable with vanilla modules)
+4. **✨ Better Wayland Support** - Top bar hiding works ~90% of the time (includes automatic race condition fix)
 5. **🐧 Universal Linux Support** - Works on 18+ distributions (Ubuntu, Fedora, Arch, Gentoo, etc.)
 6. **🛡️ Smart Backup System** - Hash-verified backups with automatic cleanup
 
@@ -79,9 +79,16 @@ Then **auto-generates optimal compilation flags** for your hardware!
 - Branch prediction hints (`likely()`/`unlikely()`)
 - Cache line alignment (reduces false sharing)
 - Aggressive compiler optimizations (`-O3`, `-ffast-math`, `-funroll-loops`)
-- Early module loading configuration (fixes race conditions)
+- **Automatic boot-time module loading** (via `/etc/modules-load.d/vmware.conf`)
+- **Module load order configuration** (via `/etc/modprobe.d/vmware.conf` - fixes race conditions)
 
-**Result:** Faster VMs = less CPU overhead → smoother compositor performance on Wayland/Xorg. The reduced system load means Wayland compositors (GNOME, KDE, Sway) have more resources available, resulting in better fullscreen transitions and top bar behavior.
+**Wayland improvements include:**
+- **Automatic fix for first-boot top bar issue** - Applied by default during installation
+- Lower CPU overhead means more resources for compositor (GNOME Shell, KWin, Sway)
+- Faster module initialization prevents VMware from starting before modules are ready
+- Smoother fullscreen transitions and better top bar behavior (~90% reliability)
+
+**Result:** Faster VMs = less CPU overhead → smoother compositor performance on Wayland/Xorg. The installation automatically configures proper module loading to prevent race conditions that cause the top bar to stick on first VM boot.
 
 ### 🐧 **Universal Linux Support**
 18+ distributions with auto-detection:
