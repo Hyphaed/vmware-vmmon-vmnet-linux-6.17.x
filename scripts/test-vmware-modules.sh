@@ -17,12 +17,12 @@ error() { echo -e "${RED}[✗]${NC} $1"; }
 
 echo -e "${HYPHAED_GREEN}"
 cat << 'EOF'
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║        VMWARE MODULES COMPREHENSIVE TEST SUITE               ║
-║         Verification of Installation & Runtime               ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
+╭──────────────────────────────────────────────────────────────╮
+│                                                              │
+│        VMWARE MODULES COMPREHENSIVE TEST SUITE               │
+│         Verification of Installation & Runtime               │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
 EOF
 echo -e "${NC}"
 echo ""

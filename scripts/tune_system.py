@@ -154,12 +154,12 @@ class SystemOptimizer:
     def show_banner(self):
         """Display welcome banner"""
         banner = """
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║       VMware WORKSTATION SYSTEM OPTIMIZER                   ║
-║          Tune Your System for Best Performance               ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
+╭──────────────────────────────────────────────────────────────╮
+│                                                              │
+│       VMware WORKSTATION SYSTEM OPTIMIZER                   │
+│          Tune Your System for Best Performance               │
+│                                                              │
+╰──────────────────────────────────────────────────────────────╯
 """
         self.ui.console.print(f"[primary]{banner}[/primary]")
         self.ui.console.print()
