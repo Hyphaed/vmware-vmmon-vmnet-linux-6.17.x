@@ -1402,44 +1402,215 @@ echo ""
 log "✓ Hardware detection completed"
 
 # ============================================
-# 2. INSTALL DEPENDENCIES
+# 2. COMPREHENSIVE DEPENDENCY CHECK
 # ============================================
-log "2. Verifying dependencies..."
+log "2. Verifying all dependencies..."
+echo ""
 
-# Verify kernel headers
+# Track missing dependencies
+MISSING_DEPS=()
+MISSING_OPTIONAL=()
+
+# ============================================
+# 2.1. CRITICAL DEPENDENCIES
+# ============================================
+info "Checking critical dependencies..."
+
+# Check kernel headers (REQUIRED)
 if [ "$DISTRO" = "fedora" ]; then
-    if [ ! -d "/usr/src/kernels/$KERNEL_VERSION" ]; then
-        info "Installing kernel-devel..."
-        sudo dnf install -y kernel-devel-$KERNEL_VERSION
-    fi
-    log "✓ Kernel headers found"
-    
-    # Build tools
-    info "Verifying build tools..."
-    sudo dnf groupinstall -y "Development Tools" || true
-    sudo dnf install -y gcc make git wget tar || true
-    
+    KERNEL_HEADERS_PATH="/usr/src/kernels/$KERNEL_VERSION"
+    KERNEL_HEADERS_PKG="kernel-devel-$KERNEL_VERSION"
 elif [ "$DISTRO" = "debian" ]; then
-    if [ ! -d "/lib/modules/$KERNEL_VERSION/build" ]; then
-        info "Installing linux-headers..."
-        sudo apt update
-        sudo apt install -y linux-headers-$KERNEL_VERSION
-    fi
-    log "✓ Kernel headers found"
-    
-    # Build tools
-    info "Verifying build tools..."
-    sudo apt install -y build-essential git wget tar
-
+    KERNEL_HEADERS_PATH="/lib/modules/$KERNEL_VERSION/build"
+    KERNEL_HEADERS_PKG="linux-headers-$KERNEL_VERSION"
 elif [ "$DISTRO" = "gentoo" ]; then
-    if [ ! -d "/usr/src/linux-$KERNEL_VERSION" ] && [ ! -d "/usr/src/linux" ]; then
-        warning "Kernel sources not found"
-        info "Gentoo users: ensure kernel sources are installed"
-    fi
-    log "✓ Gentoo: Assuming build tools are available"
+    KERNEL_HEADERS_PATH="/usr/src/linux"
+    KERNEL_HEADERS_PKG="sys-kernel/gentoo-sources"
 fi
 
-log "✓ Build tools verified"
+if [ ! -d "$KERNEL_HEADERS_PATH" ]; then
+    warning "Kernel headers not found: $KERNEL_HEADERS_PATH"
+    MISSING_DEPS+=("$KERNEL_HEADERS_PKG")
+else
+    log "✓ Kernel headers found"
+fi
+
+# Check essential build tools (REQUIRED)
+REQUIRED_TOOLS=("gcc" "make" "ld" "patch")
+for tool in "${REQUIRED_TOOLS[@]}"; do
+    if ! command -v "$tool" &> /dev/null; then
+        warning "$tool not found"
+        MISSING_DEPS+=("$tool")
+    else
+        log "✓ $tool found"
+    fi
+done
+
+# Check additional build tools (REQUIRED)
+REQUIRED_UTILS=("git" "wget" "tar" "sed" "grep" "awk")
+for util in "${REQUIRED_UTILS[@]}"; do
+    if ! command -v "$util" &> /dev/null; then
+        warning "$util not found"
+        MISSING_DEPS+=("$util")
+    else
+        log "✓ $util found"
+    fi
+done
+
+# Check if pahole is available for BTF (OPTIONAL but recommended for kernel 5.18+)
+if ! command -v pahole &> /dev/null; then
+    info "pahole not found (optional - needed for BTF generation)"
+    MISSING_OPTIONAL+=("pahole:dwarves")
+else
+    log "✓ pahole found (BTF generation available)"
+fi
+
+echo ""
+
+# ============================================
+# 2.2. INSTALL MISSING CRITICAL DEPENDENCIES
+# ============================================
+if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
+    warning "Missing ${#MISSING_DEPS[@]} critical dependencies"
+    echo ""
+    info "Installing missing dependencies..."
+    
+    if [ "$DISTRO" = "fedora" ]; then
+        # Install build tools group
+        sudo dnf groupinstall -y "Development Tools" 2>/dev/null || true
+        
+        # Install specific packages
+        for dep in "${MISSING_DEPS[@]}"; do
+            info "Installing $dep..."
+            sudo dnf install -y "$dep" 2>/dev/null || warning "Could not install $dep"
+        done
+        
+    elif [ "$DISTRO" = "debian" ]; then
+        # Update package list
+        sudo apt update
+        
+        # Install build-essential (includes gcc, make, etc.)
+        if [[ " ${MISSING_DEPS[@]} " =~ " gcc " ]] || [[ " ${MISSING_DEPS[@]} " =~ " make " ]]; then
+            info "Installing build-essential..."
+            sudo apt install -y build-essential
+        fi
+        
+        # Install specific packages
+        for dep in "${MISSING_DEPS[@]}"; do
+            # Skip if already installed by build-essential
+            if [[ "$dep" != "gcc" ]] && [[ "$dep" != "make" ]] && [[ "$dep" != "ld" ]]; then
+                info "Installing $dep..."
+                sudo apt install -y "$dep" 2>/dev/null || warning "Could not install $dep"
+            fi
+        done
+        
+    elif [ "$DISTRO" = "gentoo" ]; then
+        warning "Gentoo detected - please manually install missing packages:"
+        for dep in "${MISSING_DEPS[@]}"; do
+            echo "  • $dep"
+        done
+        read -p "Press Enter after installing dependencies..."
+    fi
+    
+    echo ""
+    log "✓ Critical dependencies installed"
+else
+    log "✓ All critical dependencies present"
+fi
+
+echo ""
+
+# ============================================
+# 2.3. OPTIONAL DEPENDENCIES
+# ============================================
+info "Checking optional dependencies..."
+
+# Check Python 3 (for wizard and hardware detection)
+if ! command -v python3 &> /dev/null; then
+    warning "Python 3 not found (wizard will be disabled)"
+    MISSING_OPTIONAL+=("python3")
+else
+    PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
+    log "✓ Python 3 found ($PYTHON_VERSION)"
+    
+    # Check for conda/mamba (optional, for optimized environment)
+    if command -v mamba &> /dev/null; then
+        log "✓ Mamba found (optimized Python environment available)"
+    elif command -v conda &> /dev/null; then
+        info "Conda found (mamba recommended for better performance)"
+    else
+        info "Conda/Mamba not found (Python wizard will use system Python)"
+    fi
+fi
+
+# Check jq (for JSON parsing)
+if ! command -v jq &> /dev/null; then
+    warning "jq not found (JSON parsing may be limited)"
+    MISSING_OPTIONAL+=("jq")
+else
+    log "✓ jq found"
+fi
+
+# Check lscpu (for hardware detection)
+if ! command -v lscpu &> /dev/null; then
+    warning "lscpu not found (hardware detection may be limited)"
+    MISSING_OPTIONAL+=("util-linux:lscpu")
+else
+    log "✓ lscpu found"
+fi
+
+# Check dkms (optional, for automatic module rebuilds)
+if ! command -v dkms &> /dev/null; then
+    info "dkms not found (automatic module rebuilds on kernel update disabled)"
+    MISSING_OPTIONAL+=("dkms")
+else
+    log "✓ dkms found"
+fi
+
+# Check systemctl (for service management)
+if ! command -v systemctl &> /dev/null; then
+    warning "systemctl not found (service management may be limited)"
+else
+    log "✓ systemctl found"
+fi
+
+echo ""
+
+# ============================================
+# 2.4. OPTIONAL DEPENDENCY INSTALLATION
+# ============================================
+if [ ${#MISSING_OPTIONAL[@]} -gt 0 ]; then
+    info "Missing ${#MISSING_OPTIONAL[@]} optional dependencies"
+    info "Optional dependencies improve functionality but are not required"
+    echo ""
+    
+    read -p "Install optional dependencies? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if [ "$DISTRO" = "fedora" ]; then
+            for dep in "${MISSING_OPTIONAL[@]}"; do
+                PKG_NAME="${dep%%:*}"  # Extract package name before colon
+                info "Installing $PKG_NAME..."
+                sudo dnf install -y "$PKG_NAME" 2>/dev/null || true
+            done
+        elif [ "$DISTRO" = "debian" ]; then
+            for dep in "${MISSING_OPTIONAL[@]}"; do
+                PKG_NAME="${dep%%:*}"  # Extract package name before colon
+                info "Installing $PKG_NAME..."
+                sudo apt install -y "$PKG_NAME" 2>/dev/null || true
+            done
+        fi
+        echo ""
+        log "✓ Optional dependencies installed"
+    else
+        info "Skipping optional dependencies"
+    fi
+else
+    log "✓ All optional dependencies present"
+fi
+
+echo ""
+log "✓ Dependency check complete"
 
 # ============================================
 # 2.5. CHECK BTF (BPF Type Format) SUPPORT
