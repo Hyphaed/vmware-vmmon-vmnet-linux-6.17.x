@@ -184,7 +184,6 @@ class VMwareWizard:
             self.ui.show_step(1, 5, "System Tuning Decision (Optional)")
             
             self.ui.console.print("[success]💡 Recommended:[/] Apply tuning FIRST for best results")
-            self.ui.console.print("[info]✨ Benefit:[/] Tuning before compilation = initramfs rebuilt only once!")
             self.ui.console.print("[warning]ℹ️  Note:[/] This step is optional but highly recommended for optimal performance")
             self.ui.console.print()
             
