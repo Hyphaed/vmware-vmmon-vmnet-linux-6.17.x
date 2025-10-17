@@ -1116,8 +1116,8 @@ if [ -n "$OPTIM_FLAGS" ] || [ -n "$KERNEL_FEATURES" ] || [ "$NVME_DETECTED" = tr
     esac
     else
         # Wizard mode: use configuration from JSON file
-        info "Using optimization mode from wizard: $OPTIM_MODE"
-        if [ "$OPTIM_MODE" = "optimized" ]; then
+        info "Using optimization mode from wizard: $OPTIMIZATION_MODE"
+        if [ "$OPTIMIZATION_MODE" = "optimized" ]; then
             OPTIM_CHOICE="1"
             # Combine all compiler optimization flags
             EXTRA_CFLAGS="$PERF_FLAGS $NATIVE_OPTIM $KERNEL_FEATURES $EXTRA_OPTIM"

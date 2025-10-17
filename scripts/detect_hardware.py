@@ -1072,50 +1072,69 @@ def main():
     if os.geteuid() != 0:
         print("Note: Running without root. Some detections may be limited.\n", file=sys.stderr)
     
-    detector = HardwareDetector()
-    capabilities, comp_flags = detector.detect_all()
+    try:
+        detector = HardwareDetector()
+        capabilities, comp_flags = detector.detect_all()
+        
+        # Convert dataclasses to dict recursively
+        def dataclass_to_dict(obj):
+            if hasattr(obj, '__dataclass_fields__'):
+                return {k: dataclass_to_dict(v) for k, v in asdict(obj).items()}
+            elif isinstance(obj, list):
+                return [dataclass_to_dict(item) for item in obj]
+            else:
+                return obj
+        
+        # Build comprehensive output
+        output_data = {
+            'capabilities': dataclass_to_dict(capabilities),
+            'compilation_flags': comp_flags,
+            'optimized_cflags': ' '.join([
+                comp_flags['base_optimization'],
+                *comp_flags['architecture_flags'],
+                *comp_flags['feature_flags']
+            ]),
+            'optimized_ldflags': ' '.join(comp_flags['link_flags']),
+            'make_variables': comp_flags['make_flags']
+        }
+        
+        # Output JSON for script consumption
+        output_file = Path('/tmp/vmware_hw_capabilities.json')
+        with open(output_file, 'w') as f:
+            json.dump(output_data, f, indent=2)
+        
+        print(f"\n✓ Hardware analysis complete: {output_file}", file=sys.stderr)
+        print(f"\nBash export commands:", file=sys.stderr)
+        print(f"export VMWARE_OPT_SCORE={capabilities.optimization_score}", file=sys.stderr)
+        print(f"export VMWARE_RECOMMENDED_MODE={capabilities.recommended_mode}", file=sys.stderr)
+        print(f"export VMWARE_CFLAGS=\"{output_data['optimized_cflags']}\"", file=sys.stderr)
+        print(f"export VMWARE_LDFLAGS=\"{output_data['optimized_ldflags']}\"", file=sys.stderr)
+        
+        for key, value in comp_flags['make_flags'].items():
+            print(f"export {key}={value}", file=sys.stderr)
+        print(f"export VMWARE_HAS_AVX512={1 if capabilities.cpu.has_avx512f else 0}")
+        print(f"export VMWARE_HAS_VTX_EPT={1 if capabilities.virtualization.ept_supported else 0}")
+        print(f"export VMWARE_NVME_COUNT={len(capabilities.storage_devices)}")
+        
+        return 0
     
-    # Convert dataclasses to dict recursively
-    def dataclass_to_dict(obj):
-        if hasattr(obj, '__dataclass_fields__'):
-            return {k: dataclass_to_dict(v) for k, v in asdict(obj).items()}
-        elif isinstance(obj, list):
-            return [dataclass_to_dict(item) for item in obj]
-        else:
-            return obj
-    
-    # Build comprehensive output
-    output_data = {
-        'capabilities': dataclass_to_dict(capabilities),
-        'compilation_flags': comp_flags,
-        'optimized_cflags': ' '.join([
-            comp_flags['base_optimization'],
-            *comp_flags['architecture_flags'],
-            *comp_flags['feature_flags']
-        ]),
-        'optimized_ldflags': ' '.join(comp_flags['link_flags']),
-        'make_variables': comp_flags['make_flags']
-    }
-    
-    # Output JSON for script consumption
-    output_file = Path('/tmp/vmware_hw_capabilities.json')
-    with open(output_file, 'w') as f:
-        json.dump(output_data, f, indent=2)
-    
-    print(f"\n✓ Hardware analysis complete: {output_file}", file=sys.stderr)
-    print(f"\nBash export commands:", file=sys.stderr)
-    print(f"export VMWARE_OPT_SCORE={capabilities.optimization_score}", file=sys.stderr)
-    print(f"export VMWARE_RECOMMENDED_MODE={capabilities.recommended_mode}", file=sys.stderr)
-    print(f"export VMWARE_CFLAGS=\"{output_data['optimized_cflags']}\"", file=sys.stderr)
-    print(f"export VMWARE_LDFLAGS=\"{output_data['optimized_ldflags']}\"", file=sys.stderr)
-    
-    for key, value in comp_flags['make_flags'].items():
-        print(f"export {key}={value}", file=sys.stderr)
-    print(f"export VMWARE_HAS_AVX512={1 if capabilities.cpu.has_avx512f else 0}")
-    print(f"export VMWARE_HAS_VTX_EPT={1 if capabilities.virtualization.ept_supported else 0}")
-    print(f"export VMWARE_NVME_COUNT={len(capabilities.storage_devices)}")
-    
-    return 0
+    except Exception as e:
+        print(f"\n✗ Hardware detection failed: {e}", file=sys.stderr)
+        print("Falling back to basic detection...", file=sys.stderr)
+        
+        # Create minimal JSON for bash fallback
+        output_file = Path('/tmp/vmware_hw_capabilities.json')
+        minimal_data = {
+            'error': str(e),
+            'optimization': {
+                'recommended_mode': 'optimized',
+                'optimization_score': 50
+            }
+        }
+        with open(output_file, 'w') as f:
+            json.dump(minimal_data, f, indent=2)
+        
+        return 1
 
 
 if __name__ == '__main__':

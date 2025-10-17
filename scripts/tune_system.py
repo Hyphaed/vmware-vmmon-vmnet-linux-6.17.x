@@ -442,11 +442,37 @@ class SystemOptimizer:
         
         # Apply settings
         try:
-            subprocess.run(['sysctl', '-p', str(sysctl_conf)], check=True, capture_output=True)
-            self.console.print("  [green]✓[/green] Kernel parameters optimized")
-            self.changes_made.append("Kernel parameters (sysctl) tuned")
-            return True
-        except subprocess.CalledProcessError as e:
+            result = subprocess.run(['sysctl', '-p', str(sysctl_conf)], capture_output=True, text=True)
+            if result.returncode == 0:
+                self.console.print("  [green]✓[/green] Kernel parameters optimized")
+                self.changes_made.append("Kernel parameters (sysctl) tuned")
+                return True
+            else:
+                # Try to apply individual settings
+                self.console.print("  [yellow]⚠[/yellow] Some kernel parameters couldn't be applied")
+                success_count = 0
+                with open(sysctl_conf, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            key, value = line.split('=', 1)
+                            key = key.strip()
+                            value = value.strip()
+                            try:
+                                subprocess.run(['sysctl', '-w', f'{key}={value}'], 
+                                             check=True, capture_output=True)
+                                success_count += 1
+                            except:
+                                pass  # Skip parameters that fail
+                
+                if success_count > 0:
+                    self.console.print(f"  [green]✓[/green] Applied {success_count} kernel parameters successfully")
+                    self.changes_made.append("Kernel parameters (sysctl) partially tuned")
+                    return True
+                else:
+                    self.console.print("  [red]✗[/red] No kernel parameters could be applied")
+                    return False
+        except Exception as e:
             self.console.print(f"  [red]✗ Failed to apply sysctl settings: {e}[/red]")
             return False
     
