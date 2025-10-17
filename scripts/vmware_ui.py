@@ -35,11 +35,37 @@ try:
     import questionary
     from questionary import Style
 except ImportError:
-    print("Installing questionary for better UI...")
     import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary"])
-    import questionary
-    from questionary import Style
+    import shutil
+    
+    print("Questionary not found. Attempting to install in conda environment...", file=sys.stderr)
+    
+    # Check if we're in a conda/mamba environment
+    conda_prefix = os.environ.get('CONDA_PREFIX')
+    if conda_prefix:
+        # We're in a conda environment, use conda/mamba to install
+        try:
+            # Try mamba first (faster), then conda
+            if shutil.which('mamba'):
+                subprocess.check_call(['mamba', 'install', '-y', '-c', 'conda-forge', 'questionary'])
+            elif shutil.which('conda'):
+                subprocess.check_call(['conda', 'install', '-y', '-c', 'conda-forge', 'questionary'])
+            else:
+                # Fallback to pip within conda environment (safe)
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary"])
+        except subprocess.CalledProcessError:
+            print("Warning: Could not install questionary in conda environment.", file=sys.stderr)
+    else:
+        # Not in conda environment - warn user but continue
+        print("Warning: Not running in conda/mamba environment. Using basic prompts.", file=sys.stderr)
+    
+    try:
+        import questionary
+        from questionary import Style
+    except ImportError:
+        # Fallback mode
+        questionary = None
+        Style = None
 
 # Hyphaed green color
 HYPHAED_GREEN = "#B0D56A"

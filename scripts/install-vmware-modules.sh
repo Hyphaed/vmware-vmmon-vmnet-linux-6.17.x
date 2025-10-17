@@ -125,8 +125,92 @@ if [ ! -f "$WIZARD_SCRIPT" ]; then
 else
     # Check for Python 3
     if command -v python3 &>/dev/null; then
-        # Run the wizard
-        python3 "$WIZARD_SCRIPT"
+        # Determine which Python to use (prefer conda environment)
+        MINIFORGE_DIR="$HOME/.miniforge3"
+        ENV_NAME="vmware-optimizer"
+        
+        # Check if miniforge and environment exist
+        if [ ! -f "$MINIFORGE_DIR/envs/$ENV_NAME/bin/python" ]; then
+            echo ""
+            info "Conda environment not found. Setting up Python environment..."
+            info "This is a one-time setup and will take a few moments..."
+            echo ""
+            
+            # Check if setup script exists
+            PYTHON_ENV_SETUP="$SCRIPT_DIR/setup_python_env.sh"
+            if [ -f "$PYTHON_ENV_SETUP" ]; then
+                # Run setup as the actual user (not root)
+                if [ -n "$SUDO_USER" ]; then
+                    # Running under sudo, switch to actual user
+                    info "Installing miniforge for user: $SUDO_USER"
+                    sudo -u "$SUDO_USER" bash "$PYTHON_ENV_SETUP"
+                else
+                    # Not running under sudo
+                    bash "$PYTHON_ENV_SETUP"
+                fi
+                
+                # Source conda to make it available in current shell
+                if [ -f "$MINIFORGE_DIR/etc/profile.d/conda.sh" ]; then
+                    source "$MINIFORGE_DIR/etc/profile.d/conda.sh"
+                fi
+                
+                # Check if environment was created successfully
+                if [ ! -f "$MINIFORGE_DIR/envs/$ENV_NAME/bin/python" ]; then
+                    warning "Failed to create conda environment"
+                    warning "Falling back to system Python (limited UI features)"
+                    WIZARD_PYTHON="python3"
+                else
+                    log "✓ Conda environment created successfully"
+                    WIZARD_PYTHON="$MINIFORGE_DIR/envs/$ENV_NAME/bin/python"
+                fi
+            else
+                warning "Setup script not found: $PYTHON_ENV_SETUP"
+                warning "Using system Python (limited UI features)"
+                WIZARD_PYTHON="python3"
+            fi
+        else
+            info "Using conda environment Python"
+            WIZARD_PYTHON="$MINIFORGE_DIR/envs/$ENV_NAME/bin/python"
+        fi
+        
+        # If using conda environment, ensure all required packages are installed
+        if [ "$WIZARD_PYTHON" = "$MINIFORGE_DIR/envs/$ENV_NAME/bin/python" ]; then
+            # Check and install questionary if missing
+            if ! "$WIZARD_PYTHON" -c "import questionary" 2>/dev/null; then
+                info "Installing questionary in conda environment..."
+                
+                # Activate conda/mamba
+                if [ -f "$MINIFORGE_DIR/etc/profile.d/conda.sh" ]; then
+                    source "$MINIFORGE_DIR/etc/profile.d/conda.sh"
+                fi
+                
+                # Try mamba first (faster), then conda, finally pip
+                if [ -f "$MINIFORGE_DIR/bin/mamba" ]; then
+                    "$MINIFORGE_DIR/bin/mamba" install -y -n "$ENV_NAME" -c conda-forge questionary >/dev/null 2>&1 || \
+                    "$WIZARD_PYTHON" -m pip install questionary >/dev/null 2>&1 || true
+                elif [ -f "$MINIFORGE_DIR/bin/conda" ]; then
+                    "$MINIFORGE_DIR/bin/conda" install -y -n "$ENV_NAME" -c conda-forge questionary >/dev/null 2>&1 || \
+                    "$WIZARD_PYTHON" -m pip install questionary >/dev/null 2>&1 || true
+                else
+                    "$WIZARD_PYTHON" -m pip install questionary >/dev/null 2>&1 || true
+                fi
+                
+                if "$WIZARD_PYTHON" -c "import questionary" 2>/dev/null; then
+                    log "✓ questionary installed successfully"
+                else
+                    warning "Could not install questionary. Using basic UI."
+                fi
+            fi
+            
+            # Check and install rich if missing
+            if ! "$WIZARD_PYTHON" -c "import rich" 2>/dev/null; then
+                info "Installing rich in conda environment..."
+                "$WIZARD_PYTHON" -m pip install rich >/dev/null 2>&1 || true
+            fi
+        fi
+        
+        # Run the wizard with selected Python
+        "$WIZARD_PYTHON" "$WIZARD_SCRIPT"
         WIZARD_EXIT_CODE=$?
         
         if [ $WIZARD_EXIT_CODE -eq 0 ]; then
@@ -2103,4 +2187,5 @@ if [[ $REPLY =~ ^[Yy]$ ]] 2>/dev/null && [ -f "$SCRIPT_DIR/tune-system.sh" ] && 
     echo ""
 fi
 
+log "Process completed successfully!"
 log "Process completed successfully!"

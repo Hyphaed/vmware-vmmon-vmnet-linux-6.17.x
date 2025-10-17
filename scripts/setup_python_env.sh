@@ -33,10 +33,13 @@ echo -e "${NC}"
 
 # Check if running with sudo
 if [ "$EUID" -eq 0 ]; then
-    warning "This script should NOT be run with sudo"
-    warning "Please run as normal user: bash $0"
+    error "This script should NOT be run with sudo"
+    error "It will be called automatically by install script with correct user"
     exit 1
 fi
+
+info "Setting up Python environment for user: $(whoami)"
+info "Installation directory: $MINIFORGE_DIR"
 
 # 1. Check if miniforge3 is installed
 if [ ! -d "$MINIFORGE_DIR" ]; then
@@ -60,16 +63,23 @@ if [ ! -d "$MINIFORGE_DIR" ]; then
     bash /tmp/miniforge.sh -b -p "$MINIFORGE_DIR"
     rm /tmp/miniforge.sh
     
-    # Initialize shell
-    "$MINIFORGE_DIR/bin/conda" init bash
+    # Initialize shell (suppress output)
+    "$MINIFORGE_DIR/bin/conda" init bash >/dev/null 2>&1 || true
     
     log "✓ Miniforge3 installed"
+    
+    # Source conda to make it available immediately
+    if [ -f "$MINIFORGE_DIR/etc/profile.d/conda.sh" ]; then
+        source "$MINIFORGE_DIR/etc/profile.d/conda.sh"
+    fi
 else
     log "✓ Miniforge3 already installed"
+    
+    # Make sure conda is initialized
+    if [ -f "$MINIFORGE_DIR/etc/profile.d/conda.sh" ]; then
+        source "$MINIFORGE_DIR/etc/profile.d/conda.sh"
+    fi
 fi
-
-# Source conda
-source "$MINIFORGE_DIR/etc/profile.d/conda.sh"
 
 # 2. Create or update environment
 if conda env list | grep -q "^$ENV_NAME "; then
@@ -100,9 +110,10 @@ mamba install -y \
 pip install --upgrade \
     pynvml \
     pyudev \
-    distro
+    distro \
+    questionary
 
-log "✓ Python packages installed"
+log "✓ Python packages installed (including questionary for interactive UI)"
 
 # 4. Install system packages (if needed)
 log "Checking system dependencies..."

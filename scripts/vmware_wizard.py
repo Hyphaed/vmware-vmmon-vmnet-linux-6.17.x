@@ -9,6 +9,7 @@ import os
 import sys
 import json
 import subprocess
+import shutil
 import time
 from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional, Tuple
@@ -39,26 +40,59 @@ try:
     import questionary
     from questionary import Style
 except ImportError:
-    print("Installing questionary for better UI...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary"])
-    import questionary
-    from questionary import Style
+    print("Questionary not found. Attempting to install in conda environment...", file=sys.stderr)
+    
+    # Check if we're in a conda/mamba environment
+    conda_prefix = os.environ.get('CONDA_PREFIX')
+    if conda_prefix:
+        # We're in a conda environment, use conda/mamba to install
+        try:
+            # Try mamba first (faster), then conda
+            if shutil.which('mamba'):
+                subprocess.check_call(['mamba', 'install', '-y', '-c', 'conda-forge', 'questionary'])
+            elif shutil.which('conda'):
+                subprocess.check_call(['conda', 'install', '-y', '-c', 'conda-forge', 'questionary'])
+            else:
+                # Fallback to pip within conda environment (safe)
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary"])
+        except subprocess.CalledProcessError:
+            print("Warning: Could not install questionary in conda environment.", file=sys.stderr)
+    else:
+        # Not in conda environment - warn user
+        print("WARNING: Not running in conda/mamba environment!", file=sys.stderr)
+        print("Please run: bash scripts/setup_python_env.sh", file=sys.stderr)
+        print("Then use: $HOME/.miniforge3/envs/vmware-optimizer/bin/python scripts/vmware_wizard.py", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("Continuing with basic prompts (no questionary)...", file=sys.stderr)
+    
+    try:
+        import questionary
+        from questionary import Style
+    except ImportError:
+        # Fallback mode
+        questionary = None
+        Style = None
 
 console = Console()
 
 # Custom Questionary style matching Hyphaed green theme
-WIZARD_STYLE = Style([
-    ('qmark', 'fg:#B0D56A bold'),           # Question mark - Hyphaed green
-    ('question', 'fg:#ffffff bold'),         # Question text - white
-    ('answer', 'fg:#B0D56A bold'),          # Answer - Hyphaed green
-    ('pointer', 'fg:#B0D56A bold'),         # Pointer - Hyphaed green
-    ('highlighted', 'fg:#B0D56A bold'),     # Highlighted option - Hyphaed green
-    ('selected', 'fg:#00ffff'),              # Selected - cyan
-    ('separator', 'fg:#6C6C6C'),            # Separator - gray
-    ('instruction', 'fg:#858585'),           # Instructions - light gray
-    ('text', 'fg:#ffffff'),                  # Text - white
-    ('disabled', 'fg:#858585 italic')       # Disabled - gray italic
-])
+if questionary is not None and Style is not None:
+    WIZARD_STYLE = Style([
+        ('qmark', 'fg:#B0D56A bold'),           # Question mark - Hyphaed green
+        ('question', 'fg:#ffffff bold'),         # Question text - white
+        ('answer', 'fg:#B0D56A bold'),          # Answer - Hyphaed green
+        ('pointer', 'fg:#B0D56A bold'),         # Pointer - Hyphaed green
+        ('highlighted', 'fg:#B0D56A bold'),     # Highlighted option - Hyphaed green
+        ('selected', 'fg:#00ffff'),              # Selected - cyan
+        ('separator', 'fg:#6C6C6C'),            # Separator - gray
+        ('instruction', 'fg:#858585'),           # Instructions - light gray
+        ('text', 'fg:#ffffff'),                  # Text - white
+        ('disabled', 'fg:#858585 italic')       # Disabled - gray italic
+    ])
+    HAS_QUESTIONARY = True
+else:
+    WIZARD_STYLE = None
+    HAS_QUESTIONARY = False
 
 # Hyphaed green color
 HYPHAED_GREEN = "#B0D56A"
@@ -262,50 +296,75 @@ class VMwareWizard:
                 current_idx = idx
                 break
         
-        # Build choices for questionary
-        kernel_choices = []
-        for idx, kernel in enumerate(supported_kernels):
-            marker = "→ " if kernel.is_current else "  "
-            headers_mark = "✓" if kernel.headers_installed else "✗"
-            if kernel.headers_installed:
-                kernel_choices.append({
-                    'name': f"{marker}{kernel.full_version} [{headers_mark}]",
-                    'value': kernel,
-                    'disabled': None
-                })
+        # Use questionary if available, otherwise fallback to input
+        if HAS_QUESTIONARY:
+            # Build choices for questionary
+            kernel_choices = []
+            for idx, kernel in enumerate(supported_kernels):
+                marker = "→ " if kernel.is_current else "  "
+                headers_mark = "✓" if kernel.headers_installed else "✗"
+                if kernel.headers_installed:
+                    kernel_choices.append({
+                        'name': f"{marker}{kernel.full_version} [{headers_mark}]",
+                        'value': kernel,
+                        'disabled': None
+                    })
+                else:
+                    kernel_choices.append({
+                        'name': f"{marker}{kernel.full_version} [{headers_mark}] (no headers)",
+                        'value': kernel,
+                        'disabled': "Headers required"
+                    })
+            
+            kernel_choices.append({
+                'name': "→ All supported kernels with headers",
+                'value': 'all'
+            })
+            
+            choice = questionary.select(
+                "Select kernel(s) to compile for:",
+                choices=kernel_choices,
+                default=kernel_choices[current_idx] if current_idx < len(kernel_choices) else None,
+                style=WIZARD_STYLE,
+                qmark="🔧",
+                instruction="(Use arrow keys)"
+            ).ask()
+            
+            if choice is None:
+                self.console.print("[yellow]Selection cancelled[/yellow]")
+                sys.exit(0)
+            
+            # Handle selection
+            if choice == 'all':
+                selected_kernels = [k for k in supported_kernels if k.headers_installed]
+                if not selected_kernels:
+                    self.console.print("[red]✗ No kernels with headers installed![/red]")
+                    sys.exit(1)
             else:
-                kernel_choices.append({
-                    'name': f"{marker}{kernel.full_version} [{headers_mark}] (no headers)",
-                    'value': kernel,
-                    'disabled': "Headers required"
-                })
-        
-        kernel_choices.append({
-            'name': "→ All supported kernels with headers",
-            'value': 'all'
-        })
-        
-        choice = questionary.select(
-            "Select kernel(s) to compile for:",
-            choices=kernel_choices,
-            default=kernel_choices[current_idx] if current_idx < len(kernel_choices) else None,
-            style=WIZARD_STYLE,
-            qmark="🔧",
-            instruction="(Use arrow keys)"
-        ).ask()
-        
-        if choice is None:
-            self.console.print("[yellow]Selection cancelled[/yellow]")
-            sys.exit(0)
-        
-        # Handle selection
-        if choice == 'all':
-            selected_kernels = [k for k in supported_kernels if k.headers_installed]
-            if not selected_kernels:
-                self.console.print("[red]✗ No kernels with headers installed![/red]")
-                sys.exit(1)
+                selected_kernels = [choice]
         else:
-            selected_kernels = [choice]
+            # Fallback to basic input
+            self.console.print("[dim]Enter number or 'all' for all kernels[/dim]")
+            choice_input = input(f"Select kernel (default: {current_idx + 1}): ").strip() or str(current_idx + 1)
+            
+            if choice_input.lower() == 'all' or choice_input == str(len(supported_kernels) + 1):
+                selected_kernels = [k for k in supported_kernels if k.headers_installed]
+            else:
+                try:
+                    idx = int(choice_input) - 1
+                    if 0 <= idx < len(supported_kernels):
+                        kernel = supported_kernels[idx]
+                        if kernel.headers_installed:
+                            selected_kernels = [kernel]
+                        else:
+                            self.console.print("[red]✗ Selected kernel has no headers![/red]")
+                            sys.exit(1)
+                    else:
+                        self.console.print("[red]✗ Invalid selection![/red]")
+                        sys.exit(1)
+                except ValueError:
+                    self.console.print("[red]✗ Invalid input![/red]")
+                    sys.exit(1)
         
         self.console.print()
         self.console.print(Panel.fit(
@@ -511,31 +570,36 @@ class VMwareWizard:
         self.console.print(f"[dim]💡 Recommended for your hardware: [bold]{recommended.upper()}[/bold][/dim]")
         self.console.print()
         
-        choices = [
-            {
-                'name': '🚀 Optimized (Recommended) - 20-35% faster + better Wayland',
-                'value': 'optimized'
-            },
-            {
-                'name': '🔒 Vanilla - Portable, works on any CPU',
-                'value': 'vanilla'
-            }
-        ]
-        
-        choice = questionary.select(
-            "Select compilation mode:",
-            choices=choices,
-            default=choices[0],
-            style=WIZARD_STYLE,
-            qmark="⚙️",
-            instruction="(Use arrow keys)"
-        ).ask()
-        
-        if choice is None:
-            self.console.print("[yellow]Selection cancelled[/yellow]")
-            sys.exit(0)
-        
-        self.optimization_mode = choice
+        if HAS_QUESTIONARY:
+            choices = [
+                {
+                    'name': '🚀 Optimized (Recommended) - 20-35% faster + better Wayland',
+                    'value': 'optimized'
+                },
+                {
+                    'name': '🔒 Vanilla - Portable, works on any CPU',
+                    'value': 'vanilla'
+                }
+            ]
+            
+            choice = questionary.select(
+                "Select compilation mode:",
+                choices=choices,
+                default=choices[0],
+                style=WIZARD_STYLE,
+                qmark="⚙️",
+                instruction="(Use arrow keys)"
+            ).ask()
+            
+            if choice is None:
+                self.console.print("[yellow]Selection cancelled[/yellow]")
+                sys.exit(0)
+            
+            self.optimization_mode = choice
+        else:
+            # Fallback
+            choice_input = input("Select mode [1=Optimized, 2=Vanilla] (default: 1): ").strip() or "1"
+            self.optimization_mode = "optimized" if choice_input == "1" else "vanilla"
         
         self.console.print()
         mode_display = "🚀 OPTIMIZED" if self.optimization_mode == "optimized" else "🔒 VANILLA"
@@ -568,12 +632,17 @@ class VMwareWizard:
         self.console.print(summary)
         self.console.print()
         
-        proceed = questionary.confirm(
-            "Proceed with compilation?",
-            default=True,
-            style=WIZARD_STYLE,
-            qmark="❓"
-        ).ask()
+        if HAS_QUESTIONARY:
+            proceed = questionary.confirm(
+                "Proceed with compilation?",
+                default=True,
+                style=WIZARD_STYLE,
+                qmark="❓"
+            ).ask()
+        else:
+            # Fallback
+            proceed_input = input("Proceed with compilation? [Y/n]: ").strip().lower()
+            proceed = proceed_input in ['', 'y', 'yes']
         
         if not proceed:
             self.console.print("[yellow]Installation cancelled by user.[/yellow]")
@@ -675,12 +744,16 @@ class VMwareWizard:
                 self.console.print()
                 
                 # Ask user (default to Yes for reinstall)
-                proceed = questionary.confirm(
-                    "Do you want to reinstall/recompile the modules?",
-                    default=True,
-                    style=WIZARD_STYLE,
-                    qmark="❓"
-                ).ask()
+                if HAS_QUESTIONARY:
+                    proceed = questionary.confirm(
+                        "Do you want to reinstall/recompile the modules?",
+                        default=True,
+                        style=WIZARD_STYLE,
+                        qmark="❓"
+                    ).ask()
+                else:
+                    proceed_input = input("Do you want to reinstall/recompile the modules? [Y/n]: ").strip().lower()
+                    proceed = proceed_input in ['', 'y', 'yes']
                 
                 if not proceed:
                     self.console.print()

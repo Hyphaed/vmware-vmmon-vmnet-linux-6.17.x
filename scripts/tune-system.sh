@@ -45,8 +45,22 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Check for Python 3
-if ! command -v python3 &>/dev/null; then
+# Determine which Python to use (prefer conda environment)
+MINIFORGE_DIR="$HOME/.miniforge3"
+ENV_NAME="vmware-optimizer"
+
+# If running with sudo, use the actual user's home directory
+if [ -n "$SUDO_USER" ]; then
+    MINIFORGE_DIR="/home/$SUDO_USER/.miniforge3"
+fi
+
+if [ -f "$MINIFORGE_DIR/envs/$ENV_NAME/bin/python" ]; then
+    echo -e "${GREEN}[i]${NC} Using conda environment Python"
+    PYTHON_CMD="$MINIFORGE_DIR/envs/$ENV_NAME/bin/python"
+elif command -v python3 &>/dev/null; then
+    echo -e "${YELLOW}[!]${NC} Using system Python (conda environment not found)"
+    PYTHON_CMD="python3"
+else
     echo -e "${RED}✗ Python 3 not found${NC}"
     echo "Please install Python 3 first"
     exit 1
@@ -67,7 +81,7 @@ chmod +x "$OPTIMIZER_SCRIPT"
 echo -e "${GREEN}Launching system optimizer...${NC}"
 echo ""
 
-python3 "$OPTIMIZER_SCRIPT"
+"$PYTHON_CMD" "$OPTIMIZER_SCRIPT"
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then
