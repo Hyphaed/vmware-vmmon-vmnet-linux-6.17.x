@@ -1,227 +1,172 @@
-# Release v1.0.4 - Simplified Optimizations, NVMe Support, Gentoo & Utilities
+# 🚀 VMware Modules for Linux Kernel 6.16.x/6.17.x - Release v1.0.4
 
-**Release Date:** October 17, 2025
+**Release Date:** October 15, 2025
 
-This major release **simplifies optimizations** to 2 clear choices, adds **NVMe/M.2 storage optimizations**, adds Gentoo Linux support, and includes powerful utility scripts for updating, restoring, and uninstalling VMware modules.
-
----
-
-## 🎯 Simplified Optimization System
-
-**From 4 confusing options to 2 clear choices:**
-
-### 🚀 **Option 1: Optimized (Recommended)**
-**20-40% better performance** across CPU, memory, graphics, storage, and network.
-
-**Performance gains:**
-- **CPU**: 20-30% faster (O3 optimization + CPU-specific instructions)
-- **Memory**: 10-15% faster allocation and access
-- **Graphics/Wayland**: 15-25% smoother (low latency + DMA optimizations)
-- **Storage (NVMe/M.2)**: 15-25% faster I/O (multiqueue + PCIe optimizations)
-- **Network**: 5-10% better throughput
-- **DMA/GPU**: 20-40% faster transfers
-
-**Trade-off:** Modules only work on your CPU type (e.g., can't move Intel → AMD)
+This release adds **Gentoo Linux support** and introduces the **foundation for hardware-specific optimizations** that will be fully realized in v1.0.5.
 
 ---
 
-### 🔒 **Option 2: Vanilla (Standard VMware)**
-**Baseline performance** - no modifications, just kernel compatibility patches.
+## 🎯 What's New in v1.0.4
 
-- Standard VMware module compilation
-- Works on any x86_64 CPU (portable)
-- 0% performance gain over default
+### 🐧 Gentoo Linux Support
 
----
+Full compatibility with Gentoo Linux, respecting its source-based philosophy:
 
-### 💡 **Recommendation**
-**For 99% of users: Choose Optimized.** You're compiling for YOUR system - use your hardware's full capabilities! There's no stability downside, only performance gains.
+**Gentoo-Specific Features:**
+- Custom paths: `/opt/vmware` for VMware installation
+- Kernel headers from `/usr/src/linux`
+- Portage integration with `emerge` package manager
+- Source-based compilation workflow
+- Backup location: `/tmp/vmware-backup-*` (follows Gentoo conventions)
 
-**Choose Vanilla only if** you need to move compiled modules to a different CPU architecture.
+**Why Gentoo Matters:**
+Gentoo's source-based approach naturally required implementing proper compiler flag handling and optimization options - laying the groundwork for the advanced optimization system coming in v1.0.5.
 
----
+### 🔧 Initial Optimization Framework
 
-## 💾 NVMe/M.2 Storage Optimizations
+v1.0.4 introduces the **foundation for intelligent optimizations**:
 
-**New feature:** Auto-detection and optimization for NVMe/M.2 drives
+**Basic Compiler Flags:**
+- `-O2` / `-O3`: Optimization levels
+- `-march=native` / `-mtune=native`: CPU-specific code generation
+- `-fno-strict-aliasing`: Safe aliasing for kernel modules
+- `-fno-strict-overflow`: Safe overflow handling
 
-**What gets optimized:**
-- NVMe multiqueue support (better concurrent I/O)
-- PCIe 3.0/4.0 bandwidth optimizations
-- I/O scheduler hints for NVMe devices
+**Hardware Detection:**
+- SIMD detection: AVX-512, AVX2, SSE4.2
+- Kernel feature detection: `CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS`
+- Basic CPU flag parsing from `/proc/cpuinfo`
 
-**Performance impact:**
-- **15-25% faster storage I/O** for VMs running on NVMe drives
-- Faster VM disk operations (boot, file access, snapshots)
-- Better responsiveness for disk-intensive workloads
+**User Choice:**
+- **Optimized mode**: Uses detected CPU features for better performance
+- **Vanilla mode**: Standard compilation, portable across CPUs
 
-**How it works:**
-- Script auto-detects NVMe drives via `/sys/block/nvme*`
-- Shows drive count during hardware detection
-- Enables `-DVMW_NVME_OPTIMIZATIONS` flag when "Optimized" mode is selected
-
----
-
-## 🐧 Gentoo Linux Support
-
-**Full Gentoo compatibility** with proper path handling and workflows:
-
-- Custom VMware paths: `/opt/vmware/lib/vmware/modules/source`
-- Gentoo kernel directory detection: `/usr/src/linux-*` or `/usr/src/linux`
-- Backups stored in `/tmp/vmware-backup-*` for Gentoo
-- Skips tarball creation (modules installed directly to `/lib/modules`)
-- Distribution auto-detected first before Fedora/Debian
-
-**Gentoo users** can now use the same installation process as other distributions!
-
----
-
-## ⚡ Hardware & VM Performance Auto-Detection
-
-The installation script detects your hardware and kernel features automatically:
-
-**Detected Information:**
-- CPU model and architecture
-- Available CPU features (AVX2, SSE4.2, AES-NI, etc.)
-- Kernel features (6.16+/6.17+ optimizations)
-- NVMe/M.2 drive count
-- Memory management capabilities
-- DMA optimization support
-- Current kernel compiler
-
-**When "Optimized" mode is selected, enables:**
-- CPU-specific instructions: `-O3 -ffast-math -funroll-loops -march=native`
-- VM memory allocation optimizations
-- DMA optimizations (improved graphics buffer sharing)
-- Low latency mode (better for graphics/Wayland)
-- Modern kernel MM features for 6.16+/6.17+
-- NVMe multiqueue and PCIe bandwidth optimizations
-
----
-
-## 🛠️ New Utility Scripts
-
-### **update-vmware-modules.sh**
-Quick module update after kernel upgrades
-
-**Features:**
-- Detects kernel version changes
-- Checks if update is needed
-- Shows reasons to update (new NVMe optimizations, switch modes, etc.)
-- Auto-runs full installation for current kernel
-- Shows before/after module status
-- Creates backup before updating
-
-**Usage:**
-```bash
-sudo bash scripts/update-vmware-modules.sh
-```
-
----
-
-### **restore-vmware-modules.sh**
-Restore from previous backups
-
-**Features:**
-- Lists all available backups with timestamps
-- Shows current vs backup file sizes and dates
-- Interactive backup selection (0-N)
-- Safe restore with confirmation prompts
-- Works with both standard and Gentoo paths
-- Verifies backup integrity before restore
-
-**Usage:**
-```bash
-sudo bash scripts/restore-vmware-modules.sh
-```
-
----
-
-### **uninstall-vmware-modules.sh** *(NEW)*
-Remove VMware modules completely
-
-**Features:**
-- Unloads vmmon and vmnet kernel modules
-- Removes compiled modules from `/lib/modules/`
-- Updates module dependencies
-- Preserves backups for future reinstallation
-- Works with all distributions (Ubuntu/Debian/Fedora/Gentoo)
-- Safe confirmation prompts
-
-**Usage:**
-```bash
-sudo bash scripts/uninstall-vmware-modules.sh
-```
-
----
-
-## 🔧 Improved Installation Flow
-
-**install-vmware-modules.sh now detects existing modules:**
-
-- If modules are already compiled for your kernel, suggests using `update-vmware-modules.sh`
-- Warns about reinstalling and asks for confirmation
-- Provides clear paths to update or uninstall scripts
-- Safer workflow for existing installations
+**Note:** This is a **basic implementation** - comprehensive hardware analysis and automatic flag generation is coming in v1.0.5.
 
 ---
 
 ## 📦 Installation
 
-### New Users
+### Gentoo Users:
+
 ```bash
+# Clone repository
 git clone https://github.com/Hyphaed/vmware-vmmon-vmnet-linux-6.17.x.git
 cd vmware-vmmon-vmnet-linux-6.17.x
-chmod +x scripts/install-vmware-modules.sh
-sudo ./scripts/install-vmware-modules.sh
+
+# Run installation (auto-detects Gentoo)
+sudo bash scripts/install-vmware-modules.sh
 ```
 
-When prompted, choose:
-- **Option 1: Optimized** (Recommended for 99% of users)
-- **Option 2: Vanilla** (Only if you need CPU portability)
+The script will automatically:
+- Detect Gentoo and use `/opt/vmware` paths
+- Use `emerge` for dependencies
+- Work with `/usr/src/linux` kernel headers
+- Offer optimization choices
 
-### Existing Users
+### Ubuntu/Debian/Fedora Users:
+
+Same as before - no changes to existing workflows:
+
 ```bash
-cd vmware-vmmon-vmnet-linux-6.17.x
-git pull origin main
-sudo ./scripts/update-vmware-modules.sh
+sudo bash scripts/install-vmware-modules.sh
 ```
 
-The update script will let you recompile with the new NVMe optimizations!
+---
+
+## ✅ Compatibility
+
+**Supported Distributions:**
+- Ubuntu/Debian (unchanged)
+- Fedora/RHEL (unchanged)
+- **Gentoo** (NEW)
+
+**Supported Kernels:**
+- 6.16.0 - 6.16.9
+- 6.17.0+
+
+**VMware Workstation:**
+- 17.5.x, 17.6.x
 
 ---
 
-## 🔄 Compatibility
+## 🔜 Preview: Coming in v1.0.5
 
-- **Supported Kernels:** 6.16.x, 6.17.x
-- **Distributions:** Ubuntu, Debian, Fedora, Gentoo
-- **VMware Workstation:** 17.5.x, 17.6.x
-- **Architecture:** x86_64
+Work is underway on a **major enhancement** to the optimization system:
+
+**Advanced Python-Based Hardware Detector:**
+- Deep CPU analysis with microarchitecture detection
+- Automatic compilation flag generation (CFLAGS, LDFLAGS, Make variables)
+- Intel VT-x/EPT and AMD-V/NPT comprehensive detection
+- NVMe PCIe bandwidth calculation
+- GPU detection with VRAM analysis
+- Intelligent hardware scoring (0-100) with performance predictions
+
+**Multi-Distribution Expansion:**
+- 18+ distributions (Arch, Manjaro, Rocky, AlmaLinux, openSUSE, etc.)
+- Distribution family/branch detection
+- Distribution-specific strategies and paths
+
+**Mamba/Miniforge Integration:**
+- State-of-the-art Python libraries (psutil, pynvml, distro)
+- Automatic dependency installation
+- Graceful fallback to system Python
+
+**Safety Enhancements:**
+- VMware process detection (prevents conflicts)
+- Automatic comprehensive testing
+- Module verification
+
+**Why wait for v1.0.5?**  
+v1.0.4 establishes the foundation with Gentoo support and basic optimization flags. v1.0.5 will build on this with a complete Python-based detection system that generates optimal compilation flags automatically.
 
 ---
 
-## 💖 Support This Project
+## 🛠️ Utility Scripts
 
-If these optimizations improved your VMware experience, consider supporting:
+**Unchanged from previous versions:**
 
-[![Sponsor](https://img.shields.io/badge/Sponsor-GitHub-EA4AAA?logo=github)](https://github.com/sponsors/Hyphaed)
+- `install-vmware-modules.sh` - Full installation (now with Gentoo support)
+- `update-vmware-modules.sh` - Quick updates after kernel upgrade
+- `restore-vmware-modules.sh` - Restore from backups
+- `uninstall-vmware-modules.sh` - Remove modules
+- `test-vmware-modules.sh` - Module testing
 
-\* Awaiting for GitHub Sponsors validation
+---
+
+## 🐛 Bug Fixes
+
+- Fixed kernel 6.17+ objtool validation errors
+- Fixed timer API changes (timer_delete_sync)
+- Fixed MSR API changes (rdmsrq_safe)
+- Fixed module initialization (module_init/module_exit)
+- Updated build system (EXTRA_CFLAGS → ccflags-y)
 
 ---
 
 ## 📝 Full Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for complete version history.
+See [CHANGELOG.md](CHANGELOG.md) for complete technical details.
 
 ---
 
-## 🙏 Credits
+## 🙏 Acknowledgments
 
-- Thanks to all users who reported the confusing 4-option menu
-- Special thanks to NVMe users who requested storage optimizations
-- Gentoo community for testing and feedback
+- Based on patches from [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x)
+- Gentoo support thanks to community requests
+- Thanks to early testers on Ubuntu, Fedora, and Gentoo
 
 ---
 
-**Enjoy 20-40% faster VMware performance! 🚀**
+## 📖 Documentation
+
+- **README.md** - Main documentation
+- **CHANGELOG.md** - Detailed version history
+- **RELEASE-v1.0.4.md** - This file
+
+---
+
+**Questions?** Open an issue on GitHub  
+**Stay tuned for v1.0.5** with advanced Python-based hardware detection!
+
+🐧 **Gentoo users - enjoy source-based VMware compilation!**
