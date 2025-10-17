@@ -113,10 +113,13 @@ trap cleanup_on_error ERR
 # ============================================
 # CHECK AND FIX MEMORY SATURATION
 # ============================================
+# Disable ERR trap during memory check (exit codes 0/1/2 are all valid)
+trap - ERR
+
 # Call the shared Python script to check and fix memory
 MEMORY_CHECKER="$SCRIPT_DIR/check_and_fix_memory.py"
 if [ -f "$MEMORY_CHECKER" ] && command -v python3 >/dev/null 2>&1; then
-    python3 "$MEMORY_CHECKER"
+    python3 "$MEMORY_CHECKER" || true
     MEMORY_CHECK_EXIT=$?
     
     if [ $MEMORY_CHECK_EXIT -eq 1 ]; then
@@ -135,6 +138,9 @@ else
     echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
     sleep 1
 fi
+
+# Re-enable ERR trap
+trap cleanup_on_error ERR
 
 echo -e "${HYPHAED_GREEN}$(draw_box_top)${NC}"
 echo -e "${HYPHAED_GREEN}$(draw_box_line "")${NC}"
