@@ -1492,7 +1492,7 @@ fi
 log "✓ Modules extracted"
 
 # ============================================
-# 5. DOWNLOAD PATCHES ACCORDING TO VERSION
+# 5. GET PATCHES ACCORDING TO VERSION (Local first, then GitHub)
 # ============================================
 log "5. Downloading patches for kernel $TARGET_KERNEL..."
 
@@ -1500,20 +1500,35 @@ PATCH_DIR="$WORK_DIR/patches"
 mkdir -p "$PATCH_DIR"
 cd "$PATCH_DIR"
 
-# Download base patches for 6.16
-PATCH_REPO="https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x"
-info "Downloading base patches from GitHub (6.16.x)..."
-
-if [ -d "vmware-vmmon-vmnet-linux-6.16.x" ]; then
-    rm -rf vmware-vmmon-vmnet-linux-6.16.x
+# Check for local patches first (offline support)
+LOCAL_PATCHES="$SCRIPT_DIR/patches/upstream/6.16.x"
+if [ -d "$LOCAL_PATCHES" ] && [ -d "$LOCAL_PATCHES/vmmon-only" ] && [ -d "$LOCAL_PATCHES/vmnet-only" ]; then
+    info "Using local 6.16.x patches (offline mode)"
+    cp -r "$LOCAL_PATCHES" "$PATCH_DIR/vmware-vmmon-vmnet-linux-6.16.x-source"
+    # Create directory structure to match GitHub clone
+    mkdir -p "$PATCH_DIR/vmware-vmmon-vmnet-linux-6.16.x/modules/17.6.4"
+    mv "$PATCH_DIR/vmware-vmmon-vmnet-linux-6.16.x-source" "$PATCH_DIR/vmware-vmmon-vmnet-linux-6.16.x/modules/17.6.4/source"
+    log "✓ Local patches loaded (no internet required)"
+else
+    # Fallback to GitHub download
+    PATCH_REPO="https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x"
+    info "Downloading base patches from GitHub (6.16.x)..."
+    info "Tip: Local patches available in patches/upstream/6.16.x/ for offline use"
+    
+    if [ -d "vmware-vmmon-vmnet-linux-6.16.x" ]; then
+        rm -rf vmware-vmmon-vmnet-linux-6.16.x
+    fi
+    
+    if git clone --depth 1 "$PATCH_REPO" 2>/dev/null; then
+        log "✓ Base patches downloaded from GitHub"
+    else
+        error "Failed to download patches from GitHub and no local patches found"
+        error "Please ensure:"
+        error "  1. Internet connection is working, OR"
+        error "  2. Local patches exist in: $SCRIPT_DIR/patches/upstream/6.16.x/"
+        exit 1
+    fi
 fi
-
-git clone --depth 1 "$PATCH_REPO" || {
-    error "Error downloading patches from GitHub"
-    exit 1
-}
-
-log "✓ Base patches downloaded"
 
 # ============================================
 # 6. APPLY PATCHES FOR KERNEL 6.16
