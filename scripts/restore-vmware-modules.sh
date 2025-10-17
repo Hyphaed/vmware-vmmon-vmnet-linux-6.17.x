@@ -19,48 +19,6 @@ info() { echo -e "${BLUE}[i]${NC} $1"; }
 warning() { echo -e "${YELLOW}[!]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; }
 
-# Animation functions
-ANIMATION_PID=""
-ANIMATION_ENABLED=false
-
-if [ -t 1 ] && command -v tput &>/dev/null; then
-    ANIMATION_ENABLED=true
-fi
-
-start_animation() {
-    [ "$ANIMATION_ENABLED" = false ] && return
-    local frames=("    ╭─○" "   ╭──○" "  ╭───○" " ╭────○" "╭─────○" "│─────○" "╰─────○" " ╰────○" "  ╰───○" "   ╰──○" "    ╰─○" "    ○─╯" "    ○──╯" "    ○───╯" "    ○────╯" "    ○─────╯" "    ○─────│" "    ○─────╮" "    ○────╮" "    ○───╮" "    ○──╮" "    ○─╮")
-    (
-        local cols=$(tput cols) frame_idx=0 total_frames=${#frames[@]}
-        while true; do
-            local x=$((cols - 15)) y=2
-            tput sc; tput cup $y $x
-            echo -ne "${HYPHAED_GREEN}${frames[$frame_idx]}${NC}"
-            tput cup $((y + 1)) $((x + 1))
-            echo -ne "${HYPHAED_GREEN}Hyphaed${NC}"
-            tput rc
-            frame_idx=$(( (frame_idx + 1) % total_frames ))
-            sleep 0.1
-        done
-    ) &
-    ANIMATION_PID=$!
-}
-
-stop_animation() {
-    if [ -n "$ANIMATION_PID" ]; then
-        kill $ANIMATION_PID 2>/dev/null || true
-        wait $ANIMATION_PID 2>/dev/null || true
-        ANIMATION_PID=""
-        if [ "$ANIMATION_ENABLED" = true ]; then
-            local cols=$(tput cols) x=$((cols - 15)) y=2
-            tput sc; tput cup $y $x; echo -ne "          "
-            tput cup $((y + 1)) $x; echo -ne "          "; tput rc
-        fi
-    fi
-}
-
-trap stop_animation EXIT
-
 echo -e "${HYPHAED_GREEN}"
 cat << 'EOF'
 ╔══════════════════════════════════════════════════════════════╗
@@ -72,13 +30,82 @@ cat << 'EOF'
 EOF
 echo -e "${NC}"
 
-start_animation
-
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
     error "This script must be run as root (use sudo)"
     exit 1
 fi
+
+# Detect script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ============================================
+# RUN PYTHON WIZARD (Interactive TUI)
+# ============================================
+echo ""
+echo -e "${HYPHAED_GREEN}════════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}LAUNCHING INTERACTIVE WIZARD${NC}"
+echo -e "${HYPHAED_GREEN}════════════════════════════════════════${NC}"
+echo ""
+
+info "Starting Python-powered restore wizard..."
+echo ""
+
+# Check if wizard exists
+RESTORE_WIZARD="$SCRIPT_DIR/restore_wizard.py"
+if [ ! -f "$RESTORE_WIZARD" ]; then
+    error "Python wizard not found at: $RESTORE_WIZARD"
+    warning "Falling back to legacy restore mode..."
+    USE_WIZARD=false
+else
+    # Check for Python 3
+    if command -v python3 &>/dev/null; then
+        # Run the wizard
+        python3 "$RESTORE_WIZARD"
+        WIZARD_EXIT_CODE=$?
+        
+        if [ $WIZARD_EXIT_CODE -eq 0 ]; then
+            log "Wizard completed successfully"
+            USE_WIZARD=true
+            
+            # Load wizard configuration
+            RESTORE_CONFIG="/tmp/vmware_restore_config.json"
+            if [ -f "$RESTORE_CONFIG" ]; then
+                info "Loading restore configuration..."
+                
+                # Extract backup path
+                SELECTED_BACKUP=$(jq -r '.backup_path' "$RESTORE_CONFIG" 2>/dev/null)
+                
+                if [ -n "$SELECTED_BACKUP" ] && [ -e "$SELECTED_BACKUP" ]; then
+                    log "Selected backup: $SELECTED_BACKUP"
+                else
+                    error "Failed to parse restore configuration"
+                    warning "Falling back to legacy restore mode..."
+                    USE_WIZARD=false
+                fi
+            else
+                error "Restore configuration not found"
+                warning "Falling back to legacy restore mode..."
+                USE_WIZARD=false
+            fi
+        else
+            error "Wizard exited with error code: $WIZARD_EXIT_CODE"
+            warning "Falling back to legacy restore mode..."
+            USE_WIZARD=false
+        fi
+    else
+        error "Python 3 not found"
+        warning "Falling back to legacy restore mode..."
+        USE_WIZARD=false
+    fi
+fi
+
+echo ""
+
+# ============================================
+# LEGACY MODE: Manual Backup Selection
+# ============================================
+if [ "$USE_WIZARD" = false ]; then
 
 # Detect distribution to find correct paths
 if [ -f /etc/gentoo-release ]; then
@@ -222,6 +249,21 @@ while true; do
         warning "Invalid selection. Please enter a number between 0 and ${#BACKUPS[@]}"
     fi
 done
+
+fi  # End of legacy mode
+
+# Auto-detect distro if using wizard
+if [ "$USE_WIZARD" = true ] && [ -z "$VMWARE_MOD_DIR" ]; then
+    if [ -f /etc/gentoo-release ]; then
+        DISTRO="gentoo"
+        VMWARE_MOD_DIR="/opt/vmware/lib/vmware/modules/source"
+    elif [ -f /etc/fedora-release ] || [ -f /etc/debian_version ]; then
+        DISTRO="fedora"
+        VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
+    else
+        VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
+    fi
+fi
 
 # Verify selected backup
 if [ ! -f "$SELECTED_BACKUP/vmmon.tar" ] || [ ! -f "$SELECTED_BACKUP/vmnet.tar" ]; then

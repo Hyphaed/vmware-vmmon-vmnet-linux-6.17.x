@@ -103,8 +103,92 @@ else
 fi
 
 # ============================================
-# 1. SELECT KERNEL VERSION
+# 1. RUN PYTHON WIZARD (Interactive TUI)
 # ============================================
+echo ""
+echo -e "${HYPHAED_GREEN}════════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}LAUNCHING INTERACTIVE WIZARD${NC}"
+echo -e "${HYPHAED_GREEN}════════════════════════════════════════${NC}"
+echo ""
+
+info "Starting Python-powered installation wizard..."
+echo ""
+
+# Check if wizard exists
+WIZARD_SCRIPT="$SCRIPT_DIR/vmware_wizard.py"
+if [ ! -f "$WIZARD_SCRIPT" ]; then
+    error "Python wizard not found at: $WIZARD_SCRIPT"
+    warning "Falling back to legacy installation mode..."
+    USE_WIZARD=false
+else
+    # Check for Python 3
+    if command -v python3 &>/dev/null; then
+        # Run the wizard
+        python3 "$WIZARD_SCRIPT"
+        WIZARD_EXIT_CODE=$?
+        
+        if [ $WIZARD_EXIT_CODE -eq 0 ]; then
+            log "Wizard completed successfully"
+            USE_WIZARD=true
+            
+            # Load wizard configuration
+            WIZARD_CONFIG="/tmp/vmware_wizard_config.json"
+            if [ -f "$WIZARD_CONFIG" ]; then
+                info "Loading wizard configuration..."
+                
+                # Extract selected kernels and their versions
+                SELECTED_KERNELS_JSON=$(jq -r '.selected_kernels' "$WIZARD_CONFIG" 2>/dev/null)
+                OPTIMIZATION_MODE=$(jq -r '.optimization_mode' "$WIZARD_CONFIG" 2>/dev/null)
+                
+                # Get first kernel's major.minor version to determine which patches to use
+                FIRST_KERNEL_MINOR=$(echo "$SELECTED_KERNELS_JSON" | jq -r '.[0].minor' 2>/dev/null)
+                
+                if [ -n "$FIRST_KERNEL_MINOR" ] && [ "$FIRST_KERNEL_MINOR" != "null" ]; then
+                    # Determine TARGET_KERNEL based on detected version
+                    if [ "$FIRST_KERNEL_MINOR" = "16" ]; then
+                        TARGET_KERNEL="6.16"
+                    elif [ "$FIRST_KERNEL_MINOR" = "17" ]; then
+                        TARGET_KERNEL="6.17"
+                    else
+                        error "Unsupported kernel minor version: $FIRST_KERNEL_MINOR"
+                        warning "Falling back to legacy installation mode..."
+                        USE_WIZARD=false
+                    fi
+                    
+                    # Extract full kernel versions for logging
+                    SELECTED_KERNELS=$(echo "$SELECTED_KERNELS_JSON" | jq -r '.[].full_version' 2>/dev/null | tr '\n' ' ')
+                    
+                    log "Selected kernels: $SELECTED_KERNELS"
+                    log "Target kernel version: $TARGET_KERNEL"
+                    log "Optimization mode: $OPTIMIZATION_MODE"
+                else
+                    error "Failed to parse wizard configuration"
+                    warning "Falling back to legacy installation mode..."
+                    USE_WIZARD=false
+                fi
+            else
+                error "Wizard configuration not found"
+                warning "Falling back to legacy installation mode..."
+                USE_WIZARD=false
+            fi
+        else
+            error "Wizard exited with error code: $WIZARD_EXIT_CODE"
+            warning "Falling back to legacy installation mode..."
+            USE_WIZARD=false
+        fi
+    else
+        error "Python 3 not found"
+        warning "Falling back to legacy installation mode..."
+        USE_WIZARD=false
+    fi
+fi
+
+echo ""
+
+# ============================================
+# 2. LEGACY MODE: SELECT KERNEL VERSION
+# ============================================
+if [ "$USE_WIZARD" = false ]; then
 echo ""
 echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo -e "${YELLOW}KERNEL VERSION SELECTION${NC}"
@@ -147,10 +231,12 @@ echo ""
 log "Configuration: Compiling for kernel $TARGET_KERNEL"
 echo ""
 
+fi  # End of legacy mode
+
 # ============================================
-# 2. VERIFY SYSTEM
+# 3. VERIFY SYSTEM
 # ============================================
-log "2. Verifying system..."
+log "3. Verifying system..."
 
 KERNEL_VERSION=$(uname -r)
 KERNEL_MAJOR=$(echo $KERNEL_VERSION | cut -d. -f1)

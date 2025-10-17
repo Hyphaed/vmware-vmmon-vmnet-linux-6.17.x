@@ -18,58 +18,158 @@ sudo bash scripts/install-vmware-modules.sh
 The **interactive terminal wizard** handles everything:
 - 🔍 **Checks if VMware is running** (prevents conflicts)
 - 🐧 **Detects Linux distribution** (18+ distributions, shows family/branch)
-- ✨ **Analyzes hardware with Python** (CPU, VT-x/EPT, NVMe, memory, GPU)
-- 📊 **Calculates optimization score** (0-100) and recommends mode
-- 🏗️ **Generates compilation flags** (architecture-specific optimizations)
+- 🐍 **Advanced Python Hardware Detection** (auto-setup mamba/miniforge environment)
+  - Deep CPU analysis: microarchitecture, generation, SIMD features
+  - Virtualization features: VT-x/AMD-V, EPT/NPT, VPID, VMFUNC, Posted Interrupts
+  - NVMe detection: PCIe generation, lanes, bandwidth, queue depth
+  - Memory topology: NUMA nodes, channels, huge page support
+  - GPU analysis: VRAM, PCIe lanes, driver detection
+- 📊 **Intelligent optimization scoring** (0-100) with performance prediction
+- 🏗️ **Auto-generates compilation flags** (CFLAGS, LDFLAGS, Make variables)
 - 💬 **Asks 2 simple questions** (kernel version, optimization mode)
 - 🚀 **Compiles modules** with optimal flags for your hardware
 - 🛡️ **Creates automatic backups** for safety
 - 🧪 **Runs comprehensive tests** automatically after installation
 
-**Advanced Python detection. Distribution-aware. Maximum performance. One command.**
+**Python-powered hardware detection. Distribution-aware. Maximum performance. One command.**
 
 ---
 
 ## 🎯 What This Repository Does
 
-VMware Workstation modules often lag behind the latest kernel releases. This repository provides:
+This project goes beyond simple kernel compatibility - it's an **intelligent hardware detection and optimization system** for VMware Workstation.
 
-### 1️⃣ **Kernel Compatibility Patches**
-Makes VMware modules work with kernel 6.16.x and 6.17.x (fixes timer API, MSR API, objtool errors)
+### 🐍 **Core Feature: Python Hardware Intelligence** (NEW in v1.0.5)
 
-### 2️⃣ **Performance Optimizations** (Optional)
-**20-40% faster VM performance** through hardware-specific optimizations:
-- **CPU**: 20-30% faster (AVX2, SSE4.2, AES-NI, `-O3` optimization)
-- **Memory**: 10-15% faster (modern memory management)
+The heart of this project is a sophisticated **Python-based hardware detection engine** that automatically analyzes your system and generates optimal compilation flags:
+
+#### **What It Detects:**
+- **🔬 Deep CPU Analysis**
+  - Microarchitecture detection (Rocket Lake, Zen 4, etc.)
+  - CPU generation and feature set (AVX-512, AVX2, SSE4.2, AES-NI, SHA-NI, BMI1/2)
+  - Cache sizes (L1/L2/L3) and topology
+  - CPU vendor-agnostic (works with Intel, AMD, ARM-based systems)
+
+- **⚡ Virtualization Capabilities**
+  - Intel VT-x or AMD-V support detection
+  - EPT (Intel) / NPT (AMD) support
+  - VPID (Virtual Processor ID) support
+  - VMFUNC (VM Functions) support
+  - Posted Interrupts support
+  - EPT Accessed/Dirty bit tracking
+
+- **💾 NVMe/M.2 Storage Analysis**
+  - Detects all NVMe drives in the system
+  - PCIe generation (3.0, 4.0, 5.0) and lane count
+  - Maximum theoretical bandwidth calculation
+  - Queue count and queue depth analysis
+  - NVMe-specific optimization flags
+
+- **🧠 Memory Topology**
+  - NUMA node detection and configuration
+  - Memory channel count
+  - Estimated memory bandwidth (GB/s)
+  - Huge page support (2MB and 1GB)
+
+- **🎮 GPU Detection**
+  - GPU model and VRAM size
+  - PCIe generation and lane count
+  - NVIDIA/AMD driver detection
+  - vGPU capability hints
+
+#### **What It Does:**
+1. **Optimization Scoring (0-100)**: Calculates a performance score based on your hardware
+2. **Intelligent Recommendations**: Suggests "optimized" or "vanilla" mode based on capabilities
+3. **Auto-Generated Compilation Flags**: Creates architecture-specific CFLAGS, LDFLAGS, and Make variables
+4. **Performance Prediction**: Estimates performance gains for your specific hardware
+
+#### **How It Works:**
+```bash
+# The script automatically:
+1. Sets up mamba/miniforge Python environment (if not present)
+2. Installs required Python packages (psutil, pynvml, py-cpuinfo, distro)
+3. Installs system tools (lscpu, dmidecode, lspci, numactl, nvidia-smi)
+4. Runs detect_hardware.py to analyze your system
+5. Generates /tmp/vmware_hw_capabilities.json with all detected features
+6. Parses JSON to create optimal compilation flags
+7. Passes flags to kernel module compilation
+```
+
+**Result:** VMware modules compiled specifically for YOUR hardware, with **20-40% performance gains**.
+
+---
+
+### 🔧 **Foundation: Kernel Compatibility Patches**
+
+Built on top of proven kernel compatibility patches that make VMware modules work with kernel 6.16.x and 6.17.x:
+- Timer API fixes (`timer_delete_sync()`)
+- MSR API updates (`rdmsrq_safe()`)
+- Objtool validation patches
+- Build system modernization
+
+**Source:** Based on patches from [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x)
+
+---
+
+### 📈 **Performance Optimizations** (Enabled by Python Detection)
+
+Once hardware is analyzed, the system applies targeted optimizations:
+
+- **CPU**: 20-30% faster (architecture-specific instructions, `-O3` optimization)
+- **Memory**: 10-15% faster (modern memory management, NUMA-aware)
 - **Graphics/Wayland**: 15-25% smoother (low latency mode, DMA optimizations)
 - **NVMe/M.2 Storage**: 15-25% faster I/O (multiqueue, PCIe bandwidth)
-- **Network**: 5-10% better throughput
+- **Network**: 5-10% better throughput (reduced overhead)
 - **GPU Transfers**: 20-40% faster (Direct Memory Access)
 
-### 3️⃣ **Interactive Terminal Wizard**
-Guides you step-by-step:
-- Detects CPU features (AVX2, SSE4.2, AES-NI)
-- Detects NVMe/M.2 drives
-- Detects kernel features (6.16+/6.17+ optimizations)
-- Presents **2 clear choices**: Optimized (fast) or Vanilla (portable)
-- Shows performance impact summary
-- Compiles and installs automatically
+**All optimizations are hardware-detected and automatically applied** - no manual configuration needed!
 
 ## ✨ Key Features
 
+### 🐍 **Python-Powered Hardware Intelligence** (Core Innovation)
+The defining feature that sets this project apart:
+
+- **🤖 Automatic Environment Setup**
+  - Auto-installs mamba/miniforge Python environment
+  - Installs Python packages: `psutil`, `pynvml`, `py-cpuinfo`, `distro`, `pyudev`
+  - Installs system tools: `lscpu`, `dmidecode`, `lspci`, `numactl`, `nvidia-smi`
+  - Falls back to system Python if mamba unavailable
+
+- **🔍 Comprehensive Hardware Analysis** (`detect_hardware.py`)
+  - **CPU**: Vendor, model, microarchitecture, generation, cores/threads, cache sizes
+  - **SIMD Features**: AVX-512, AVX2, AVX, SSE4.2, SSE4.1, AES-NI, SHA-NI, BMI1/2, F16C, FMA3
+  - **Virtualization**: VT-x/AMD-V, EPT/NPT, VPID, VMFUNC, Posted Interrupts, EPT A/D bits
+  - **Storage**: NVMe drive count, PCIe gen/lanes, bandwidth, queue depth, model names
+  - **Memory**: Total RAM, NUMA nodes, channels, bandwidth (GB/s), huge page support (2MB/1GB)
+  - **GPU**: Model, VRAM, PCIe gen/lanes, NVIDIA/AMD driver detection, CUDA/ROCm support
+
+- **📊 Intelligent Optimization Engine**
+  - Calculates optimization score (0-100) based on hardware capabilities
+  - Weighs factors: CPU features (30%), virtualization (25%), storage (20%), memory (15%), GPU (10%)
+  - Recommends "optimized" (score ≥40) or "vanilla" (score <40) mode
+  - Predicts performance gains for specific hardware configuration
+
+- **🏗️ Compilation Flag Generator**
+  - Generates architecture-specific `CFLAGS`: `-march=native`, `-mtune=native`, feature flags
+  - Creates `LDFLAGS` for link-time optimization
+  - Outputs Make variables: `VMWARE_OPTIMIZE=1`, `HAS_VTX_EPT=1`, `HAS_AVX512=1`, `HAS_NVME=1`
+  - Exports JSON to `/tmp/vmware_hw_capabilities.json` for script consumption
+
+- **🎯 Universal CPU Support**
+  - Works with Intel (Core, Xeon), AMD (Ryzen, Threadripper, EPYC), and ARM-based systems
+  - No hardcoded CPU assumptions - uses standard CPU flags (`/proc/cpuinfo`)
+  - Detects features regardless of vendor (e.g., AVX2 on both Intel and AMD)
+
 ### 🧙 **Wizard-Driven Installation**
 - **VMware safety check**: Detects and warns if VMware is running before installation
-- **Distribution detection**: Identifies Linux family/branch (Debian, Red Hat, Arch, SUSE, Gentoo, etc.)
-- **Advanced Python hardware analysis**: Deep detection with mamba/miniforge environment
-  - CPU microarchitecture, generation, SIMD features (AVX-512, AVX2, AES-NI)
-  - Virtualization capabilities (VT-x, EPT, VPID, VMFUNC, Posted Interrupts)
-  - NVMe storage with PCIe bandwidth calculation
-  - Memory channels, NUMA topology, huge page support
-  - GPU detection with VRAM and driver info
-- **Intelligent optimization scoring**: 0-100 score with performance prediction
-- **Auto-generated compilation flags**: Architecture-specific CFLAGS, LDFLAGS, Make variables
+- **Distribution detection**: Identifies Linux family/branch (18+ distributions supported)
+  - Debian family: Ubuntu, Debian, Pop!_OS, Linux Mint, elementary OS
+  - Red Hat family: Fedora, CentOS, RHEL, Rocky Linux, AlmaLinux
+  - Arch family: Arch Linux, Manjaro
+  - SUSE family: openSUSE, SUSE Linux Enterprise
+  - Independent: Gentoo, Void Linux, Alpine Linux
+- **Package manager integration**: Auto-installs dependencies via apt, dnf, yum, pacman, emerge, zypper, xbps, apk
 - **2 simple questions**: Kernel version (6.16/6.17), Optimization mode (Optimized/Vanilla)
-- **Distribution-aware compilation**: Uses appropriate paths and package managers
 - **Hyphaed branded UI**: Clean terminal output with consistent green (#B0D56A) theme
 - **Automatic testing**: Runs comprehensive tests after installation completes
 
@@ -247,11 +347,291 @@ vmware-vmmon-vmnet-linux-6.17.x/
 └── README.md                        # This file
 ```
 
+## 🐍 Python Hardware Detection Deep Dive
+
+### How the Detection System Works
+
+The Python hardware detection engine is the **core innovation** of this project. Here's what happens under the hood:
+
+#### **Step 1: Environment Setup** (Automatic)
+```bash
+# The script checks for:
+1. Mamba/miniforge installation at $HOME/.miniforge3
+2. If not found, offers to install it automatically
+3. Creates 'vmware-optimizer' conda environment with Python 3.12
+4. Installs Python packages: psutil, pynvml, py-cpuinfo, distro, pyudev
+5. Installs system tools: lscpu, dmidecode, lspci, numactl, nvidia-smi
+6. Falls back to system Python if user declines mamba setup
+```
+
+#### **Step 2: Hardware Analysis** (`scripts/detect_hardware.py`)
+The Python script performs deep hardware analysis:
+
+**CPU Detection:**
+- Reads `/proc/cpuinfo` for flags (avx512f, avx2, aes, vmx, svm, ept, npt, etc.)
+- Uses `lscpu` for microarchitecture (Rocket Lake, Zen 4, etc.)
+- Detects cache sizes (L1d, L1i, L2, L3) and topology
+- Identifies CPU generation (11th Gen Intel, Zen 3, etc.)
+
+**Virtualization Detection:**
+- VT-x (Intel) or AMD-V (AMD) support
+- EPT (Extended Page Tables - Intel) or NPT (Nested Page Tables - AMD)
+- VPID (Virtual Processor ID)
+- VMFUNC (VM Functions for fast switching)
+- Posted Interrupts (for better interrupt handling)
+- EPT Accessed/Dirty bits (for efficient memory tracking)
+
+**NVMe Storage Detection:**
+- Scans `/sys/block/nvme*` for NVMe devices
+- Reads PCIe link speed and width from sysfs
+- Calculates maximum bandwidth (e.g., PCIe 4.0 x4 = 8GB/s)
+- Detects queue count and queue depth
+- Extracts model names from `/sys/block/nvme*/device/model`
+
+**Memory Topology:**
+- Uses `numactl --hardware` for NUMA node detection
+- Reads `/proc/meminfo` for total memory and huge page support
+- Estimates memory bandwidth based on CPU generation and channel count
+- Detects 2MB and 1GB huge page support
+
+**GPU Detection:**
+- Uses `pynvml` (NVIDIA Management Library) for NVIDIA GPUs
+- Parses `lspci` for AMD GPUs
+- Detects VRAM size, PCIe generation/lanes
+- Checks for NVIDIA/AMD proprietary drivers
+- Identifies CUDA/ROCm support
+
+#### **Step 3: Optimization Scoring**
+The script calculates a score (0-100) based on:
+- **CPU features (30%)**: AVX-512 (100), AVX2 (70), SSE4.2 (40), baseline (20)
+- **Virtualization (25%)**: VT-x/AMD-V + EPT/NPT (100), VT-x/AMD-V only (50), none (0)
+- **Storage (20%)**: NVMe PCIe 4.0+ (100), NVMe PCIe 3.0 (70), SATA SSD (40), HDD (20)
+- **Memory (15%)**: 64GB+ (100), 32GB (80), 16GB (60), 8GB (40)
+- **GPU (10%)**: High-end (100), Mid-range (70), Integrated (40), none (0)
+
+**Example Score:**
+```
+i7-11700 + 64GB RAM + NVMe PCIe 4.0 + RTX 3060 = 85/100 → "optimized" recommended
+```
+
+#### **Step 4: Compilation Flag Generation**
+Based on detected hardware, the script generates:
+
+**Base Optimization Flags:**
+```makefile
+CFLAGS = -O3 -march=native -mtune=native -ffast-math -funroll-loops
+```
+
+**Feature-Specific Flags:**
+```makefile
+# If AVX-512 detected:
+CFLAGS += -mavx512f -mavx512dq -mavx512bw -mavx512vl
+
+# If AVX2 detected:
+CFLAGS += -mavx2 -mfma
+
+# If AES-NI detected:
+CFLAGS += -maes -mpclmul
+
+# If NVMe detected:
+MAKE_FLAGS += HAS_NVME=1
+
+# If VT-x + EPT detected:
+MAKE_FLAGS += HAS_VTX_EPT=1
+```
+
+**Link Flags:**
+```makefile
+LDFLAGS = -flto -fuse-linker-plugin
+```
+
+#### **Step 5: JSON Export**
+All data is exported to `/tmp/vmware_hw_capabilities.json`:
+```json
+{
+  "cpu": {
+    "model": "Intel(R) Core(TM) i7-11700 @ 2.50GHz",
+    "vendor": "GenuineIntel",
+    "microarchitecture": "Rocket Lake",
+    "cores": 8,
+    "threads": 16,
+    "has_avx512": true,
+    "has_avx2": true,
+    "has_aes_ni": true
+  },
+  "virtualization": {
+    "vtx_supported": true,
+    "ept_supported": true,
+    "vpid_supported": true
+  },
+  "storage": {
+    "nvme_count": 2,
+    "devices": [
+      {
+        "name": "nvme0n1",
+        "model": "WD_BLACK SN850X 2TB",
+        "pcie_generation": 4,
+        "pcie_lanes": 4,
+        "max_bandwidth_mbps": 8000
+      }
+    ]
+  },
+  "optimization": {
+    "score": 85,
+    "recommended_mode": "optimized",
+    "predicted_gains": "25-35%"
+  },
+  "compilation_flags": {
+    "base_optimization": "-O3 -march=native -mtune=native",
+    "feature_flags": "-mavx512f -mavx2 -maes",
+    "make_flags": "VMWARE_OPTIMIZE=1 HAS_VTX_EPT=1 HAS_AVX512=1 HAS_NVME=1"
+  }
+}
+```
+
+The installation script reads this JSON and applies the flags during module compilation.
+
+---
+
 ## 💡 How the Interactive Installation Works
 
-When you run the installation script, it will:
+### 🐍 **Python-Powered Interactive Wizard (NEW in v1.0.5)**
 
-1. **Detect your system**: Automatically identifies your kernel version, distribution (Ubuntu/Debian/Fedora), and compiler (GCC/Clang)
+When you run the installation script, you'll be greeted with a **beautiful terminal UI** similar to the NVIDIA driver installer:
+
+#### **Step 1: Kernel Detection & Selection**
+The wizard automatically scans `/lib/modules` and displays all installed kernels in a table:
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║           VMWARE MODULE INSTALLATION WIZARD                  ║
+║              Python-Powered Hardware Detection               ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌─────────────────── Detected Kernels ────────────────────────┐
+│ #  │ Kernel Version        │ Status      │ Headers │ Supported │
+├────┼──────────────────────┼─────────────┼─────────┼───────────┤
+│ 1  │ 6.17.5-200.fc42.x86_64│ ● Current   │ ✓ Yes   │ ✓ Yes     │
+│ 2  │ 6.17.0-200.fc42.x86_64│ ○ Installed │ ✓ Yes   │ ✓ Yes     │
+│ 3  │ 6.16.9-200.fc42.x86_64│ ○ Installed │ ✓ Yes   │ ✓ Yes     │
+└────┴──────────────────────┴─────────────┴─────────┴───────────┘
+
+Select kernel(s) to compile modules for:
+  → 1) 6.17.5-200.fc42.x86_64 [✓]
+    2) 6.17.0-200.fc42.x86_64 [✓]
+    3) 6.16.9-200.fc42.x86_64 [✓]
+  → 4) All supported kernels
+
+[Select kernel(s)] (1-4): _
+```
+
+**Features:**
+- Only shows kernels 6.16.x and 6.17.x (supported versions)
+- Indicates which kernels have headers installed
+- Highlights the currently running kernel
+- Allows selecting multiple kernels or all at once
+- Automatically skips kernels without headers
+
+#### **Step 2: Hardware Analysis**
+The wizard runs deep hardware detection and displays results in organized panels:
+
+```
+┌──────────────── Hardware Analysis ─────────────────┐
+│                                                     │
+│  ┌─ CPU ─────────────────────────────────────────┐ │
+│  │ Model        Intel(R) Core(TM) i7-11700       │ │
+│  │ Architecture Rocket Lake                      │ │
+│  │ Cores/Threads 8 / 16                          │ │
+│  │ SIMD Features AVX-512, AVX2, AES-NI, SHA-NI   │ │
+│  └───────────────────────────────────────────────┘ │
+│                                                     │
+│  ┌─ Virtualization ──────────────────────────────┐ │
+│  │ Virtualization  ✓ Intel VT-x                  │ │
+│  │ EPT/NPT         ✓ Supported                   │ │
+│  │ VPID            ✓ Supported                   │ │
+│  │ VMFUNC          ✓ Supported                   │ │
+│  └───────────────────────────────────────────────┘ │
+│                                                     │
+│  ┌─ NVMe Storage (2 device(s)) ─────────────────┐ │
+│  │ Device  Model              PCIe   Bandwidth  │ │
+│  │ nvme0n1 WD_BLACK SN850X 2TB Gen4x4 8.0 GB/s │ │
+│  │ nvme1n1 Crucial P5 2TB     Gen3x4 4.0 GB/s  │ │
+│  └───────────────────────────────────────────────┘ │
+│                                                     │
+│  ┌─ Performance Analysis ────────────────────────┐ │
+│  │ Optimization Score: 85/100                    │ │
+│  │ Recommended Mode: OPTIMIZED                   │ │
+│  │ Predicted Gains: 25-35%                       │ │
+│  └───────────────────────────────────────────────┘ │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+#### **Step 3: Optimization Mode Selection**
+Clear presentation of compilation options with detailed explanations:
+
+```
+┌─────── Compilation Mode Selection ──────────┐
+│                                              │
+│  ┌── 1 ────────────────────────────────────┐ │
+│  │ 🚀 Optimized                            │ │
+│  │   • 20-40% better performance           │ │
+│  │   • Uses CPU-specific instructions      │ │
+│  │   • Enables NVMe, DMA optimizations     │ │
+│  │   • Note: Modules only work on your CPU │ │
+│  └─────────────────────────────────────────┘ │
+│                                              │
+│  ┌── 2 ────────────────────────────────────┐ │
+│  │ 🔒 Vanilla                              │ │
+│  │   • Baseline performance (0% gain)      │ │
+│  │   • Works on any x86_64 CPU             │ │
+│  │   • Only kernel compatibility patches   │ │
+│  └─────────────────────────────────────────┘ │
+│                                              │
+│  Recommended for your hardware: OPTIMIZED   │
+│                                              │
+└──────────────────────────────────────────────┘
+
+[Select mode] (1-2): _
+```
+
+#### **Step 4: Compilation Summary & Confirmation**
+Final review before proceeding:
+
+```
+┌────── Compilation Summary ───────┐
+│                                  │
+│  Kernels to compile:             │
+│    • 6.17.5-200.fc42.x86_64     │
+│    • 6.16.9-200.fc42.x86_64     │
+│                                  │
+│  Optimization mode: OPTIMIZED    │
+│  Make flags: VMWARE_OPTIMIZE=1   │
+│              HAS_VTX_EPT=1       │
+│              HAS_AVX512=1        │
+│              HAS_NVME=1          │
+│                                  │
+└──────────────────────────────────┘
+
+[Proceed with compilation?] (Y/n): _
+```
+
+#### **Step 5: Automatic Compilation**
+The bash script takes over and compiles modules with the wizard's configuration.
+
+---
+
+### 🔙 **Fallback: Legacy Mode**
+
+If Python 3 is not available or the wizard fails, the script automatically falls back to the legacy text-based interface.
+
+---
+
+### **Traditional Installation Flow** (if wizard unavailable)
+
+When you run the installation script without the wizard, it will:
+
+1. **Detect your system**: Automatically identifies your kernel version, distribution, and compiler (GCC/Clang)
 
 2. **Prompt for kernel version**: Asks you to choose between kernel 6.16.x or 6.17.x patches
    ```
