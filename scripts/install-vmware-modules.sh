@@ -1457,12 +1457,44 @@ for util in "${REQUIRED_UTILS[@]}"; do
     fi
 done
 
-# Check if pahole is available for BTF (OPTIONAL but recommended for kernel 5.18+)
+# Check if pahole is available for BTF (RECOMMENDED for better debugging)
 if ! command -v pahole &> /dev/null; then
-    info "pahole not found (optional - needed for BTF generation)"
-    MISSING_OPTIONAL+=("pahole:dwarves")
+    warning "pahole not found (recommended for BTF debugging support)"
+    info "pahole helps with kernel debugging and optimization"
+    MISSING_DEPS+=("dwarves")  # Add to critical deps - it's useful
 else
-    log "✓ pahole found (BTF generation available)"
+    log "✓ pahole found (BTF debugging support available)"
+fi
+
+# Check for elfutils (RECOMMENDED for better binary analysis)
+if ! command -v eu-readelf &> /dev/null; then
+    warning "elfutils not found (recommended for better binary analysis)"
+    MISSING_DEPS+=("elfutils")
+else
+    log "✓ elfutils found"
+fi
+
+# Check for bc calculator (REQUIRED by some kernel builds)
+if ! command -v bc &> /dev/null; then
+    warning "bc not found (needed for some kernel calculations)"
+    MISSING_DEPS+=("bc")
+else
+    log "✓ bc found"
+fi
+
+# Check for bison/flex (REQUIRED for kernel module builds on some kernels)
+if ! command -v bison &> /dev/null; then
+    warning "bison not found (needed for kernel builds)"
+    MISSING_DEPS+=("bison")
+else
+    log "✓ bison found"
+fi
+
+if ! command -v flex &> /dev/null; then
+    warning "flex not found (needed for kernel builds)"
+    MISSING_DEPS+=("flex")
+else
+    log "✓ flex found"
 fi
 
 echo ""
@@ -1613,68 +1645,21 @@ echo ""
 log "✓ Dependency check complete"
 
 # ============================================
-# 2.5. CHECK BTF (BPF Type Format) SUPPORT
+# 2.5. BTF (BPF Type Format) INFO
 # ============================================
-info "Checking BTF support..."
-
-# Check if vmlinux is available for BTF generation
+# BTF generation will work automatically if pahole is installed
+# No need for vmlinux (700MB) - pahole is enough for most debugging
 VMLINUX_PATH="/usr/lib/debug/boot/vmlinux-$KERNEL_VERSION"
 if [ -f "$VMLINUX_PATH" ]; then
-    log "✓ vmlinux found - BTF generation will be enabled"
+    info "BTF: vmlinux found - full BTF metadata will be generated"
 else
-    info "vmlinux not found - BTF generation will be skipped"
-    info "This is NORMAL and does not affect VMware functionality"
-    echo ""
-    info "BTF (BPF Type Format) is only needed for:"
-    echo "  • Advanced kernel debugging with eBPF tools"
-    echo "  • bpftrace/bpftool introspection"
-    echo "  • Kernel development"
-    echo ""
-    info "VMware modules work perfectly without BTF"
-    echo ""
-    
-    # Ask if user wants to install vmlinux (not recommended for most users)
-    if [ "${INSTALL_VMLINUX:-false}" = "true" ]; then
-        warning "Installing vmlinux debug symbols (~700MB download)..."
-        
-        if [ "$DISTRO" = "debian" ]; then
-            # Try to find and install debug symbols package
-            DBG_PKG="linux-image-$KERNEL_VERSION-dbgsym"
-            if apt-cache search "$DBG_PKG" | grep -q "$DBG_PKG"; then
-                info "Found debug symbols package: $DBG_PKG"
-                read -p "Install $DBG_PKG? This will download ~700MB (y/N): " -n 1 -r
-                echo
-                if [[ $REPLY =~ ^[Yy]$ ]]; then
-                    # Enable debug symbol repositories
-                    echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse" | \
-                        sudo tee /etc/apt/sources.list.d/ddebs.list > /dev/null
-                    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C8CAB6595FDFF622 2>/dev/null || true
-                    sudo apt update
-                    sudo apt install -y "$DBG_PKG"
-                    
-                    if [ -f "$VMLINUX_PATH" ]; then
-                        log "✓ vmlinux installed - BTF will be generated"
-                    fi
-                fi
-            else
-                info "Debug symbols package not available for this kernel"
-            fi
-        elif [ "$DISTRO" = "fedora" ]; then
-            DBG_PKG="kernel-debuginfo-$KERNEL_VERSION"
-            if dnf list available "$DBG_PKG" &>/dev/null; then
-                read -p "Install $DBG_PKG? This will download ~700MB (y/N): " -n 1 -r
-                echo
-                if [[ $REPLY =~ ^[Yy]$ ]]; then
-                    sudo dnf debuginfo-install -y kernel-$KERNEL_VERSION
-                fi
-            fi
-        fi
+    if command -v pahole &> /dev/null; then
+        info "BTF: pahole available - BTF type info will be generated from DWARF"
     else
-        info "To enable BTF generation, set: export INSTALL_VMLINUX=true"
-        info "Not recommended unless you need eBPF debugging tools"
+        info "BTF: Will be skipped (normal - doesn't affect VMware performance)"
     fi
-    echo ""
 fi
+echo ""
 
 # ============================================
 # 3. PREPARE WORKING DIRECTORY
