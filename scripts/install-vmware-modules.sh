@@ -776,7 +776,6 @@ log "✓ System verification completed"
 # 1.5. HARDWARE DETECTION & OPTIMIZATION
 # ============================================
 # Skip hardware detection if wizard already did it
-log "DEBUG: USE_WIZARD=$USE_WIZARD, JSON exists=$([ -f "/tmp/vmware_hw_capabilities.json" ] && echo "yes" || echo "no")"
 if [ "$USE_WIZARD" = true ] && [ -f "/tmp/vmware_hw_capabilities.json" ]; then
     info "Using hardware detection from wizard..."
     USE_PYTHON_DETECTION=true

@@ -1106,7 +1106,6 @@ def main():
                 output_file.unlink()
         except PermissionError:
             # If we can't delete, try a different file
-            import os
             output_file = Path(f'/tmp/vmware_hw_capabilities_{os.getpid()}.json')
         
         with open(output_file, 'w') as f:
