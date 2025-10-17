@@ -623,10 +623,10 @@ class VMwareWizard:
                 self.console.print("  • Update after kernel upgrade")
                 self.console.print()
                 
-                # Ask user
+                # Ask user (default to Yes for reinstall)
                 if not Confirm.ask(
                     f"[{HYPHAED_GREEN}]Do you want to reinstall/recompile the modules?[/{HYPHAED_GREEN}]",
-                    default=False
+                    default=True
                 ):
                     self.console.print()
                     self.console.print("[yellow]Installation cancelled by user.[/yellow]")

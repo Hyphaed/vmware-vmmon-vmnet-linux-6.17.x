@@ -548,8 +548,10 @@ fi
 log "✓ System verification completed"
 
 # ============================================
-# 1.5. HARDWARE DETECTION & OPTIMIZATION (Python-Enhanced)
+# 1.5. HARDWARE DETECTION & OPTIMIZATION (Legacy Mode Only)
 # ============================================
+# Skip this entire section if wizard was used - wizard handles all optimization choices
+if [ "$USE_WIZARD" = false ]; then
 echo ""
 echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo -e "${YELLOW}HARDWARE OPTIMIZATION (OPTIONAL)${NC}"
@@ -1117,6 +1119,8 @@ fi
 
 echo ""
 log "✓ Hardware detection completed"
+
+fi  # End of legacy hardware optimization section
 
 # ============================================
 # 2. INSTALL DEPENDENCIES
