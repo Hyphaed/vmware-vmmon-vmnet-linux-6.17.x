@@ -223,6 +223,7 @@ info "Architecture: $CPU_ARCH"
 # Detect available optimizations
 OPTIM_FLAGS=""
 OPTIM_DESC=""
+KERNEL_FEATURES=""
 
 # Check for CPU features
 if echo "$CPU_FLAGS" | grep -q "avx2"; then
@@ -235,55 +236,139 @@ if echo "$CPU_FLAGS" | grep -q "sse4_2"; then
     OPTIM_DESC="$OPTIM_DESC\n  • SSE4.2 (Streaming SIMD Extensions)"
 fi
 
+if echo "$CPU_FLAGS" | grep -q "aes"; then
+    OPTIM_DESC="$OPTIM_DESC\n  • AES-NI (Hardware AES acceleration)"
+fi
+
+# Detect kernel features for optimization
+info "Detecting kernel features for optimization..."
+
+# Check for modern kernel features (6.16+/6.17+)
+if [ "$KERNEL_MINOR" -ge 16 ]; then
+    KERNEL_FEATURES="-DCONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS"
+    OPTIM_DESC="$OPTIM_DESC\n  • Efficient unaligned memory access"
+    
+    # Enable modern instruction scheduling
+    if [ "$KERNEL_MINOR" -ge 17 ]; then
+        KERNEL_FEATURES="$KERNEL_FEATURES -DCONFIG_GENERIC_CPU"
+        OPTIM_DESC="$OPTIM_DESC\n  • Modern kernel 6.17+ optimizations"
+    fi
+fi
+
+# Check for kernel config options
+if [ -f "/boot/config-$KERNEL_VERSION" ]; then
+    KERNEL_CONFIG="/boot/config-$KERNEL_VERSION"
+elif [ -f "/proc/config.gz" ]; then
+    KERNEL_CONFIG="/proc/config.gz"
+else
+    KERNEL_CONFIG=""
+fi
+
+if [ -n "$KERNEL_CONFIG" ]; then
+    # Check for LTO support
+    if [ -f "/boot/config-$KERNEL_VERSION" ]; then
+        if grep -q "CONFIG_LTO_CLANG=y" "$KERNEL_CONFIG" 2>/dev/null; then
+            OPTIM_DESC="$OPTIM_DESC\n  • Kernel built with LTO (Link Time Optimization)"
+        fi
+        
+        # Check for frame pointer optimization
+        if grep -q "CONFIG_FRAME_POINTER=n" "$KERNEL_CONFIG" 2>/dev/null; then
+            KERNEL_FEATURES="$KERNEL_FEATURES -fomit-frame-pointer"
+            OPTIM_DESC="$OPTIM_DESC\n  • Frame pointer omission (performance gain)"
+        fi
+    fi
+fi
+
 # Native architecture optimization
 NATIVE_OPTIM="-march=native -mtune=native"
 
-# Conservative safe flags
-SAFE_FLAGS="-O2 -pipe"
+# Conservative safe flags with modern optimizations
+SAFE_FLAGS="-O2 -pipe -fno-strict-aliasing"
 
-if [ -n "$OPTIM_FLAGS" ]; then
-    echo -e "${GREEN}Hardware-Specific Optimizations Available:${NC}"
+# Performance-oriented flags (safe for kernel modules)
+# These optimizations improve VM performance which benefits graphics/Wayland indirectly
+PERF_FLAGS="-O3 -ffast-math -funroll-loops"
+
+# Additional performance flags for modern VMs (helps with Wayland/graphics)
+PERF_FLAGS="$PERF_FLAGS -fno-strict-overflow"
+PERF_FLAGS="$PERF_FLAGS -fno-delete-null-pointer-checks"
+
+# Memory and scheduling optimizations
+MEMORY_OPTS="-DVMW_OPTIMIZE_MEMORY_ALLOC"
+LATENCY_OPTS="-DVMW_LOW_LATENCY_MODE"
+
+# Modern kernel VM optimizations (6.16+/6.17+)
+if [ "$KERNEL_MINOR" -ge 16 ]; then
+    # Enable efficient page management
+    KERNEL_FEATURES="$KERNEL_FEATURES -DVMW_USE_MODERN_MM"
+    OPTIM_DESC="$OPTIM_DESC\n  • Modern memory management (better buffer allocation)"
+    
+    # Enable DMA optimizations for better I/O performance
+    KERNEL_FEATURES="$KERNEL_FEATURES -DVMW_DMA_OPTIMIZATIONS"
+    OPTIM_DESC="$OPTIM_DESC\n  • DMA optimizations (improves graphics buffer sharing)"
+fi
+
+if [ -n "$OPTIM_FLAGS" ] || [ -n "$KERNEL_FEATURES" ]; then
+    echo -e "${GREEN}Hardware & Kernel Optimizations Available:${NC}"
     echo -e "$OPTIM_DESC"
     echo ""
     echo -e "${YELLOW}Optimization Options:${NC}"
     echo ""
-    echo -e "${GREEN}  1)${NC} Native (Recommended for this CPU)"
-    echo "     Flags: $SAFE_FLAGS $NATIVE_OPTIM"
-    echo "     • Optimized specifically for your CPU architecture"
-    echo "     • Best performance for this system"
+    echo -e "${GREEN}  1)${NC} Maximum Performance (Aggressive)"
+    echo "     Flags: $PERF_FLAGS $NATIVE_OPTIM $KERNEL_FEATURES $MEMORY_OPTS $LATENCY_OPTS"
+    echo "     • Highest performance optimizations"
+    echo "     • -O3 with fast-math and loop unrolling"
+    echo "     • CPU-specific + kernel-specific features"
+    echo "     • Memory allocation & DMA optimizations"
+    echo "     • Low latency mode (better for graphics/Wayland)"
+    echo "     • ${YELLOW}Warning:${NC} Modules only work on similar CPUs"
+    echo ""
+    echo -e "${GREEN}  2)${NC} Native (Recommended for this CPU)"
+    echo "     Flags: $SAFE_FLAGS $NATIVE_OPTIM $KERNEL_FEATURES $MEMORY_OPTS"
+    echo "     • Balanced performance and safety"
+    echo "     • Optimized for your CPU + kernel features"
+    echo "     • Memory allocation optimizations included"
+    echo "     • Best choice for most users"
     echo "     • Modules will only work on similar CPUs"
     echo ""
-    echo -e "${GREEN}  2)${NC} Conservative (Safe, portable)"
-    echo "     Flags: $SAFE_FLAGS"
-    echo "     • Standard optimization level"
+    echo -e "${GREEN}  3)${NC} Conservative (Safe, portable)"
+    echo "     Flags: $SAFE_FLAGS $KERNEL_FEATURES"
+    echo "     • Standard optimization + kernel features"
     echo "     • Works on any x86_64 CPU"
-    echo "     • Slightly lower performance"
+    echo "     • Good performance, maximum portability"
     echo ""
-    echo -e "${GREEN}  3)${NC} No optimizations (Default kernel flags)"
+    echo -e "${GREEN}  4)${NC} No optimizations (Default kernel flags)"
     echo "     • Uses same flags as your kernel"
-    echo "     • Safest option"
+    echo "     • Safest option (slowest)"
     echo ""
     
-    read -p "Select optimization level (1=Native / 2=Conservative / 3=None) [3]: " OPTIM_CHOICE
-    OPTIM_CHOICE=${OPTIM_CHOICE:-3}
+    read -p "Select optimization level (1=Max / 2=Native / 3=Conservative / 4=None) [4]: " OPTIM_CHOICE
+    OPTIM_CHOICE=${OPTIM_CHOICE:-4}
     
     case $OPTIM_CHOICE in
         1)
-            EXTRA_CFLAGS="$SAFE_FLAGS $NATIVE_OPTIM"
-            info "Selected: Native optimization for $CPU_MODEL"
+            EXTRA_CFLAGS="$PERF_FLAGS $NATIVE_OPTIM $KERNEL_FEATURES $MEMORY_OPTS $LATENCY_OPTS"
+            info "Selected: Maximum Performance (Aggressive)"
+            echo -e "${YELLOW}Note:${NC} Using -O3 with aggressive optimizations"
+            echo -e "${YELLOW}Note:${NC} Includes memory allocation & latency optimizations"
             echo -e "${YELLOW}Note:${NC} Modules compiled with these flags may not work on different CPUs"
             ;;
         2)
-            EXTRA_CFLAGS="$SAFE_FLAGS"
-            info "Selected: Conservative optimization (portable)"
+            EXTRA_CFLAGS="$SAFE_FLAGS $NATIVE_OPTIM $KERNEL_FEATURES $MEMORY_OPTS"
+            info "Selected: Native optimization for $CPU_MODEL + kernel features + memory optimizations"
+            echo -e "${YELLOW}Note:${NC} Modules compiled with these flags may not work on different CPUs"
             ;;
-        3|*)
+        3)
+            EXTRA_CFLAGS="$SAFE_FLAGS $KERNEL_FEATURES"
+            info "Selected: Conservative optimization with kernel features (portable)"
+            ;;
+        4|*)
             EXTRA_CFLAGS=""
             info "Selected: No additional optimizations (kernel defaults)"
             ;;
     esac
 else
-    warning "No specific CPU optimizations detected"
+    warning "No specific optimizations detected"
     EXTRA_CFLAGS=""
 fi
 

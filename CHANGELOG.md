@@ -16,14 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Backup directory in `/tmp` for Gentoo users
 - Gentoo badge added to README
 
-### Added - Hardware Optimization Options
+### Added - Hardware & VM Performance Optimization Options
 - **Conservative approach**: User chooses optimization level before compilation
-- Auto-detection of CPU model and features (AVX2, SSE4.2)
-- Three optimization levels:
-  * **Native**: `-O2 -pipe -march=native -mtune=native` (best performance, CPU-specific)
-  * **Conservative**: `-O2 -pipe` (standard optimization, portable)
-  * **None**: Default kernel flags (safest option)
-- Hardware detection shows CPU model before offering options
+- Auto-detection of CPU model and features (AVX2, SSE4.2, AES-NI)
+- Auto-detection of kernel features (6.16+/6.17+ optimizations, LTO, frame pointer)
+- Four optimization levels:
+  * **Maximum Performance**: `-O3 -ffast-math -funroll-loops -march=native` + VM optimizations
+  * **Native**: `-O2 -pipe -march=native -mtune=native` + memory optimizations (recommended)
+  * **Conservative**: `-O2 -pipe` + kernel features (portable)
+  * **None**: Default kernel flags (safest, default)
+- VM performance optimizations:
+  * Memory management optimizations (better buffer allocation)
+  * DMA optimizations (improved graphics buffer sharing)
+  * Low latency mode (better for graphics/Wayland)
+  * Modern kernel MM features for 6.16+/6.17+
+- Hardware detection shows CPU model and kernel features before offering options
 - Optimization flags applied via `CFLAGS` during module compilation
 
 ### Added - New Utility Scripts

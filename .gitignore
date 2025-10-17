@@ -16,3 +16,5 @@ vmmon-only/
 vmnet-only/
 *.tar
 *.log
+scripts/*.log
+scripts/*.log.*

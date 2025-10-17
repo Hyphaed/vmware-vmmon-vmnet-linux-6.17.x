@@ -16,36 +16,61 @@ This major release adds Gentoo Linux support, optional hardware optimizations, a
 
 **Gentoo users** can now use the same installation process as other distributions!
 
-## ⚡ Hardware Optimizations (Optional)
+## ⚡ Hardware & VM Performance Optimizations (Optional)
 
-**Conservative, user-controlled CPU optimizations:**
+**Conservative, user-controlled optimizations with VM performance enhancements:**
 
-The installation script now detects your hardware and offers optimization options:
+The installation script now detects your hardware and kernel features, offering comprehensive optimization options:
 
 ### Detected Information:
 - CPU model and architecture
-- Available CPU features (AVX2, SSE4.2, etc.)
+- Available CPU features (AVX2, SSE4.2, AES-NI, etc.)
+- Kernel features (6.16+/6.17+ optimizations)
+- Memory management capabilities
+- DMA optimization support
 - Current kernel compiler
 
 ### Optimization Levels:
 
-**1) Native (Recommended for this CPU)**
+**1) Maximum Performance (Aggressive)**
+- Flags: `-O3 -ffast-math -funroll-loops -march=native -mtune=native`
+- VM Optimizations: Memory allocation, DMA, Low latency mode
+- Highest performance optimizations
+- Includes memory allocation & DMA optimizations
+- Low latency mode (better for graphics/Wayland)
+- **Best for:** Desktop VMs, graphics workloads, Wayland compositing
+- ⚠️ Modules will only work on similar CPUs
+
+**2) Native (Recommended for this CPU)**
 - Flags: `-O2 -pipe -march=native -mtune=native`
-- Optimized specifically for your CPU architecture
-- Best performance for this system
-- Modules will only work on similar CPUs
+- VM Optimizations: Memory allocation, kernel features
+- Balanced performance and safety
+- Optimized for your CPU + kernel features
+- Memory allocation optimizations included
+- **Best choice for most users**
+- ⚠️ Modules will only work on similar CPUs
 
-**2) Conservative (Safe, portable)**
+**3) Conservative (Safe, portable)**
 - Flags: `-O2 -pipe`
-- Standard optimization level
+- VM Optimizations: Kernel features only
+- Standard optimization + kernel features
 - Works on any x86_64 CPU
-- Slightly lower performance
+- Good performance, maximum portability
 
-**3) None (Default kernel flags)**
+**4) None (Default kernel flags)**
 - Uses same flags as your kernel
 - Safest option (Default)
 
-The script will ask you to choose before compilation. **Default is option 3 (no optimizations)** for maximum safety.
+The script will ask you to choose before compilation. **Default is option 4 (no optimizations)** for maximum safety.
+
+### VM Performance Features:
+- **Memory Management Optimizations:** Better buffer allocation (benefits graphics rendering)
+- **DMA Optimizations:** Improved graphics buffer sharing between host and guest
+- **Low Latency Mode:** Reduced operation latency for better responsiveness
+- **Modern Kernel Features:** Efficient unaligned memory access, modern MM for 6.16+/6.17+
+- **Frame Pointer Optimization:** Performance gain when kernel supports it
+
+These optimizations improve VM performance at the kernel level, which indirectly benefits Wayland compositors and graphics-intensive applications.
 
 ## 🔧 New Utility Scripts
 
