@@ -2433,6 +2433,84 @@ sudo depmod -a
 log "✓ Module boot configuration installed"
 
 # ============================================
+# 10b. CREATE NATIVE SYSTEMD UNITS (Eliminates SysV Warnings)
+# ============================================
+if command -v systemctl &> /dev/null && [ -f "/etc/init.d/vmware" ]; then
+    info "Creating native systemd unit files..."
+    
+    # Check if we should create systemd units
+    if [ "${CREATE_SYSTEMD_UNITS:-true}" = "true" ]; then
+        
+        # Create vmware.service
+        cat > /tmp/vmware.service << 'EOF'
+[Unit]
+Description=VMware Workstation Services
+Documentation=https://www.vmware.com/
+After=network.target systemd-modules-load.service
+Requires=systemd-modules-load.service
+Before=vmware-usb.service
+
+[Service]
+Type=forking
+ExecStartPre=/usr/bin/modprobe -a vmmon vmnet
+ExecStart=/etc/init.d/vmware start
+ExecStop=/etc/init.d/vmware stop
+RemainAfterExit=yes
+TimeoutStartSec=0
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        
+        sudo mv /tmp/vmware.service /etc/systemd/system/vmware.service
+        log "✓ vmware.service created"
+        
+        # Create vmware-usb.service
+        if [ -f "/etc/init.d/vmware-USBArbitrator" ]; then
+            cat > /tmp/vmware-usb.service << 'EOF'
+[Unit]
+Description=VMware USB Arbitrator Service
+Documentation=https://www.vmware.com/
+After=vmware.service
+Requires=vmware.service
+PartOf=vmware.service
+
+[Service]
+Type=forking
+ExecStart=/etc/init.d/vmware-USBArbitrator start
+ExecStop=/etc/init.d/vmware-USBArbitrator stop
+RemainAfterExit=yes
+TimeoutStartSec=0
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+            
+            sudo mv /tmp/vmware-usb.service /etc/systemd/system/vmware-usb.service
+            log "✓ vmware-usb.service created"
+        fi
+        
+        # Reload systemd and enable services
+        sudo systemctl daemon-reload 2>/dev/null || true
+        sudo systemctl enable vmware.service 2>/dev/null || true
+        sudo systemctl enable vmware-usb.service 2>/dev/null || true
+        
+        log "✓ Native systemd units installed"
+        info "Benefits: No more 'lacks a native systemd unit file' warnings"
+    else
+        info "Systemd unit creation disabled (CREATE_SYSTEMD_UNITS=false)"
+    fi
+else
+    info "Systemd not available or VMware not installed - skipping unit creation"
+fi
+
+echo ""
+
+# ============================================
 # 11. CREATE TARBALL FOR VMWARE
 # ============================================
 
