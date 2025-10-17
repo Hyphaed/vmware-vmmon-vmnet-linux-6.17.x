@@ -104,10 +104,16 @@ class VMwareUI:
     
     def show_step(self, step_num: int, total_steps: int, title: str) -> None:
         """Display a step header"""
+        width = self.console.width
         self.console.print()
-        self.console.print(f"[primary]╭{'─' * 58}╮[/]")
-        self.console.print(f"[primary]│[/] [title]Step {step_num}/{total_steps}: {title}[/]")
-        self.console.print(f"[primary]╰{'─' * 58}╯[/]")
+        self.console.print(f"[primary]╭{'─' * (width - 2)}╮[/]")
+        
+        # Calculate padding for the title
+        step_text = f"Step {step_num}/{total_steps}: {title}"
+        padding = width - len(step_text) - 2
+        
+        self.console.print(f"[primary]│[/] [title]{step_text}[/]")
+        self.console.print(f"[primary]╰{'─' * (width - 2)}╯[/]")
         self.console.print()
     
     def show_info(self, message: str) -> None:
