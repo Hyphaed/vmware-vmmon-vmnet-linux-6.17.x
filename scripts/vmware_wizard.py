@@ -168,10 +168,10 @@ class VMwareWizard:
             # Show installation steps
             steps = [
                 "Kernel Detection & Selection",
+                "Hardware Detection & Analysis",
                 "Optimization Mode Selection (Optimized vs Vanilla)",
-                "Module Compilation & Installation",
-                "Optional System Tuning",
-                "Reboot Recommendation"
+                "System Tuning Decision (Applied BEFORE compilation)",
+                "Module Compilation & Installation (initramfs updated once)",
             ]
             self.ui.show_welcome_steps(steps)
             
@@ -229,8 +229,8 @@ class VMwareWizard:
             for k in self.selected_kernels:
                 self.ui.show_info(f"  • {k.full_version} (kernel {k.version})")
             
-            # STEP 2: Hardware Detection (background)
-            self.ui.show_step(2, 5, "Hardware Detection")
+            # STEP 2: Hardware Detection & Analysis
+            self.ui.show_step(2, 5, "Hardware Detection & Analysis")
             self.ui.show_info("Analyzing your hardware...")
             
             self.run_hardware_detection()
@@ -290,27 +290,29 @@ class VMwareWizard:
             
             self.ui.show_success(f"Selected: {self.optimization_mode.upper()} mode")
             
-            # STEP 4: Ask about system tuning BEFORE compilation
+            # STEP 4: System Tuning Decision (BEFORE compilation)
             self.ui.show_step(4, 5, "System Tuning Decision")
             
-            self.ui.console.print("[info]💡 Smart Tip:[/] Applying system tuning now will avoid rebuilding initramfs twice!")
+            self.ui.console.print("[success]💡 Smart Workflow:[/] Tuning will be applied BEFORE compilation")
+            self.ui.console.print("[info]✨ Benefit:[/] initramfs will only be rebuilt once (after compilation)")
             self.ui.console.print()
             
             apply_tuning = self.ui.confirm(
-                "Do you want to apply system tuning optimizations?\n"
+                "Apply system tuning optimizations before compilation?\n"
                 "  (GRUB parameters, CPU governor, I/O scheduler, kernel parameters)",
                 default=True
             )
             
-            # Show what will be compiled
+            # STEP 5: Final Review & Confirmation
             self.ui.console.print()
             self.ui.show_panel(
                 f"[primary]Installation Plan:[/]\n\n"
                 f"  • Kernels: {', '.join([k.full_version for k in self.selected_kernels])}\n"
                 f"  • Mode: {self.optimization_mode.upper()}\n"
                 f"  • Patches: {'All optimizations + VT-x/EPT + performance' if self.optimization_mode == 'optimized' else 'Kernel compatibility only'}\n"
-                f"  • System Tuning: {'YES - will apply before compilation' if apply_tuning else 'NO - skip tuning'}\n",
-                title="Ready to Start"
+                f"  • Tuning: {'✓ FIRST (before compilation - saves time!)' if apply_tuning else '✗ Skip tuning'}\n"
+                f"  • initramfs: Will be updated only ONCE (after compilation)\n",
+                title="🚀 Ready to Start"
             )
             
             # Final confirmation
@@ -341,11 +343,12 @@ class VMwareWizard:
             
             self.ui.console.print()
             self.ui.show_success("Configuration saved successfully!")
+            self.ui.console.print()
             
             if apply_tuning:
-                self.ui.show_info("System tuning will be applied first, then compilation")
+                self.ui.show_info("📋 Next steps: Tuning → Compilation → initramfs (updated once)")
             else:
-                self.ui.show_info("Compilation will begin now")
+                self.ui.show_info("📋 Next steps: Compilation → initramfs update")
             
             return 0
             

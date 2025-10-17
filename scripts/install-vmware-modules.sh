@@ -2242,75 +2242,12 @@ draw_section_header "✓ INSTALLATION AND TESTING COMPLETED"
 echo ""
 
 # ============================================
-# OPTIONAL SYSTEM TUNING (Step 4/5)
+# REBOOT RECOMMENDATION (if tuning was applied)
 # ============================================
-# Skip if tuning was already applied before compilation
-if [ "$TUNING_APPLIED" != "true" ]; then
-    echo ""
-    draw_section_header "STEP 4/5: OPTIONAL SYSTEM TUNING"
-    echo ""
-    echo -e "${CYAN}Would you like to optimize your system for maximum VMware performance?${NC}"
-    echo ""
-    echo "This will tune your system to maximize VMware performance:"
-    echo ""
-    echo "  • GRUB boot parameters (IOMMU, hugepages)"
-    echo "  • Kernel parameters (memory management, network, scheduler)"
-    echo "  • CPU governor (performance mode)"
-    echo "  • I/O scheduler (NVMe/SSD optimization)"
-    echo "  • Install performance packages (tuned, cpufrequtils)"
-    echo ""
-    echo -e "${YELLOW}Note:${NC} System tuning requires a reboot to take full effect"
-    echo -e "${YELLOW}Note:${NC} You can run this anytime with: ${GREEN}sudo bash scripts/tune-system.sh${NC}"
-    echo -e "${YELLOW}Note:${NC} Tuning after compilation will rebuild initramfs again (slower)"
-    echo ""
-
-    read -p "Optimize system now? (Y/n): " -n 1 -r
-    echo
-    # Default to Yes if user just presses Enter
-    if [[ -z $REPLY ]] || [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo ""
-        info "Launching system optimizer..."
-        echo ""
-        
-        TUNE_SCRIPT="$SCRIPT_DIR/tune-system.sh"
-        if [ -f "$TUNE_SCRIPT" ]; then
-            # Source .bashrc to ensure conda is available
-            if [ -f "$HOME/.bashrc" ]; then
-                source "$HOME/.bashrc"
-            fi
-            
-            bash "$TUNE_SCRIPT"
-            TUNE_EXIT_CODE=$?
-            TUNING_APPLIED=true
-            
-            if [ $TUNE_EXIT_CODE -eq 0 ]; then
-                echo ""
-                log "System optimization completed successfully!"
-            else
-                echo ""
-                warning "System optimization exited with code: $TUNE_EXIT_CODE"
-                info "You can try again later with: sudo bash scripts/tune-system.sh"
-            fi
-        else
-            error "System optimizer not found at: $TUNE_SCRIPT"
-            info "Please ensure all project files are present"
-        fi
-    else
-        echo ""
-        info "System optimization skipped"
-        info "You can optimize your system anytime with:"
-        echo "  ${GREEN}sudo bash scripts/tune-system.sh${NC}"
-    fi
-else
-    info "System tuning was already applied before compilation - skipping duplicate prompt"
-fi
-
-echo ""
-
-# Show reboot recommendation if system was tuned (Step 5/5)
+# Show reboot recommendation if system was tuned
 if [ "$TUNING_APPLIED" = "true" ]; then
     echo ""
-    draw_section_header "STEP 5/5: REBOOT RECOMMENDED"
+    draw_section_header "⚠️  REBOOT REQUIRED"
     echo ""
     warning "System optimizations require a reboot to take full effect"
     info "Some tuning (GRUB parameters, hugepages, IOMMU) will not be active until reboot"
