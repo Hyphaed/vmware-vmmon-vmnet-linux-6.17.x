@@ -15,7 +15,7 @@ info() { echo -e "${BLUE}[i]${NC} $1"; }
 warning() { echo -e "${YELLOW}[!]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; }
 
-echo -e "${CYAN}"
+echo -e "${HYPHAED_GREEN}"
 cat << 'EOF'
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║

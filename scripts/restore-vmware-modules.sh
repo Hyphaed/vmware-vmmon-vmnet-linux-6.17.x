@@ -61,7 +61,7 @@ stop_animation() {
 
 trap stop_animation EXIT
 
-echo -e "${CYAN}"
+echo -e "${HYPHAED_GREEN}"
 cat << 'EOF'
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
