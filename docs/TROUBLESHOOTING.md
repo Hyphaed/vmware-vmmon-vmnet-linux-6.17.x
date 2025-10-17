@@ -446,6 +446,56 @@ cat vmware-debug.log
 
 ---
 
+## Display Issues
+
+### Issue: Top Bar Doesn't Hide on First VM Boot (Wayland)
+
+**Symptom:** 
+First time powering on a VM, the top bar remains visible in fullscreen mode. Restarting the VM fixes it.
+
+**Cause:** 
+Module initialization race condition - VMware may start before kernel modules fully initialize and register with the system.
+
+**Permanent Fix:**
+This fix is already included in v1.0.5+ installations via `/etc/modules-load.d/vmware.conf` and `/etc/modprobe.d/vmware.conf`.
+
+**Manual Fix (if upgraded from older version):**
+```bash
+# Ensure modules load early at boot
+sudo tee /etc/modules-load.d/vmware.conf > /dev/null << 'EOF'
+# VMware kernel modules
+# Load early to ensure availability before VMware starts
+vmmon
+vmnet
+EOF
+
+# Configure load order
+sudo tee /etc/modprobe.d/vmware.conf > /dev/null << 'EOF'
+# VMware kernel module configuration
+# Ensure vmmon loads before vmnet
+softdep vmnet pre: vmmon
+EOF
+
+# Apply changes
+sudo depmod -a
+
+# Reboot to apply
+sudo reboot
+```
+
+**Quick Workaround (without reboot):**
+```bash
+# Unload and reload modules in correct order
+sudo modprobe -r vmnet vmmon
+sudo modprobe vmmon
+sudo modprobe vmnet
+
+# Restart VMware
+sudo systemctl restart vmware.service
+```
+
+---
+
 ## Getting Help
 
 If you still have issues after trying these solutions:

@@ -1828,6 +1828,29 @@ fi
 log "✓ Modules installed and loaded"
 
 # ============================================
+# 10a. CONFIGURE MODULE LOADING AT BOOT
+# ============================================
+info "Configuring modules to load at boot..."
+
+# Create modules-load.d configuration
+cat << EOF | sudo tee /etc/modules-load.d/vmware.conf >/dev/null
+# VMware kernel modules
+# Load early to ensure availability before VMware starts
+vmmon
+vmnet
+EOF
+
+# Create modprobe configuration for module load order
+cat << EOF | sudo tee /etc/modprobe.d/vmware.conf >/dev/null
+# VMware kernel module configuration
+# Ensure vmmon loads before vmnet
+softdep vmnet pre: vmmon
+EOF
+
+sudo depmod -a
+log "✓ Module boot configuration installed"
+
+# ============================================
 # 11. CREATE TARBALL FOR VMWARE
 # ============================================
 

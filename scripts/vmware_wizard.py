@@ -457,10 +457,10 @@ class VMwareWizard:
         table.add_row(
             "1",
             "[bold green]🚀 Optimized[/bold green] [dim](Recommended & Default)[/dim]\n" +
-            "  • 20-40% better performance\n" +
+            "  • 20-35% better performance\n" +
             "  • Uses CPU-specific instructions (AVX-512, AVX2, AES-NI)\n" +
-            "  • Enables NVMe, DMA, and virtualization optimizations\n" +
-            "  • [bold green]✨ Better Wayland integration - top bar hiding works perfectly![/bold green]\n" +
+            "  • Enables virtualization and compiler optimizations\n" +
+            "  • [bold green]✨ Real performance improvements on modern hardware![/bold green]\n" +
             "  • [yellow]Note:[/yellow] Modules only work on your CPU architecture"
         )
         
@@ -470,8 +470,7 @@ class VMwareWizard:
             "  • Baseline performance (0% gain)\n" +
             "  • Standard VMware compilation\n" +
             "  • Works on any x86_64 CPU (portable)\n" +
-            "  • Only applies kernel compatibility patches\n" +
-            "  • [dim]No Wayland improvements[/dim]"
+            "  • Only applies kernel compatibility patches"
         )
         
         self.console.print(table)
