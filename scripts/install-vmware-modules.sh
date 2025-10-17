@@ -1442,6 +1442,70 @@ fi
 log "✓ Build tools verified"
 
 # ============================================
+# 2.5. CHECK BTF (BPF Type Format) SUPPORT
+# ============================================
+info "Checking BTF support..."
+
+# Check if vmlinux is available for BTF generation
+VMLINUX_PATH="/usr/lib/debug/boot/vmlinux-$KERNEL_VERSION"
+if [ -f "$VMLINUX_PATH" ]; then
+    log "✓ vmlinux found - BTF generation will be enabled"
+else
+    info "vmlinux not found - BTF generation will be skipped"
+    info "This is NORMAL and does not affect VMware functionality"
+    echo ""
+    info "BTF (BPF Type Format) is only needed for:"
+    echo "  • Advanced kernel debugging with eBPF tools"
+    echo "  • bpftrace/bpftool introspection"
+    echo "  • Kernel development"
+    echo ""
+    info "VMware modules work perfectly without BTF"
+    echo ""
+    
+    # Ask if user wants to install vmlinux (not recommended for most users)
+    if [ "${INSTALL_VMLINUX:-false}" = "true" ]; then
+        warning "Installing vmlinux debug symbols (~700MB download)..."
+        
+        if [ "$DISTRO" = "debian" ]; then
+            # Try to find and install debug symbols package
+            DBG_PKG="linux-image-$KERNEL_VERSION-dbgsym"
+            if apt-cache search "$DBG_PKG" | grep -q "$DBG_PKG"; then
+                info "Found debug symbols package: $DBG_PKG"
+                read -p "Install $DBG_PKG? This will download ~700MB (y/N): " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    # Enable debug symbol repositories
+                    echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse" | \
+                        sudo tee /etc/apt/sources.list.d/ddebs.list > /dev/null
+                    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C8CAB6595FDFF622 2>/dev/null || true
+                    sudo apt update
+                    sudo apt install -y "$DBG_PKG"
+                    
+                    if [ -f "$VMLINUX_PATH" ]; then
+                        log "✓ vmlinux installed - BTF will be generated"
+                    fi
+                fi
+            else
+                info "Debug symbols package not available for this kernel"
+            fi
+        elif [ "$DISTRO" = "fedora" ]; then
+            DBG_PKG="kernel-debuginfo-$KERNEL_VERSION"
+            if dnf list available "$DBG_PKG" &>/dev/null; then
+                read -p "Install $DBG_PKG? This will download ~700MB (y/N): " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    sudo dnf debuginfo-install -y kernel-$KERNEL_VERSION
+                fi
+            fi
+        fi
+    else
+        info "To enable BTF generation, set: export INSTALL_VMLINUX=true"
+        info "Not recommended unless you need eBPF debugging tools"
+    fi
+    echo ""
+fi
+
+# ============================================
 # 3. PREPARE WORKING DIRECTORY
 # ============================================
 log "3. Preparing working directory..."
