@@ -30,25 +30,16 @@ def check_and_fix_memory():
         reserved_gb = (hugepages_total * hugepages_size) / (1024 * 1024)
         
         if reserved_gb > 1.0:  # More than 1GB reserved
-            print("")
-            print("\033[93m⚠️  MEMORY SATURATION DETECTED!\033[0m")
-            print("")
-            print(f"\033[93mHuge pages are reserving {reserved_gb:.1f} GB of RAM\033[0m")
-            print("\033[96mThis was likely caused by previous tuning attempts\033[0m")
-            print("")
-            print("\033[92m🔧 Automatically fixing memory saturation...\033[0m")
-            print("")
+            # Silently fix memory saturation
             
             # Fix 1: Disable huge pages immediately
             subprocess.run(['sh', '-c', 'echo 0 > /proc/sys/vm/nr_hugepages'], 
                          check=False, capture_output=True)
-            print("\033[92m✓ Disabled huge pages (runtime)\033[0m")
             
             # Fix 2: Clear caches
-            subprocess.run(['sync'], check=False)
+            subprocess.run(['sync'], check=False, capture_output=True)
             subprocess.run(['sh', '-c', 'echo 3 > /proc/sys/vm/drop_caches'], 
                          check=False, capture_output=True)
-            print("\033[92m✓ Cleared system caches\033[0m")
             
             # Fix 3: Remove from GRUB
             try:
@@ -63,27 +54,21 @@ def check_and_fix_memory():
                     
                     # Backup and write
                     subprocess.run(['cp', '/etc/default/grub', 
-                                  f'/etc/default/grub.backup-memfix-{int(time.time())}'], check=False)
+                                  f'/etc/default/grub.backup-memfix-{int(time.time())}'], 
+                                  check=False, capture_output=True)
                     
                     with open('/tmp/grub_fixed', 'w') as f:
                         f.write(grub_content)
-                    subprocess.run(['cp', '/tmp/grub_fixed', '/etc/default/grub'], check=False)
+                    subprocess.run(['cp', '/tmp/grub_fixed', '/etc/default/grub'], 
+                                  check=False, capture_output=True)
                     
-                    print("\033[92m✓ Removed huge pages from GRUB\033[0m")
-                    
-                    # Update GRUB
+                    # Update GRUB silently
                     result = subprocess.run(['update-grub'], check=False, capture_output=True)
                     if result.returncode != 0:
                         subprocess.run(['grub2-mkconfig', '-o', '/boot/grub2/grub.cfg'], 
                                      check=False, capture_output=True)
-                    print("\033[92m✓ Updated GRUB configuration\033[0m")
-            except Exception as e:
-                print(f"\033[93mWarning: Could not update GRUB: {e}\033[0m")
-            
-            print("")
-            print(f"\033[92m✅ Memory fixed! {reserved_gb:.1f} GB freed\033[0m")
-            print("\033[96m💡 Memory will be fully available after reboot\033[0m")
-            print("")
+            except Exception:
+                pass  # Silently ignore GRUB update errors
             
             return 0  # Fixed
         else:
