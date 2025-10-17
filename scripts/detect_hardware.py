@@ -1131,7 +1131,6 @@ def main():
         print("Falling back to basic detection...", file=sys.stderr)
         
         # Create minimal JSON for bash fallback
-        import os
         output_file = Path(f'/tmp/vmware_hw_capabilities_{os.getpid()}.json')
         minimal_data = {
             'error': str(e),
