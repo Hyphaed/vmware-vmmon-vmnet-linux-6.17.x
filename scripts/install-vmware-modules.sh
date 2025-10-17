@@ -1923,24 +1923,6 @@ if [ "$OPTIM_CHOICE" = "1" ]; then
     fi
     
     log "✓ Performance optimization patches applied"
-    echo ""
-    echo -e "${GREEN}Performance Enhancements Applied:${NC}"
-    echo "  • Makefile-based optimization system (VMWARE_OPTIMIZE=1)"
-    echo "  • Hardware capability detection at runtime"
-    echo "  • VT-x/EPT/VPID optimizations (if hardware supports)"
-    echo "  • Branch prediction hints (likely/unlikely)"
-    echo "  • Cache line alignment for hot structures"
-    echo "  • Prefetch hints for memory-intensive operations"
-    if [ "$VT_X_ENABLED" = true ] && [ "$EPT_ENABLED" = true ]; then
-        echo "  • Intel VT-x + EPT optimizations enabled"
-    fi
-    if [ "$AVX512_DETECTED" = true ]; then
-        echo "  • AVX-512 SIMD optimizations (512-bit, 40-60% faster)"
-    fi
-    echo ""
-    echo -e "${CYAN}Hardware capabilities will be detected at module load.${NC}"
-    echo -e "${CYAN}Check dmesg after loading modules to see detected features.${NC}"
-    echo ""
 else
     info "Skipping performance optimizations (Vanilla mode selected)"
 fi
@@ -2306,6 +2288,32 @@ fi
 echo ""
 draw_section_header "✓ INSTALLATION AND TESTING COMPLETED"
 echo ""
+
+# ============================================
+# SHOW PERFORMANCE OPTIMIZATIONS SUMMARY
+# ============================================
+if [ "$OPTIMIZATION_MODE" = "optimized" ]; then
+    echo ""
+    log "✓ Performance optimization patches applied"
+    echo ""
+    echo -e "${GREEN}Performance Enhancements Applied:${NC}"
+    echo "  • Makefile-based optimization system (VMWARE_OPTIMIZE=1)"
+    echo "  • Hardware capability detection at runtime"
+    echo "  • VT-x/EPT/VPID optimizations (if hardware supports)"
+    echo "  • Branch prediction hints (likely/unlikely)"
+    echo "  • Cache line alignment for hot structures"
+    echo "  • Prefetch hints for memory-intensive operations"
+    if [ "$VT_X_ENABLED" = true ] && [ "$EPT_ENABLED" = true ]; then
+        echo "  • Intel VT-x + EPT optimizations enabled"
+    fi
+    if [ "$AVX512_DETECTED" = true ]; then
+        echo "  • AVX-512 SIMD optimizations (512-bit, 40-60% faster)"
+    fi
+    echo ""
+    echo -e "${CYAN}Hardware capabilities will be detected at module load.${NC}"
+    echo -e "${CYAN}Check dmesg after loading modules to see detected features.${NC}"
+    echo ""
+fi
 
 # ============================================
 # REBOOT RECOMMENDATION (if tuning was applied)
