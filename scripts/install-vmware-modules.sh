@@ -2307,10 +2307,6 @@ fi
 
 echo ""
 
-info "To start VMware:"
-echo "  vmware &"
-echo ""
-
 # Show reboot recommendation if system was tuned (Step 5/5)
 if [ "$TUNING_APPLIED" = "true" ]; then
     echo ""
