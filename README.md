@@ -5,11 +5,20 @@
 [![VMware](https://img.shields.io/badge/VMware-17.6.4-green.svg)](https://www.vmware.com/)
 [![Gentoo](https://img.shields.io/badge/Gentoo-Supported-purple.svg)](https://www.gentoo.org/)
 
-This repository contains patches to make VMware Workstation modules (`vmmon` and `vmnet`) compatible with Linux kernel **6.16.x** and **6.17.x** series with support for **Ubuntu, Fedora, and Gentoo**.
+This repository provides **kernel compatibility patches** and **optional performance optimizations** for VMware Workstation modules (`vmmon` and `vmnet`) on Linux kernel **6.16.x** and **6.17.x** series with support for **Ubuntu, Fedora, and Gentoo**.
 
 ## 🎯 Purpose
 
-VMware Workstation modules often lag behind the latest kernel releases. This repository provides the necessary patches to compile and run VMware modules on kernel 6.16.x and 6.17.x with **interactive kernel version selection** during installation.
+VMware Workstation modules often lag behind the latest kernel releases. This repository provides:
+
+1. **Kernel Compatibility Patches**: Make VMware modules work with kernel 6.16.x and 6.17.x
+2. **Performance Optimizations**: Optional hardware-specific and VM performance enhancements
+3. **Interactive Installation**: Terminal-based assistant guides you through:
+   - Kernel version selection (6.16 or 6.17)
+   - Hardware optimization levels (4 options from safe to aggressive)
+   - CPU feature detection (AVX2, SSE4.2, AES-NI)
+   - Kernel feature detection (modern MM, DMA optimizations)
+   - VM performance enhancements (memory allocation, low latency mode)
 
 ## ✨ Features
 
