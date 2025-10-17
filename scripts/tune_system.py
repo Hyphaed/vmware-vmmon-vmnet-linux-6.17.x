@@ -264,7 +264,6 @@ class SystemOptimizer:
         self.ui.console.print("[yellow]⚠ Important Notes:[/yellow]")
         self.ui.console.print("  • All changes will be backed up automatically")
         self.ui.console.print("  • A system reboot is required for GRUB changes to take effect")
-        self.ui.console.print("  • Disabling mitigations reduces security but improves performance")
         self.ui.console.print("  • You can revert changes using the backup at:", style="dim")
         self.ui.console.print(f"    [cyan]{self.backup_dir}[/cyan]", style="dim")
         self.ui.console.print()

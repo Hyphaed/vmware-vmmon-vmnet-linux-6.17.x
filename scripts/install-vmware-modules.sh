@@ -742,13 +742,15 @@ if [ "$USE_WIZARD" = true ] && [ -f "/tmp/vmware_hw_capabilities.json" ]; then
     info "Using hardware detection from wizard..."
     USE_PYTHON_DETECTION=true
     
-    # Extract values from wizard's JSON
+    # Extract values from wizard's JSON (disable trap temporarily to avoid false errors)
+    set +e
     PYTHON_OPT_SCORE=$(grep -o '"optimization_score":[[:space:]]*[0-9]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[0-9]*$' || echo "50")
     PYTHON_RECOMMENDED=$(grep -o '"recommended_mode":[[:space:]]*"[^"]*"' /tmp/vmware_hw_capabilities.json 2>/dev/null | sed 's/.*"\([^"]*\)".*/\1/' || echo "optimized")
     PYTHON_HAS_AVX512=$(grep -o '"has_avx512f":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "false")
     PYTHON_HAS_VTX=$(grep -o '"has_vtx":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "true")
     PYTHON_HAS_EPT=$(grep -o '"has_ept":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "true")
     PYTHON_HAS_NVME=$(grep -o '"has_nvme":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "false")
+    set -e
     
     log "✓ Hardware configuration loaded from wizard"
 else
@@ -795,6 +797,8 @@ else
         # Run Python detector with enhanced detection
         info "Running comprehensive hardware analysis..."
         # Run detector and check if JSON was generated (more reliable than exit code)
+        # Disable trap temporarily to avoid catching benign errors
+        set +e
         $PYTHON_CMD "$PYTHON_DETECTOR" >/dev/null 2>&1
         
         # Check if JSON was generated successfully
@@ -802,12 +806,13 @@ else
             USE_PYTHON_DETECTION=true
             
             # Extract key values using grep/sed (portable)
-            PYTHON_OPT_SCORE=$(grep -o '"optimization_score":[[:space:]]*[0-9]*' /tmp/vmware_hw_capabilities.json | grep -o '[0-9]*$')
-            PYTHON_RECOMMENDED=$(grep -o '"recommended_mode":[[:space:]]*"[^"]*"' /tmp/vmware_hw_capabilities.json | sed 's/.*"\([^"]*\)".*/\1/')
-            PYTHON_HAS_AVX512=$(grep -o '"has_avx512f":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
-            PYTHON_HAS_VTX=$(grep -o '"has_vtx":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
-            PYTHON_HAS_EPT=$(grep -o '"has_ept":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
-            PYTHON_HAS_NVME=$(grep -o '"has_nvme":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
+            PYTHON_OPT_SCORE=$(grep -o '"optimization_score":[[:space:]]*[0-9]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[0-9]*$' || echo "50")
+            PYTHON_RECOMMENDED=$(grep -o '"recommended_mode":[[:space:]]*"[^"]*"' /tmp/vmware_hw_capabilities.json 2>/dev/null | sed 's/.*"\([^"]*\)".*/\1/' || echo "optimized")
+            PYTHON_HAS_AVX512=$(grep -o '"has_avx512f":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "false")
+            PYTHON_HAS_VTX=$(grep -o '"has_vtx":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "true")
+            PYTHON_HAS_EPT=$(grep -o '"has_ept":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "true")
+            PYTHON_HAS_NVME=$(grep -o '"has_nvme":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "false")
+        set -e
             
             log "✓ Advanced Python hardware detection completed"
             echo ""
