@@ -354,7 +354,7 @@ if [ -n "$OPTIM_FLAGS" ] || [ -n "$KERNEL_FEATURES" ] || [ "$NVME_DETECTED" = tr
     echo "     • 20-40% better performance across CPU, memory, graphics, storage, network"
     echo "     • Enables: -O3, CPU features (AVX2/SSE4.2/AES), kernel 6.16+/6.17+ features"
     echo "     • Memory allocation, DMA, low latency, NVMe/M.2 optimizations"
-    echo "     • ${YELLOW}Trade-off:${NC} Modules only work on your CPU type"
+    echo -e "     • ${YELLOW}Trade-off:${NC} Modules only work on your CPU type"
     echo ""
     echo -e "${GREEN}  2)${NC} 🔒 Vanilla (Standard VMware)"
     echo "     • Baseline performance (0% gain)"
