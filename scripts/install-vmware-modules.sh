@@ -750,6 +750,7 @@ log "✓ System verification completed"
 # 1.5. HARDWARE DETECTION & OPTIMIZATION
 # ============================================
 # Skip hardware detection if wizard already did it
+log "DEBUG: USE_WIZARD=$USE_WIZARD, JSON exists=$([ -f "/tmp/vmware_hw_capabilities.json" ] && echo "yes" || echo "no")"
 if [ "$USE_WIZARD" = true ] && [ -f "/tmp/vmware_hw_capabilities.json" ]; then
     info "Using hardware detection from wizard..."
     USE_PYTHON_DETECTION=true
@@ -815,9 +816,9 @@ else
         
         # Run Python detector with enhanced detection
         info "Running comprehensive hardware analysis..."
-        # Run detector and check if JSON was generated (more reliable than exit code)
+        # Run detector with timeout (30 seconds max) and show errors
         # ERR trap is already disabled for this entire section
-        $PYTHON_CMD "$PYTHON_DETECTOR" >/dev/null 2>&1
+        timeout 30 $PYTHON_CMD "$PYTHON_DETECTOR" 2>&1 | head -20 || true
         
         # Check if JSON was generated successfully
         if [ -f "/tmp/vmware_hw_capabilities.json" ]; then
