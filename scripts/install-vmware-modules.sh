@@ -284,21 +284,50 @@ KERNEL_FEATURES=""
 
 # Check for CPU features (SIMD instructions)
 # These improve memory operations, crypto, and vector processing
+# Works for both Intel and AMD CPUs
 
-# AVX-512 detection (Intel i7-11700 Rocket Lake has this!)
+# Detect CPU vendor
+CPU_VENDOR="unknown"
+if echo "$CPU_MODEL" | grep -qi "Intel"; then
+    CPU_VENDOR="Intel"
+elif echo "$CPU_MODEL" | grep -qi "AMD"; then
+    CPU_VENDOR="AMD"
+fi
+
+# AVX-512 detection (Intel: Skylake-X+, Ice Lake+, Rocket Lake+, Alder Lake+)
+# AMD: Zen 4+ (Ryzen 7000 series)
 AVX512_DETECTED=false
 if echo "$CPU_FLAGS" | grep -q "avx512"; then
     AVX512_DETECTED=true
     # Don't add explicit flag - march=native will enable it
-    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AVX-512${NC} (512-bit SIMD): 64 bytes/instruction vs AVX2's 32 bytes"
-    OPTIM_DESC="$OPTIM_DESC\n    Impact: 40-60% faster memory operations (memcpy, memset)"
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AVX-512${NC} ($CPU_VENDOR CPU detected)"
+    OPTIM_DESC="$OPTIM_DESC\n    - 512-bit SIMD: 64 bytes/instruction vs AVX2's 32 bytes"
+    OPTIM_DESC="$OPTIM_DESC\n    - Impact: 40-60% faster memory operations (memcpy, memset)"
+    if [ "$CPU_VENDOR" = "Intel" ]; then
+        OPTIM_DESC="$OPTIM_DESC\n    - Your CPU: Skylake-X/Ice Lake/Rocket Lake or newer"
+    elif [ "$CPU_VENDOR" = "AMD" ]; then
+        OPTIM_DESC="$OPTIM_DESC\n    - Your CPU: Zen 4 (Ryzen 7000 series) or newer"
+    fi
 fi
 
-# AVX2 detection (fallback if no AVX-512)
+# AVX2 detection (Intel: Haswell+, AMD: Excavator+ and Zen+)
 if [ "$AVX512_DETECTED" = false ] && echo "$CPU_FLAGS" | grep -q "avx2"; then
     OPTIM_FLAGS="$OPTIM_FLAGS -mavx2"
-    OPTIM_DESC="$OPTIM_DESC\n  • AVX2 (256-bit SIMD): 32 bytes/instruction vs SSE's 16 bytes"
-    OPTIM_DESC="$OPTIM_DESC\n    Impact: 20-30% faster memory operations"
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AVX2${NC} ($CPU_VENDOR CPU detected)"
+    OPTIM_DESC="$OPTIM_DESC\n    - 256-bit SIMD: 32 bytes/instruction vs SSE's 16 bytes"
+    OPTIM_DESC="$OPTIM_DESC\n    - Impact: 20-30% faster memory operations"
+    if [ "$CPU_VENDOR" = "Intel" ]; then
+        OPTIM_DESC="$OPTIM_DESC\n    - Your CPU: Haswell (2013) or newer"
+    elif [ "$CPU_VENDOR" = "AMD" ]; then
+        OPTIM_DESC="$OPTIM_DESC\n    - Your CPU: Excavator or Zen (Ryzen) or newer"
+    fi
+fi
+
+# AVX detection (Intel: Sandy Bridge+, AMD: Bulldozer+)
+if [ "$AVX512_DETECTED" = false ] && ! echo "$CPU_FLAGS" | grep -q "avx2" && echo "$CPU_FLAGS" | grep -q "avx"; then
+    OPTIM_DESC="$OPTIM_DESC\n  • AVX ($CPU_VENDOR CPU detected)"
+    OPTIM_DESC="$OPTIM_DESC\n    - 256-bit SIMD: 32 bytes/instruction"
+    OPTIM_DESC="$OPTIM_DESC\n    - Impact: 15-20% faster memory operations"
 fi
 
 # SSE4.2 (baseline for modern CPUs)
@@ -307,14 +336,21 @@ if echo "$CPU_FLAGS" | grep -q "sse4_2"; then
     OPTIM_DESC="$OPTIM_DESC\n  • SSE4.2 (Streaming SIMD Extensions): String/text operations"
 fi
 
-# AES-NI (hardware crypto)
+# AES-NI (hardware crypto) - Both Intel and AMD
 if echo "$CPU_FLAGS" | grep -q "aes"; then
     OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AES-NI${NC}: Hardware AES encryption (10x faster than software)"
     OPTIM_DESC="$OPTIM_DESC\n    Impact: 30-50% faster crypto in VMware modules"
+    OPTIM_DESC="$OPTIM_DESC\n    Supported by: Intel Westmere+ (2010+), AMD Bulldozer+ (2011+)"
 fi
 
-# Intel Virtualization Technology Detection (CRITICAL for optimizations!)
-info "Detecting Intel Virtualization Technology features..."
+# SHA-NI (SHA extensions) - Both Intel and AMD
+if echo "$CPU_FLAGS" | grep -q "sha_ni"; then
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}SHA-NI${NC}: Hardware SHA-1/SHA-256 acceleration"
+    OPTIM_DESC="$OPTIM_DESC\n    Impact: 2-4x faster SHA hashing"
+fi
+
+# Hardware Virtualization Technology Detection (Intel VT-x or AMD-V)
+info "Detecting hardware virtualization features..."
 
 VT_X_ENABLED=false
 VT_D_ENABLED=false
@@ -325,10 +361,17 @@ EPT_AD_BITS_ENABLED=false
 POSTED_INTERRUPTS_ENABLED=false
 VMFUNC_ENABLED=false
 
-# Check VT-x (vmx flag)
+# Check for Intel VT-x (vmx flag) or AMD-V (svm flag)
 if echo "$CPU_FLAGS" | grep -q "vmx"; then
     VT_X_ENABLED=true
-    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}Intel VT-x${NC}: Hardware virtualization ENABLED"
+    if [ "$CPU_VENDOR" = "Intel" ]; then
+        OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}Intel VT-x${NC}: Hardware virtualization ENABLED"
+    else
+        OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}VT-x${NC}: Hardware virtualization ENABLED"
+    fi
+elif echo "$CPU_FLAGS" | grep -q "svm"; then
+    VT_X_ENABLED=true
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AMD-V (SVM)${NC}: Hardware virtualization ENABLED"
     
     # Check VPID (Virtual Processor ID) - reduces TLB flushes
     if echo "$CPU_FLAGS" | grep -q "vpid"; then
@@ -337,10 +380,17 @@ if echo "$CPU_FLAGS" | grep -q "vmx"; then
         OPTIM_DESC="$OPTIM_DESC\n    │  Why: Avoids TLB flush on VM entry/exit"
     fi
     
-    # Check EPT (Extended Page Tables)
+    # Check EPT (Extended Page Tables) for Intel or NPT/RVI for AMD
     if echo "$CPU_FLAGS" | grep -q "ept"; then
         EPT_ENABLED=true
-        OPTIM_DESC="$OPTIM_DESC\n    ├─ ${GREEN}EPT${NC}: Extended Page Tables (faster guest memory)"
+        if [ "$CPU_VENDOR" = "Intel" ]; then
+            OPTIM_DESC="$OPTIM_DESC\n    ├─ ${GREEN}EPT${NC}: Extended Page Tables (faster guest memory)"
+        else
+            OPTIM_DESC="$OPTIM_DESC\n    ├─ ${GREEN}EPT${NC}: Extended Page Tables (faster guest memory)"
+        fi
+    elif echo "$CPU_FLAGS" | grep -q "npt"; then
+        EPT_ENABLED=true
+        OPTIM_DESC="$OPTIM_DESC\n    ├─ ${GREEN}NPT/RVI${NC}: Nested Page Tables (AMD, faster guest memory)"
         
         # Check EPT huge pages (2MB/1GB pages reduce TLB pressure)
         if echo "$CPU_FLAGS" | grep -q "ept_1gb" || echo "$CPU_FLAGS" | grep -q "pdpe1gb"; then
@@ -371,25 +421,43 @@ if echo "$CPU_FLAGS" | grep -q "vmx"; then
         OPTIM_DESC="$OPTIM_DESC\n       Why: Direct transitions without full VM exit"
     fi
 else
-    OPTIM_DESC="$OPTIM_DESC\n  • ${RED}Intel VT-x: NOT DETECTED${NC} - VMware WILL NOT WORK!"
-    error "VT-x not detected! Enable Intel Virtualization Technology in BIOS"
-    warning "VMware cannot run without VT-x!"
+    OPTIM_DESC="$OPTIM_DESC\n  • ${RED}Hardware Virtualization: NOT DETECTED${NC} - VMware WILL NOT WORK!"
+    if [ "$CPU_VENDOR" = "Intel" ]; then
+        error "Intel VT-x not detected! Enable Virtualization Technology in BIOS/UEFI"
+    elif [ "$CPU_VENDOR" = "AMD" ]; then
+        error "AMD-V (SVM) not detected! Enable SVM Mode in BIOS/UEFI"
+    else
+        error "Hardware virtualization not detected! Enable in BIOS/UEFI"
+    fi
+    warning "VMware Workstation requires hardware virtualization support!"
 fi
 
-# Check VT-d (IOMMU for device passthrough)
+# Check VT-d (Intel) or AMD-Vi (IOMMU for device passthrough)
 if [ -d "/sys/class/iommu" ] && [ -n "$(ls -A /sys/class/iommu 2>/dev/null)" ]; then
     VT_D_ENABLED=true
-    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}Intel VT-d (IOMMU)${NC}: Device passthrough enabled"
+    if [ "$CPU_VENDOR" = "Intel" ]; then
+        OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}Intel VT-d (IOMMU)${NC}: Device passthrough enabled"
+    elif [ "$CPU_VENDOR" = "AMD" ]; then
+        OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AMD-Vi (IOMMU)${NC}: Device passthrough enabled"
+    else
+        OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}IOMMU${NC}: Device passthrough enabled"
+    fi
     
-    # Check IOMMU page sizes
-    if dmesg | grep -q "DMAR.*page size.*2M\|1G" 2>/dev/null; then
+    # Check IOMMU page sizes (works for both Intel and AMD)
+    if dmesg | grep -q "DMAR.*page size.*2M\|1G\|AMD-Vi.*page size.*2M\|1G" 2>/dev/null; then
         OPTIM_DESC="$OPTIM_DESC\n    └─ ${GREEN}IOMMU Large Pages${NC}: 20-40% faster DMA (detected)"
         OPTIM_DESC="$OPTIM_DESC\n       Why: Reduces IOMMU page table walks"
     else
         OPTIM_DESC="$OPTIM_DESC\n    └─ IOMMU Large Pages: Available but not configured"
     fi
 else
-    OPTIM_DESC="$OPTIM_DESC\n  • Intel VT-d (IOMMU): Not enabled (device passthrough unavailable)"
+    if [ "$CPU_VENDOR" = "Intel" ]; then
+        OPTIM_DESC="$OPTIM_DESC\n  • Intel VT-d (IOMMU): Not enabled (device passthrough unavailable)"
+    elif [ "$CPU_VENDOR" = "AMD" ]; then
+        OPTIM_DESC="$OPTIM_DESC\n  • AMD-Vi (IOMMU): Not enabled (device passthrough unavailable)"
+    else
+        OPTIM_DESC="$OPTIM_DESC\n  • IOMMU: Not enabled (device passthrough unavailable)"
+    fi
 fi
 
 # Summary of what can be optimized
@@ -563,35 +631,58 @@ if [ -n "$OPTIM_FLAGS" ] || [ -n "$KERNEL_FEATURES" ] || [ "$NVME_DETECTED" = tr
             echo "  • -ffast-math: Relaxes IEEE 754 for faster FP calculations"
             echo "    Impact: 5-15% faster floating-point (minimal in kernel modules)"
             echo ""
-            # Show SIMD capabilities
+            # Show SIMD capabilities (auto-detected, no hardcoded CPUs)
             echo -e "${CYAN}Hardware Acceleration (SIMD):${NC}"
             if echo "$CPU_FLAGS" | grep -q "avx512"; then
-                echo "  • ${GREEN}AVX-512 (512-bit)${NC}: Your i7-11700 Rocket Lake supports this!"
+                echo "  • ${GREEN}AVX-512 (512-bit)${NC}: Detected on your CPU!"
+                echo "    - CPU: $CPU_MODEL"
                 echo "    - Processes 64 bytes per instruction (vs AVX2's 32 bytes)"
                 echo "    - Impact: 40-60% faster than AVX2 for memory operations"
                 echo "    - Enabled automatically by -march=native"
             elif echo "$CPU_FLAGS" | grep -q "avx2"; then
-                echo "  • AVX2 (256-bit SIMD): Processes 32 bytes per instruction"
-                echo "    Impact: 20-30% faster memory copies than SSE"
+                echo "  • ${GREEN}AVX2 (256-bit SIMD)${NC}: Detected on your CPU!"
+                echo "    - CPU: $CPU_MODEL"
+                echo "    - Processes 32 bytes per instruction (vs SSE's 16 bytes)"
+                echo "    - Impact: 20-30% faster memory operations than SSE"
+            elif echo "$CPU_FLAGS" | grep -q "avx"; then
+                echo "  • AVX (256-bit SIMD): Detected on your CPU!"
+                echo "    - CPU: $CPU_MODEL"
+                echo "    - Impact: 15-20% faster memory operations than SSE"
+            elif echo "$CPU_FLAGS" | grep -q "sse4_2"; then
+                echo "  • SSE4.2 (128-bit SIMD): Detected on your CPU!"
+                echo "    - CPU: $CPU_MODEL"
+                echo "    - Impact: Baseline modern performance"
             fi
             if echo "$CPU_FLAGS" | grep -q "aes"; then
-                echo "  • AES-NI: Hardware AES encryption/decryption"
+                echo "  • ${GREEN}AES-NI${NC}: Hardware AES encryption/decryption"
                 echo "    Impact: 30-50% faster cryptographic operations"
             fi
             echo ""
-            # Intel Virtualization Technology explanation
+            # Virtualization Technology explanation (Intel or AMD)
             if [ "$VT_X_ENABLED" = true ]; then
-                echo -e "${CYAN}Intel Virtualization Technology (Detected):${NC}"
-                echo "  • VT-x: Hardware virtualization (required for VMware)"
-                if [ "$EPT_ENABLED" = true ]; then
-                    echo "  • EPT: Extended Page Tables (faster guest memory access)"
-                fi
-                if [ "$VT_D_ENABLED" = true ]; then
-                    echo "  • VT-d: IOMMU for device passthrough"
+                echo -e "${CYAN}Hardware Virtualization Technology:${NC}"
+                if echo "$CPU_MODEL" | grep -qi "Intel"; then
+                    echo "  • ${GREEN}Intel VT-x${NC}: Hardware virtualization (required for VMware)"
+                    if [ "$EPT_ENABLED" = true ]; then
+                        echo "  • ${GREEN}EPT${NC}: Extended Page Tables (faster guest memory access)"
+                    fi
+                    if [ "$VT_D_ENABLED" = true ]; then
+                        echo "  • ${GREEN}VT-d${NC}: IOMMU for device passthrough"
+                    fi
+                elif echo "$CPU_MODEL" | grep -qi "AMD"; then
+                    echo "  • ${GREEN}AMD-V${NC}: Hardware virtualization (required for VMware)"
+                    if [ "$EPT_ENABLED" = true ]; then
+                        echo "  • ${GREEN}RVI/NPT${NC}: Rapid Virtualization Indexing (AMD's EPT equivalent)"
+                    fi
+                    if [ "$VT_D_ENABLED" = true ]; then
+                        echo "  • ${GREEN}AMD-Vi${NC}: IOMMU for device passthrough"
+                    fi
+                else
+                    echo "  • ${GREEN}Hardware Virtualization${NC}: Enabled (required for VMware)"
                 fi
                 echo ""
-                echo -e "${YELLOW}Note:${NC} These features are used by VMware hypervisor, not by modules"
-                echo "         No optimization possible here - they're already used automatically"
+                echo -e "${YELLOW}Note:${NC} These features are used by VMware hypervisor automatically"
+                echo "         Module optimizations complement but don't replace these"
             fi
             echo ""
             if [ -n "$KERNEL_FEATURES" ]; then
