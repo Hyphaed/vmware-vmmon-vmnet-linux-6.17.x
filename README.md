@@ -198,6 +198,7 @@ The defining feature that sets this project apart:
 - **Automatic backups**: Created before every installation/update
 - **Smart detection**: Warns if modules already exist
 - **Easy restore**: Timestamped backups with interactive selection
+- **Original modules detection**: First backup identified via hash verification (restore factory modules)
 - **Confirmation prompts**: Prevents accidental overwrites
 
 ### ⚙️ **Smart Patching**
