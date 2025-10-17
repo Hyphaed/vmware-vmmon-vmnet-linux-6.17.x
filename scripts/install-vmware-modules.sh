@@ -548,13 +548,13 @@ fi
 log "✓ System verification completed"
 
 # ============================================
-# 1.5. HARDWARE DETECTION & OPTIMIZATION (Legacy Mode Only)
+# 1.5. HARDWARE DETECTION & OPTIMIZATION
 # ============================================
-# Skip this entire section if wizard was used - wizard handles all optimization choices
-if [ "$USE_WIZARD" = false ]; then
+# Always run hardware detection (it's the core of the project!)
+# Only skip the VISUAL PROMPTS if wizard was used
 echo ""
 echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}HARDWARE OPTIMIZATION (OPTIONAL)${NC}"
+echo -e "${YELLOW}HARDWARE OPTIMIZATION${NC}"
 echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
@@ -963,10 +963,12 @@ if [ -n "$KERNEL_CONFIG" ] && [ -f "/boot/config-$KERNEL_VERSION" ]; then
 fi
 
 if [ -n "$OPTIM_FLAGS" ] || [ -n "$KERNEL_FEATURES" ] || [ "$NVME_DETECTED" = true ]; then
-    echo -e "${GREEN}Hardware & Kernel Optimizations Available:${NC}"
-    echo -e "$OPTIM_DESC"
-    echo ""
-    echo -e "${YELLOW}Choose Module Compilation Mode:${NC}"
+    # Only show visual prompts if wizard was NOT used (legacy mode)
+    if [ "$USE_WIZARD" = false ]; then
+        echo -e "${GREEN}Hardware & Kernel Optimizations Available:${NC}"
+        echo -e "$OPTIM_DESC"
+        echo ""
+        echo -e "${YELLOW}Choose Module Compilation Mode:${NC}"
     echo ""
     echo -e "${GREEN}  1)${NC} 🚀 Optimized (Recommended)"
     echo "     • 20-40% better performance across CPU, memory, graphics, storage, network"
@@ -1112,6 +1114,18 @@ if [ -n "$OPTIM_FLAGS" ] || [ -n "$KERNEL_FEATURES" ] || [ "$NVME_DETECTED" = tr
             echo -e "${YELLOW}Note:${NC} Missing 15-35% potential performance improvement"
             ;;
     esac
+    else
+        # Wizard mode: use configuration from JSON file
+        info "Using optimization mode from wizard: $OPTIM_MODE"
+        if [ "$OPTIM_MODE" = "optimized" ]; then
+            OPTIM_CHOICE="1"
+            # Combine all compiler optimization flags
+            EXTRA_CFLAGS="$PERF_FLAGS $NATIVE_OPTIM $KERNEL_FEATURES $EXTRA_OPTIM"
+        else
+            OPTIM_CHOICE="2"
+            EXTRA_CFLAGS=""
+        fi
+    fi
 else
     warning "No specific optimizations detected"
     EXTRA_CFLAGS=""
@@ -1119,8 +1133,6 @@ fi
 
 echo ""
 log "✓ Hardware detection completed"
-
-fi  # End of legacy hardware optimization section
 
 # ============================================
 # 2. INSTALL DEPENDENCIES
