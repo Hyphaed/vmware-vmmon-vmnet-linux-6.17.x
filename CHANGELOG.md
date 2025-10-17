@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2025-10-17
+
+### Added - Gentoo Linux Support
+- Full Gentoo Linux compatibility with custom paths (`/opt/vmware/lib/vmware`)
+- Gentoo-specific kernel directory detection (`/usr/src/linux-*` and `/usr/src/linux`)
+- Skip tarball creation for Gentoo (modules installed directly)
+- Backup directory in `/tmp` for Gentoo users
+- Gentoo badge added to README
+
+### Added - Hardware Optimization Options
+- **Conservative approach**: User chooses optimization level before compilation
+- Auto-detection of CPU model and features (AVX2, SSE4.2)
+- Three optimization levels:
+  * **Native**: `-O2 -pipe -march=native -mtune=native` (best performance, CPU-specific)
+  * **Conservative**: `-O2 -pipe` (standard optimization, portable)
+  * **None**: Default kernel flags (safest option)
+- Hardware detection shows CPU model before offering options
+- Optimization flags applied via `CFLAGS` during module compilation
+
+### Added - New Utility Scripts
+- **update-vmware-modules.sh**: Quick module update after kernel upgrades
+  * Detects kernel version changes
+  * Checks if update is needed
+  * Auto-runs full installation for current kernel
+  * Shows before/after module status
+  
+- **restore-vmware-modules.sh**: Restore from previous backups
+  * Lists all available backups with timestamps
+  * Shows current vs backup file sizes and dates
+  * Interactive backup selection (0-N)
+  * Safe restore with confirmation prompts
+  * Works with both standard and Gentoo paths
+  * Verifies backup integrity before restore
+
+### Improved
+- Enhanced distribution detection (Gentoo checked first, then Fedora/Debian)
+- Dynamic VMware module directory based on distribution
+- Dynamic backup directory based on distribution  
+- Improved kernel compiler detection with grep for gcc/clang
+- Better kernel directory detection for multiple distributions
+- Both install and update scripts now show backup/restore information banner
+- Users informed about automatic backups and restore utility at startup
+
+### Changed
+- Script header updated to show Gentoo compatibility
+- Repository structure in README updated with new scripts
+- Feature list expanded with hardware optimizations and utilities
+- Prerequisites section now includes Gentoo instructions
+
 ## [1.0.3] - 2025-10-15
 
 ### Fixed: Tarball Contamination
@@ -121,4 +170,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - #3 - vmmon.ko was not generated (objtool errors on kernel 6.16.3+)
 - #4 - Error extracting modules (missing error handling for tar extraction)
 - #5 - Tarballs contain compilation artifacts causing module rebuild issues
+- #6 - Gentoo support request with custom paths patch
 
