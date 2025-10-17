@@ -441,6 +441,28 @@ class SystemOptimizer:
             self.console.print(f"  [red]✗ Failed to update GRUB: {e}[/red]")
             return False
         
+        # Update initramfs (required after GRUB changes)
+        self.console.print("  Updating initramfs...")
+        try:
+            if self.distro_info['family'] in ['debian', 'ubuntu']:
+                # Update initramfs for all kernels
+                subprocess.run(['update-initramfs', '-u', '-k', 'all'], check=True, capture_output=True)
+                self.console.print("  [green]✓[/green] Initramfs updated")
+            elif self.distro_info['family'] in ['rhel', 'fedora']:
+                # Dracut for RHEL/Fedora
+                subprocess.run(['dracut', '--force', '--regenerate-all'], check=True, capture_output=True)
+                self.console.print("  [green]✓[/green] Initramfs updated (dracut)")
+            elif self.distro_info['family'] == 'arch':
+                # mkinitcpio for Arch
+                subprocess.run(['mkinitcpio', '-P'], check=True, capture_output=True)
+                self.console.print("  [green]✓[/green] Initramfs updated (mkinitcpio)")
+            else:
+                self.console.print("  [yellow]⚠[/yellow] Please update initramfs manually")
+        except subprocess.CalledProcessError as e:
+            self.console.print(f"  [yellow]⚠ Failed to update initramfs: {e}[/yellow]")
+            self.console.print("  [yellow]Please run 'update-initramfs -u' or equivalent manually[/yellow]")
+            # Don't fail the whole process if initramfs update fails
+        
         return True
     
     def optimize_sysctl(self) -> bool:

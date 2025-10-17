@@ -175,14 +175,14 @@ else
         
         # If using conda environment, ensure all required packages are installed
         if [ "$WIZARD_PYTHON" = "$MINIFORGE_DIR/envs/$ENV_NAME/bin/python" ]; then
+            # Source conda to enable conda commands
+            if [ -f "$MINIFORGE_DIR/etc/profile.d/conda.sh" ]; then
+                source "$MINIFORGE_DIR/etc/profile.d/conda.sh"
+            fi
+            
             # Check and install questionary if missing
             if ! "$WIZARD_PYTHON" -c "import questionary" 2>/dev/null; then
                 info "Installing questionary in conda environment..."
-                
-                # Activate conda/mamba
-                if [ -f "$MINIFORGE_DIR/etc/profile.d/conda.sh" ]; then
-                    source "$MINIFORGE_DIR/etc/profile.d/conda.sh"
-                fi
                 
                 # Try mamba first (faster), then conda, finally pip
                 if [ -f "$MINIFORGE_DIR/bin/mamba" ]; then
@@ -207,6 +207,12 @@ else
                 info "Installing rich in conda environment..."
                 "$WIZARD_PYTHON" -m pip install rich >/dev/null 2>&1 || true
             fi
+            
+            # Activate the environment and run the wizard
+            info "Activating conda environment: $ENV_NAME"
+            conda activate "$ENV_NAME" 2>/dev/null || true
+            export CONDA_PREFIX="$MINIFORGE_DIR/envs/$ENV_NAME"
+            export PATH="$MINIFORGE_DIR/envs/$ENV_NAME/bin:$PATH"
         fi
         
         # Run the wizard with selected Python
@@ -2187,5 +2193,4 @@ if [[ $REPLY =~ ^[Yy]$ ]] 2>/dev/null && [ -f "$SCRIPT_DIR/tune-system.sh" ] && 
     echo ""
 fi
 
-log "Process completed successfully!"
 log "Process completed successfully!"

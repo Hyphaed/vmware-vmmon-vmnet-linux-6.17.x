@@ -21,7 +21,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 # Auto-install missing packages
 def check_and_install_dependencies():
@@ -910,7 +910,7 @@ class HardwareDetector:
         return score, recommended, improvement
     
     def generate_compilation_flags(self, cpu: CPUCapabilities, virt: VirtualizationCapabilities, 
-                                   memory: MemoryCapabilities) -> Dict[str, any]:
+                                   memory: MemoryInfo) -> Dict[str, Any]:
         """Generate optimal compilation flags based on hardware"""
         
         flags = {
