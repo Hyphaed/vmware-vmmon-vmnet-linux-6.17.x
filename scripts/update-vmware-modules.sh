@@ -60,19 +60,23 @@ if [ "$VMMON_LOADED" -gt 0 ] && [ "$VMNET_LOADED" -gt 0 ]; then
     # Check module versions
     VMMON_VERSION=$(modinfo vmmon 2>/dev/null | grep vermagic | awk '{print $2}')
     
+    info "Current module status:"
+    lsmod | grep -E "vmmon|vmnet" | sed 's/^/  /'
+    echo ""
+    
     if [ "$VMMON_VERSION" = "$CURRENT_KERNEL" ]; then
-        log "Modules are already up-to-date for kernel $CURRENT_KERNEL"
+        info "Modules are currently compiled for kernel: $VMMON_VERSION"
         echo ""
-        info "Module status:"
-        lsmod | grep -E "vmmon|vmnet" | sed 's/^/  /'
-        echo ""
-        info "No update needed!"
-        exit 0
+        warning "Update will rebuild modules with latest patches and optimizations"
+        info "Reasons to update:"
+        echo "  • Apply new optimizations"
+        echo "  • Get latest kernel compatibility fixes"
+        echo "  • Recompile with different optimization flags"
     else
         warning "Modules are compiled for kernel: $VMMON_VERSION"
         warning "Current kernel is: $CURRENT_KERNEL"
         echo ""
-        info "Update is required!"
+        info "Kernel version mismatch - update is required!"
     fi
 else
     warning "VMware modules are not loaded"
