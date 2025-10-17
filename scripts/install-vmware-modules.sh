@@ -522,22 +522,25 @@ log "✓ VMware detected"
 info "Currently loaded VMware modules:"
 lsmod | grep -E "vmmon|vmnet" | sed 's/^/  /' || warning "No modules loaded"
 
-# Check if modules are already compiled for current kernel
-CURRENT_KERNEL=$(uname -r)
-VMMON_LOADED=$(lsmod | grep -c "^vmmon " || true)
-if [ "$VMMON_LOADED" -gt 0 ]; then
-    VMMON_VERSION=$(modinfo vmmon 2>/dev/null | grep vermagic | awk '{print $2}')
-    if [ "$VMMON_VERSION" = "$CURRENT_KERNEL" ]; then
-        echo ""
-        warning "VMware modules are already compiled and loaded for kernel $CURRENT_KERNEL"
-        info "For updating existing modules, use: sudo bash scripts/update-vmware-modules.sh"
-        info "For uninstalling modules, use: sudo bash scripts/uninstall-vmware-modules.sh"
-        echo ""
-        read -p "Do you want to reinstall/recompile anyway? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            info "Installation cancelled. Use update script for safer updates."
-            exit 0
+# Skip module check if wizard was used (wizard handles this)
+if [ "$USE_WIZARD" = false ]; then
+    # Check if modules are already compiled for current kernel (legacy mode only)
+    CURRENT_KERNEL=$(uname -r)
+    VMMON_LOADED=$(lsmod | grep -c "^vmmon " || true)
+    if [ "$VMMON_LOADED" -gt 0 ]; then
+        VMMON_VERSION=$(modinfo vmmon 2>/dev/null | grep vermagic | awk '{print $2}')
+        if [ "$VMMON_VERSION" = "$CURRENT_KERNEL" ]; then
+            echo ""
+            warning "VMware modules are already compiled and loaded for kernel $CURRENT_KERNEL"
+            info "For updating existing modules, use: sudo bash scripts/update-vmware-modules.sh"
+            info "For uninstalling modules, use: sudo bash scripts/uninstall-vmware-modules.sh"
+            echo ""
+            read -p "Do you want to reinstall/recompile anyway? (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                info "Installation cancelled. Use update script for safer updates."
+                exit 0
+            fi
         fi
     fi
 fi

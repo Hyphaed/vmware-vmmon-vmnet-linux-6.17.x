@@ -557,12 +557,103 @@ class VMwareWizard:
         self.console.print()
         self.console.print(f"[green]✓[/green] Configuration saved to: [cyan]{config_file}[/cyan]")
     
+    def check_existing_modules(self) -> bool:
+        """Check if VMware modules are already installed for current kernel"""
+        import subprocess
+        
+        current_kernel = os.uname().release
+        
+        try:
+            # Check if modules exist in /lib/modules
+            modules_path = Path(f"/lib/modules/{current_kernel}/misc")
+            vmmon_exists = (modules_path / "vmmon.ko").exists()
+            vmnet_exists = (modules_path / "vmnet.ko").exists()
+            
+            if vmmon_exists and vmnet_exists:
+                self.console.print()
+                self.console.print(Panel.fit(
+                    "[bold yellow]⚠ Existing Modules Detected[/bold yellow]",
+                    border_style="yellow"
+                ))
+                self.console.print()
+                
+                # Show module info
+                info_table = Table(show_header=False, box=box.SIMPLE, border_style=HYPHAED_GREEN)
+                info_table.add_column("Module", style="cyan", width=15)
+                info_table.add_column("Status", style="white")
+                
+                # Check if modules are loaded
+                try:
+                    lsmod_output = subprocess.check_output(["lsmod"], text=True)
+                    vmmon_loaded = "vmmon" in lsmod_output
+                    vmnet_loaded = "vmnet" in lsmod_output
+                    
+                    info_table.add_row(
+                        "vmmon",
+                        "[green]✓ Loaded[/green]" if vmmon_loaded else "[yellow]○ Not loaded[/yellow]"
+                    )
+                    info_table.add_row(
+                        "vmnet",
+                        "[green]✓ Loaded[/green]" if vmnet_loaded else "[yellow]○ Not loaded[/yellow]"
+                    )
+                    
+                    # Get module version
+                    if vmmon_loaded:
+                        try:
+                            modinfo = subprocess.check_output(["modinfo", "vmmon"], text=True)
+                            for line in modinfo.split('\n'):
+                                if line.startswith("vermagic:"):
+                                    version = line.split()[1]
+                                    info_table.add_row("Compiled for", version)
+                                    break
+                        except:
+                            pass
+                except:
+                    info_table.add_row("Status", "[yellow]Could not determine[/yellow]")
+                
+                info_table.add_row("Current kernel", current_kernel)
+                
+                self.console.print(info_table)
+                self.console.print()
+                
+                self.console.print("[yellow]Reasons to reinstall/recompile:[/yellow]")
+                self.console.print("  • Apply new hardware optimizations (20-40% performance gain)")
+                self.console.print("  • Get latest kernel compatibility patches")
+                self.console.print("  • Switch between Optimized and Vanilla modes")
+                self.console.print("  • Update after kernel upgrade")
+                self.console.print()
+                
+                # Ask user
+                if not Confirm.ask(
+                    f"[{HYPHAED_GREEN}]Do you want to reinstall/recompile the modules?[/{HYPHAED_GREEN}]",
+                    default=False
+                ):
+                    self.console.print()
+                    self.console.print("[yellow]Installation cancelled by user.[/yellow]")
+                    self.console.print()
+                    self.console.print("[dim]Tip: If modules are working fine, no need to reinstall.[/dim]")
+                    self.console.print("[dim]      Use update script after kernel upgrades.[/dim]")
+                    return False
+                
+                self.console.print()
+                self.console.print("[green]✓[/green] Proceeding with reinstallation...")
+                self.console.print()
+        except Exception as e:
+            # If we can't check, just continue
+            pass
+        
+        return True
+    
     def run(self):
         """Main wizard flow"""
         try:
             # Welcome
             self.show_banner()
             time.sleep(0.5)
+            
+            # Step 0: Check existing modules
+            if not self.check_existing_modules():
+                return 1
             
             # Step 1: Detect kernels
             self.detected_kernels = self.detect_installed_kernels()
