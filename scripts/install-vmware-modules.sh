@@ -2338,12 +2338,6 @@ if [ "$TUNING_APPLIED" = "true" ]; then
     else
         echo -e "${CYAN}Reboot skipped.${NC}"
         echo ""
-        info "To reboot later, run:"
-        echo "  ${GREEN}sudo reboot${NC}"
-        echo ""
-        info "After reboot, start VMware:"
-        echo "  ${GREEN}vmware &${NC}"
-        echo ""
     fi
 fi
 
