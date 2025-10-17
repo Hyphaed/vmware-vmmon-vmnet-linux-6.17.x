@@ -375,16 +375,39 @@ else
                             # Backup GRUB config
                             cp /etc/default/grub /etc/default/grub.backup-vmware-$(date +%Y%m%d-%H%M%S)
                             
-                            # Add IOMMU parameters
-                            if grep -q "intel" <<< "$CPU_VENDOR"; then
-                                info "Detected Intel CPU - enabling Intel VT-d..."
-                                sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/&intel_iommu=on iommu=pt /' /etc/default/grub
-                            elif grep -q "amd" <<< "$CPU_VENDOR"; then
-                                info "Detected AMD CPU - enabling AMD-Vi..."
-                                sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/&amd_iommu=on iommu=pt /' /etc/default/grub
+                            # Clean up any duplicate IOMMU parameters first
+                            if grep -q "intel_iommu=on.*intel_iommu=on" /etc/default/grub || \
+                               grep -q "amd_iommu=on.*amd_iommu=on" /etc/default/grub || \
+                               grep -q "iommu=pt.*iommu=pt" /etc/default/grub; then
+                                warning "Detected duplicate IOMMU parameters, cleaning up..."
+                                
+                                # Remove all iommu parameters
+                                sed -i 's/ intel_iommu=on//g' /etc/default/grub
+                                sed -i 's/ amd_iommu=on//g' /etc/default/grub
+                                sed -i 's/ iommu=pt//g' /etc/default/grub
+                                
+                                log "✓ Duplicate IOMMU parameters removed"
                             fi
                             
-                            log "✓ IOMMU parameters added to GRUB"
+                            # Add IOMMU parameters only if not already present
+                            if grep -q "intel" <<< "$CPU_VENDOR"; then
+                                if ! grep -q "intel_iommu=on" /etc/default/grub; then
+                                    info "Detected Intel CPU - enabling Intel VT-d..."
+                                    sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/&intel_iommu=on iommu=pt /' /etc/default/grub
+                                    log "✓ IOMMU parameters added to GRUB"
+                                else
+                                    info "Intel VT-d already enabled in GRUB (skipping)"
+                                fi
+                            elif grep -q "amd" <<< "$CPU_VENDOR"; then
+                                if ! grep -q "amd_iommu=on" /etc/default/grub; then
+                                    info "Detected AMD CPU - enabling AMD-Vi..."
+                                    sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/&amd_iommu=on iommu=pt /' /etc/default/grub
+                                    log "✓ IOMMU parameters added to GRUB"
+                                else
+                                    info "AMD-Vi already enabled in GRUB (skipping)"
+                                fi
+                            fi
+                            
                             info "GRUB will be updated after module compilation (single initramfs rebuild)"
                         fi
                         
