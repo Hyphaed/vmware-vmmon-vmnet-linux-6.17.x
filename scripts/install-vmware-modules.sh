@@ -1707,6 +1707,32 @@ sudo cp "$WORK_DIR/vmnet-only/vmnet.ko" "/lib/modules/$KERNEL_VERSION/misc/"
 info "Updating module dependencies..."
 sudo depmod -a
 
+# Update initramfs (helps with module loading on boot)
+info "Updating initramfs..."
+if command -v update-initramfs >/dev/null 2>&1; then
+    # Debian/Ubuntu
+    sudo update-initramfs -u -k "$KERNEL_VERSION" 2>/dev/null || sudo update-initramfs -u 2>/dev/null || true
+    log "✓ Initramfs updated (Debian/Ubuntu)"
+elif command -v dracut >/dev/null 2>&1; then
+    # Fedora/RHEL/CentOS
+    sudo dracut -f "/boot/initramfs-$KERNEL_VERSION.img" "$KERNEL_VERSION" 2>/dev/null || true
+    log "✓ Initramfs updated (Fedora/RHEL)"
+elif command -v mkinitcpio >/dev/null 2>&1; then
+    # Arch Linux
+    sudo mkinitcpio -P 2>/dev/null || true
+    log "✓ Initramfs updated (Arch)"
+elif [ "$DISTRO" = "gentoo" ]; then
+    # Gentoo
+    if command -v genkernel >/dev/null 2>&1; then
+        sudo genkernel --install initramfs 2>/dev/null || true
+        log "✓ Initramfs updated (Gentoo)"
+    else
+        info "Gentoo: initramfs update skipped (genkernel not found)"
+    fi
+else
+    info "initramfs update skipped (command not found for this distribution)"
+fi
+
 # Load modules
 info "Loading modules..."
 if sudo modprobe vmmon; then
