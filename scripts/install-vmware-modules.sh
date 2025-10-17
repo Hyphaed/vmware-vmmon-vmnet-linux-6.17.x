@@ -2029,19 +2029,7 @@ sudo cp "$WORK_DIR/vmnet-only/vmnet.ko" "/lib/modules/$KERNEL_VERSION/misc/"
 info "Updating module dependencies..."
 sudo depmod -a
 
-# Update GRUB if IOMMU was configured
-if [ "$AUTO_IOMMU" = "true" ] && [ "$OPTIMIZATION_MODE" = "optimized" ]; then
-    info "Updating GRUB configuration (IOMMU parameters added)..."
-    if command -v update-grub >/dev/null 2>&1; then
-        update-grub 2>/dev/null || true
-        log "✓ GRUB updated"
-    elif command -v grub2-mkconfig >/dev/null 2>&1; then
-        grub2-mkconfig -o /boot/grub2/grub.cfg 2>/dev/null || grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg 2>/dev/null || true
-        log "✓ GRUB2 updated"
-    fi
-fi
-
-# Update initramfs (helps with module loading on boot)
+# Update initramfs FIRST (includes new modules)
 info "Updating initramfs..."
 if command -v update-initramfs >/dev/null 2>&1; then
     # Debian/Ubuntu
@@ -2065,6 +2053,20 @@ elif [ "$DISTRO" = "gentoo" ]; then
     fi
 else
     info "initramfs update skipped (command not found for this distribution)"
+fi
+
+# Update GRUB AFTER initramfs (if IOMMU was configured)
+if [ "$AUTO_IOMMU" = "true" ] && [ "$OPTIMIZATION_MODE" = "optimized" ]; then
+    echo ""
+    info "Updating GRUB configuration (IOMMU parameters added)..."
+    if command -v update-grub >/dev/null 2>&1; then
+        sudo update-grub 2>/dev/null || true
+        log "✓ GRUB updated"
+    elif command -v grub2-mkconfig >/dev/null 2>&1; then
+        sudo grub2-mkconfig -o /boot/grub2/grub.cfg 2>/dev/null || sudo grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg 2>/dev/null || true
+        log "✓ GRUB2 updated"
+    fi
+    echo ""
 fi
 
 # Load modules
