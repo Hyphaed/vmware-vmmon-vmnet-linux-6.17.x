@@ -998,7 +998,7 @@ class HardwareDetector:
         print(f"\n✓ Virtualization: {virt.technology}", file=sys.stderr)
         if virt.enabled:
             print(f"  EPT: {virt.ept_supported}, VPID: {virt.vpid_supported}", file=sys.stderr)
-            print(f"  EPT 1GB Pages: {virt.ept_1gb_pages}, EPT A/D bits: {virt.ept_accessed_dirty}", file=sys.stderr)
+            print(f"  EPT 1GB Pages: {virt.ept_1gb_pages}, EPT A/D bits: {virt.ept_ad_bits}", file=sys.stderr)
             print(f"  VMFUNC: {virt.vmfunc_supported}, Posted Interrupts: {virt.posted_interrupts}", file=sys.stderr)
             print(f"  Estimated VM switch: {virt.estimated_vm_switch_overhead_ns}ns", file=sys.stderr)
         else:
