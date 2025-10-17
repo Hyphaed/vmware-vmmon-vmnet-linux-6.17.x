@@ -2272,6 +2272,79 @@ sudo cp "$WORK_DIR/vmmon-only/vmmon.ko" "/lib/modules/$KERNEL_VERSION/misc/"
 info "Copying vmnet.ko..."
 sudo cp "$WORK_DIR/vmnet-only/vmnet.ko" "/lib/modules/$KERNEL_VERSION/misc/"
 
+# ============================================
+# 10a. SIGN MODULES (Optional - Eliminates Taint Warning)
+# ============================================
+if [ "${SIGN_MODULES:-true}" = "true" ]; then
+    info "Checking if module signing is available..."
+    
+    # Check if kernel requires signed modules
+    if grep -q "CONFIG_MODULE_SIG=y" "/lib/modules/$KERNEL_VERSION/build/.config" 2>/dev/null; then
+        info "Kernel supports module signing"
+        
+        # Look for signing key and certificate
+        SIGN_KEY=""
+        SIGN_CERT=""
+        
+        # Check common locations for signing keys
+        if [ -f "/lib/modules/$KERNEL_VERSION/build/certs/signing_key.pem" ]; then
+            SIGN_KEY="/lib/modules/$KERNEL_VERSION/build/certs/signing_key.pem"
+            SIGN_CERT="/lib/modules/$KERNEL_VERSION/build/certs/signing_key.x509"
+        elif [ -f "/usr/src/kernels/$KERNEL_VERSION/certs/signing_key.pem" ]; then
+            SIGN_KEY="/usr/src/kernels/$KERNEL_VERSION/certs/signing_key.pem"
+            SIGN_CERT="/usr/src/kernels/$KERNEL_VERSION/certs/signing_key.x509"
+        fi
+        
+        if [ -n "$SIGN_KEY" ] && [ -f "$SIGN_KEY" ]; then
+            info "Found kernel signing key - signing modules..."
+            
+            # Sign vmmon
+            if /lib/modules/$KERNEL_VERSION/build/scripts/sign-file sha256 \
+                "$SIGN_KEY" "$SIGN_CERT" \
+                "/lib/modules/$KERNEL_VERSION/misc/vmmon.ko" 2>/dev/null; then
+                log "✓ vmmon.ko signed successfully"
+                MODULE_SIGNED=true
+            else
+                info "Could not sign vmmon.ko (will work unsigned)"
+                MODULE_SIGNED=false
+            fi
+            
+            # Sign vmnet
+            if /lib/modules/$KERNEL_VERSION/build/scripts/sign-file sha256 \
+                "$SIGN_KEY" "$SIGN_CERT" \
+                "/lib/modules/$KERNEL_VERSION/misc/vmnet.ko" 2>/dev/null; then
+                log "✓ vmnet.ko signed successfully"
+            else
+                info "Could not sign vmnet.ko (will work unsigned)"
+                MODULE_SIGNED=false
+            fi
+            
+            if [ "${MODULE_SIGNED:-false}" = "true" ]; then
+                log "✓ Modules signed - kernel taint warning eliminated"
+                echo ""
+                info "Benefits of signed modules:"
+                echo "  • No 'tainting kernel' warning"
+                echo "  • Clean boot logs"
+                echo "  • Same functionality"
+            fi
+        else
+            info "Kernel signing key not found - modules will be unsigned"
+            info "This is normal and does not affect functionality"
+            echo ""
+            info "Unsigned module impact:"
+            echo "  • Kernel will show 'tainting kernel' warning"
+            echo "  • Purely cosmetic - no functional impact"
+            echo "  • VMware modules work perfectly unsigned"
+        fi
+    else
+        info "Kernel does not require module signing - skipping"
+    fi
+else
+    info "Module signing disabled (SIGN_MODULES=false)"
+fi
+
+echo ""
+
 # Update module dependencies
 info "Updating module dependencies..."
 sudo depmod -a
