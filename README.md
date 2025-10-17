@@ -3,8 +3,9 @@
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 [![Kernel](https://img.shields.io/badge/Kernel-6.16.x%20%7C%206.17.x-orange.svg)](https://kernel.org/)
 [![VMware](https://img.shields.io/badge/VMware-17.6.4-green.svg)](https://www.vmware.com/)
+[![Gentoo](https://img.shields.io/badge/Gentoo-Supported-purple.svg)](https://www.gentoo.org/)
 
-This repository contains patches to make VMware Workstation modules (`vmmon` and `vmnet`) compatible with Linux kernel **6.16.x** and **6.17.x** series.
+This repository contains patches to make VMware Workstation modules (`vmmon` and `vmnet`) compatible with Linux kernel **6.16.x** and **6.17.x** series with support for **Ubuntu, Fedora, and Gentoo**.
 
 ## 🎯 Purpose
 
@@ -17,10 +18,13 @@ VMware Workstation modules often lag behind the latest kernel releases. This rep
 - **Smart Patching**: Automatically applies appropriate patches based on your selection
 - **Intelligent Objtool Detection**: Automatically detects if objtool patches are needed (e.g., kernel 6.16.3+)
 - **Objtool Fixes**: Resolves objtool validation errors introduced in newer kernels
-- **Multi-Distribution Support**: Works on Ubuntu/Debian and Fedora/RHEL
+- **Multi-Distribution Support**: Works on Ubuntu/Debian, Fedora/RHEL, and Gentoo Linux
+- **Hardware Optimizations** (NEW): Optional CPU-specific optimizations (Native/Conservative/None)
 - **Compiler Detection**: Auto-detects and uses GCC or Clang toolchain
 - **VMware 17.6.4 Compatible**: Tested with VMware Workstation 17.6.4
 - **Easy Installation**: Fully automated script for patching and compilation
+- **Update Utility** (NEW): Quick module updates after kernel upgrades
+- **Restore Utility** (NEW): Restore from previous backups with ease
 
 ## 🔧 What's Fixed
 
@@ -56,6 +60,11 @@ sudo apt install build-essential linux-headers-$(uname -r) git
 
 # Fedora/RHEL
 sudo dnf install gcc make kernel-devel kernel-headers git
+
+# Gentoo
+# Ensure kernel sources are installed and configured
+emerge -av sys-kernel/gentoo-sources
+cd /usr/src/linux && make modules_prepare
 
 # Arch Linux
 sudo pacman -S base-devel linux-headers git
@@ -139,17 +148,19 @@ sudo modprobe vmnet
 ```
 vmware-vmmon-vmnet-linux-6.17.x/
 ├── patches/
-│   ├── vmmon-6.17.patch          # Patch for vmmon module
-│   ├── vmnet-6.17.patch          # Patch for vmnet module
-│   └── README.md                 # Patch documentation
+│   ├── vmmon-6.17.patch            # Patch for vmmon module
+│   ├── vmnet-6.17.patch            # Patch for vmnet module
+│   └── README.md                   # Patch documentation
 ├── scripts/
-│   ├── install-vmware-modules.sh # Automated installation script (all-in-one)
-│   └── test-vmware-modules.sh    # Module testing utility
+│   ├── install-vmware-modules.sh   # Full installation with optimizations
+│   ├── update-vmware-modules.sh    # Quick update after kernel upgrade
+│   ├── restore-vmware-modules.sh   # Restore from backup
+│   └── test-vmware-modules.sh      # Module testing utility
 ├── docs/
-│   ├── TROUBLESHOOTING.md        # Common issues and solutions
-│   └── TECHNICAL.md              # Technical details about patches
-├── LICENSE                        # GPL v2 License
-└── README.md                      # This file
+│   ├── TROUBLESHOOTING.md          # Common issues and solutions
+│   └── TECHNICAL.md                # Technical details about patches
+├── LICENSE                          # GPL v2 License
+└── README.md                        # This file
 ```
 
 ## 💡 How the Interactive Installation Works
@@ -221,6 +232,64 @@ This script will verify:
 - ✓ Available backups
 
 Test VMware Workstation by launching a virtual machine.
+
+## 🔄 Update Modules After Kernel Upgrade
+
+When you upgrade your kernel, VMware modules need to be recompiled. Use the update utility:
+
+```bash
+sudo bash scripts/update-vmware-modules.sh
+```
+
+The update script will:
+- ✓ Detect your current kernel version
+- ✓ Check if modules need updating
+- ✓ Run the full installation for the new kernel
+- ✓ Show before/after module status
+
+## 🔙 Restore from Backup
+
+If something goes wrong, restore from a previous backup:
+
+```bash
+sudo bash scripts/restore-vmware-modules.sh
+```
+
+The restore script will:
+- ✓ List all available backups with timestamps
+- ✓ Show file sizes and modification dates
+- ✓ Let you choose which backup to restore
+- ✓ Safely restore with confirmation prompts
+
+Backups are created automatically during:
+- Initial installation (`install-vmware-modules.sh`)
+- Updates (`update-vmware-modules.sh`)
+
+## ⚡ Hardware Optimizations (Optional)
+
+During installation, you can choose CPU-specific optimizations:
+
+**1) Native (Recommended for this CPU)**
+- Flags: `-O2 -pipe -march=native -mtune=native`
+- Best performance for your specific CPU
+- Modules won't work on different CPUs
+
+**2) Conservative (Safe, portable)**
+- Flags: `-O2 -pipe`
+- Standard optimization level
+- Works on any x86_64 CPU
+
+**3) None (Default kernel flags)**
+- Uses same flags as your kernel
+- Safest option
+
+The script will:
+- Auto-detect your CPU model and features (AVX2, SSE4.2, etc.)
+- Show available optimizations
+- Let you choose optimization level
+- Apply flags during compilation
+
+**Note**: These are conservative, kernel-safe optimizations. Aggressive flags can cause module instability.
 
 ## 🐛 Troubleshooting
 

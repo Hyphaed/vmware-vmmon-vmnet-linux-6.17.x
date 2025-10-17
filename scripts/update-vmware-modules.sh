@@ -29,6 +29,19 @@ cat << 'EOF'
 EOF
 echo -e "${NC}"
 
+echo ""
+echo -e "${CYAN}═══════════════════════════════════════${NC}"
+echo -e "${GREEN}IMPORTANT INFORMATION${NC}"
+echo -e "${CYAN}═══════════════════════════════════════${NC}"
+echo ""
+info "This script will create a backup of your current VMware modules"
+info "If something goes wrong, you can restore using:"
+echo ""
+echo -e "  ${YELLOW}sudo bash scripts/restore-vmware-modules.sh${NC}"
+echo ""
+info "Backups are stored with timestamps for easy recovery"
+echo ""
+
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
     error "This script must be run as root (use sudo)"
