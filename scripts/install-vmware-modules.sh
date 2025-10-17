@@ -65,7 +65,45 @@ info "Backups are stored with timestamps for easy recovery"
 echo ""
 
 # ============================================
-# 0. SELECT KERNEL VERSION
+# 0. CHECK IF VMWARE IS RUNNING
+# ============================================
+echo ""
+echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo -e "${YELLOW}CHECKING VMWARE STATUS${NC}"
+echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo ""
+
+# Check for running VMware processes
+VMWARE_RUNNING=false
+if pgrep -x "vmware" > /dev/null 2>&1 || pgrep -x "vmware-vmx" > /dev/null 2>&1 || pgrep -x "vmplayer" > /dev/null 2>&1; then
+    VMWARE_RUNNING=true
+    error "VMware is currently running!"
+    echo ""
+    echo -e "${RED}The following VMware processes were detected:${NC}"
+    ps aux | grep -E 'vmware|vmplayer' | grep -v grep | awk '{print "  • " $11}'
+    echo ""
+    warning "You must close all VMware applications before continuing."
+    warning "This includes VMware Workstation, VMware Player, and all virtual machines."
+    echo ""
+    echo -e "${YELLOW}Please:${NC}"
+    echo "  1. Save all virtual machine states"
+    echo "  2. Close all VMware applications"
+    echo "  3. Run this script again"
+    echo ""
+    exit 1
+fi
+
+# Check if VMware modules are loaded
+if lsmod | grep -qE '^vmmon|^vmnet'; then
+    info "VMware kernel modules are loaded but VMware is not running - this is OK"
+    echo ""
+else
+    log "No VMware processes or modules detected - safe to proceed"
+    echo ""
+fi
+
+# ============================================
+# 1. SELECT KERNEL VERSION
 # ============================================
 echo ""
 echo -e "${CYAN}════════════════════════════════════════${NC}"
@@ -110,9 +148,9 @@ log "Configuration: Compiling for kernel $TARGET_KERNEL"
 echo ""
 
 # ============================================
-# 1. VERIFY SYSTEM
+# 2. VERIFY SYSTEM
 # ============================================
-log "1. Verifying system..."
+log "2. Verifying system..."
 
 KERNEL_VERSION=$(uname -r)
 KERNEL_MAJOR=$(echo $KERNEL_VERSION | cut -d. -f1)
@@ -1488,7 +1526,49 @@ echo "  • If you update the kernel, run this script again"
 echo "  • If VMware doesn't start, run: sudo vmware-modconfig --console --install-all"
 echo ""
 
-info "To verify VMware works correctly:"
+# ============================================
+# RUN AUTOMATIC TESTS
+# ============================================
+echo ""
+echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo -e "${YELLOW}RUNNING AUTOMATIC TESTS${NC}"
+echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo ""
+
+info "Running comprehensive module tests..."
+echo ""
+
+# Run the test script
+TEST_SCRIPT="$SCRIPT_DIR/test-vmware-modules.sh"
+if [ -f "$TEST_SCRIPT" ]; then
+    bash "$TEST_SCRIPT"
+    TEST_EXIT_CODE=$?
+    
+    echo ""
+    if [ $TEST_EXIT_CODE -eq 0 ]; then
+        log "All tests passed successfully!"
+    else
+        warning "Some tests failed. Check the output above for details."
+        echo ""
+        echo -e "${YELLOW}Common solutions:${NC}"
+        echo "  • Try running: sudo vmware-modconfig --console --install-all"
+        echo "  • Reboot your system"
+        echo "  • Check if virtualization is enabled in BIOS"
+    fi
+else
+    warning "Test script not found at: $TEST_SCRIPT"
+    info "Manual verification recommended:"
+    echo "  • Check modules: lsmod | grep vm"
+    echo "  • Start VMware: vmware &"
+fi
+
+echo ""
+echo -e "${CYAN}═══════════════════════════════════════${NC}"
+echo -e "${GREEN}✓ INSTALLATION AND TESTING COMPLETED${NC}"
+echo -e "${CYAN}═══════════════════════════════════════${NC}"
+echo ""
+
+info "To start VMware:"
 echo "  vmware &"
 echo ""
 

@@ -16,11 +16,13 @@ sudo bash scripts/install-vmware-modules.sh
 ```
 
 The **interactive terminal wizard** handles everything:
-- ✨ Detects your hardware (CPU, NVMe drives, kernel features)
-- 💬 Asks 2 simple questions (kernel version, optimization mode)
-- 🚀 Compiles modules with your choices
-- 📊 Shows performance impact (20-40% boost available)
-- 🛡️ Creates automatic backups for safety
+- 🔍 **Checks if VMware is running** (prevents conflicts)
+- ✨ **Detects your hardware** (CPU, NVMe drives, kernel features)
+- 💬 **Asks 2 simple questions** (kernel version, optimization mode)
+- 🚀 **Compiles modules** with your choices
+- 📊 **Shows performance impact** (20-40% boost available)
+- 🛡️ **Creates automatic backups** for safety
+- 🧪 **Runs comprehensive tests** automatically after installation
 
 **No manual configuration. No complex setup. Just answer and go!**
 
@@ -54,11 +56,13 @@ Guides you step-by-step:
 ## ✨ Key Features
 
 ### 🧙 **Wizard-Driven Installation**
+- **VMware safety check**: Detects and warns if VMware is running before installation
 - **Interactive terminal assistant** guides you through all steps
 - **2 simple questions**: Kernel version (6.16/6.17), Optimization mode (Optimized/Vanilla)
 - **Automatic hardware detection**: CPU features, NVMe drives, kernel capabilities
 - **Color-coded output**: Green for success, yellow for warnings, blue for info
 - **Progress indicators**: Clear feedback at every step
+- **Automatic testing**: Runs comprehensive tests after installation completes
 
 ### 🚀 **Performance Optimizations**
 - **20-40% faster VM performance** (optional, user-controlled)

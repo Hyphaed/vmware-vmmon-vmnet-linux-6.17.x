@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.5] - 2025-10-17
 
+### 🎯 Final Release Improvements
+
+#### Installation Safety
+- **VMware process detection**: Script now checks if VMware is running before installation
+  - Detects vmware, vmware-vmx, and vmplayer processes
+  - Lists all running VMware processes
+  - Warns user to close applications and exit cleanly
+  - Prevents module conflicts and system instability
+
+#### Automatic Testing
+- **Post-installation test suite**: Automatically runs comprehensive tests after installation
+  - Tests module loading (vmmon, vmnet)
+  - Verifies /dev/vmmon and /dev/vmnet* device files
+  - Checks virtualization hardware (VT-x/AMD-V)
+  - Tests VMware services readiness
+  - Provides detailed pass/fail report
+  - Suggests fixes if tests fail
+
+#### User Experience
+- **Clean terminal output**: Removed all animations for professional appearance
+- **Hyphaed branding**: Green color (#B0D56A) used for highlighting key information
+- **Better error handling**: Clear instructions when issues are detected
+- **Improved section numbering**: Better flow through installation steps
+
 ### 🚀 Major Features Added
 
 #### Advanced Hardware Detection System
