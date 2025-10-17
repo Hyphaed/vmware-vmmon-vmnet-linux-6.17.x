@@ -166,9 +166,18 @@ echo ""
 
 # Remove all IOMMU parameters
 info "Removing all IOMMU parameters..."
+# Remove with leading space
 sed -i 's/ intel_iommu=on//g' /etc/default/grub
 sed -i 's/ amd_iommu=on//g' /etc/default/grub
 sed -i 's/ iommu=pt//g' /etc/default/grub
+# Remove at beginning (after quote)
+sed -i 's/="intel_iommu=on /="/g' /etc/default/grub
+sed -i 's/="amd_iommu=on /="/g' /etc/default/grub
+sed -i 's/="iommu=pt /="/g' /etc/default/grub
+# Remove if only parameter
+sed -i 's/="intel_iommu=on"/""/g' /etc/default/grub
+sed -i 's/="amd_iommu=on"/""/g' /etc/default/grub
+sed -i 's/="iommu=pt"/""/g' /etc/default/grub
 log "All IOMMU parameters removed"
 echo ""
 

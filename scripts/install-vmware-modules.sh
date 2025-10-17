@@ -381,10 +381,18 @@ else
                                grep -q "iommu=pt.*iommu=pt" /etc/default/grub; then
                                 warning "Detected duplicate IOMMU parameters, cleaning up..."
                                 
-                                # Remove all iommu parameters
+                                # Remove all iommu parameters (handles all positions)
                                 sed -i 's/ intel_iommu=on//g' /etc/default/grub
                                 sed -i 's/ amd_iommu=on//g' /etc/default/grub
                                 sed -i 's/ iommu=pt//g' /etc/default/grub
+                                # Remove at beginning (after quote)
+                                sed -i 's/="intel_iommu=on /="/g' /etc/default/grub
+                                sed -i 's/="amd_iommu=on /="/g' /etc/default/grub
+                                sed -i 's/="iommu=pt /="/g' /etc/default/grub
+                                # Remove if only parameter
+                                sed -i 's/="intel_iommu=on"/""/g' /etc/default/grub
+                                sed -i 's/="amd_iommu=on"/""/g' /etc/default/grub
+                                sed -i 's/="iommu=pt"/""/g' /etc/default/grub
                                 
                                 log "✓ Duplicate IOMMU parameters removed"
                             fi
