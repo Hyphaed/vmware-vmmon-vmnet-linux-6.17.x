@@ -238,9 +238,13 @@ CHANGELOG.md                       # This file
 ## [1.0.4] - 2025-10-15
 
 ### Added
-- Initial release with kernel 6.16.x and 6.17.x support
-- Automated installation script with interactive wizard
-- Hardware optimization detection (AVX2, AES-NI, VT-x, NVMe)
+- **Gentoo Linux support**: Full compatibility with Gentoo Linux
+  - Custom paths for Gentoo (`/opt/vmware`, `/usr/src/linux`)
+  - Portage integration with emerge package manager
+  - Source-based compilation approach
+  - Gentoo-specific kernel header detection
+- Initial kernel 6.16.x and 6.17.x support
+- Basic automated installation script
 - Multi-distribution support (Ubuntu, Fedora, Gentoo)
 - Backup and restore functionality
 - Update and uninstall scripts
@@ -252,6 +256,13 @@ CHANGELOG.md                       # This file
 - MSR API changes (rdmsrq_safe)
 - Module initialization (module_init/module_exit)
 - Build system updates (EXTRA_CFLAGS → ccflags-y)
+
+### Coming in v1.0.5
+- Advanced Python-based hardware detection
+- Automatic compilation flag generation
+- Kernel-aware optimization system
+- Comprehensive multi-distribution support
+- Intelligent optimization recommendations
 
 ---
 
