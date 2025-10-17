@@ -1,231 +1,368 @@
 #!/usr/bin/env python3
 """
-VMware UI Library
-Shared UI components for all VMware scripts
-Provides beautiful terminal interfaces using rich library
+VMware Installer UI Components
+Using questionary for all interactions + rich for beautiful output
+Styled with GTK4-inspired purple theme
 """
 
-import sys
-import os
-from pathlib import Path
-from typing import List, Dict, Optional, Any
-from datetime import datetime
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+from rich.align import Align
+from rich.theme import Theme
+import questionary
+from questionary import Style as QuestionaryStyle, Choice
+from typing import List, Tuple, Optional, Any
 
-try:
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.table import Table
-    from rich.text import Text
-    from rich import box
-    from rich.align import Align
-    from rich.progress import Progress, SpinnerColumn, TextColumn
-except ImportError:
-    print("ERROR: 'rich' library not found. Installing...")
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "rich"])
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.table import Table
-    from rich.text import Text
-    from rich import box
-    from rich.align import Align
-    from rich.progress import Progress, SpinnerColumn, TextColumn
+# GTK4-inspired purple color scheme
+GTK_PURPLE = "#b580d1"        # Primary purple
+GTK_PURPLE_LIGHT = "#d8b4e2"  # Light purple for highlights
+GTK_PURPLE_DARK = "#7e3f9e"   # Dark purple for borders
+GTK_ACCENT = "#9c6fb9"        # Accent purple
+GTK_BG_DARK = "#1e1e1e"       # Dark background
+GTK_BG = "#262626"            # Background
+GTK_FG = "#ffffff"            # Foreground text (bright white)
+GTK_FG_DIM = "#7c7c7c"        # Dimmed text (medium gray)
+GTK_SUCCESS = "#87d787"       # Success green
+GTK_WARNING = "#ffff87"       # Warning yellow
+GTK_ERROR = "#ff87af"         # Error red/pink
+GTK_INFO = "#5fafd7"          # Info blue
 
-try:
-    import questionary
-    from questionary import Style
-except ImportError:
-    import subprocess
-    import shutil
-    
-    print("Questionary not found. Attempting to install in conda environment...", file=sys.stderr)
-    
-    # Check if we're in a conda/mamba environment
-    conda_prefix = os.environ.get('CONDA_PREFIX')
-    if conda_prefix:
-        # We're in a conda environment, use conda/mamba to install
-        try:
-            # Try mamba first (faster), then conda
-            if shutil.which('mamba'):
-                subprocess.check_call(['mamba', 'install', '-y', '-c', 'conda-forge', 'questionary'])
-            elif shutil.which('conda'):
-                subprocess.check_call(['conda', 'install', '-y', '-c', 'conda-forge', 'questionary'])
-            else:
-                # Fallback to pip within conda environment (safe)
-                subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary"])
-        except subprocess.CalledProcessError:
-            print("Warning: Could not install questionary in conda environment.", file=sys.stderr)
-    else:
-        # Not in conda environment - warn user but continue
-        print("Warning: Not running in conda/mamba environment. Using basic prompts.", file=sys.stderr)
-    
-    try:
-        import questionary
-        from questionary import Style
-    except ImportError:
-        # Fallback mode
-        questionary = None
-        Style = None
+# Rich theme with GTK4 colors
+GTK_THEME = Theme({
+    "primary": f"bold {GTK_PURPLE}",
+    "accent": GTK_ACCENT,
+    "success": f"bold {GTK_SUCCESS}",
+    "error": f"bold {GTK_ERROR}",
+    "warning": f"bold {GTK_WARNING}",
+    "info": GTK_INFO,
+    "title": f"bold {GTK_PURPLE_LIGHT}",
+    "dimmed": f"dim {GTK_FG_DIM}",
+    "border": GTK_PURPLE_DARK,
+})
 
-# Hyphaed green color
-HYPHAED_GREEN = "#B0D56A"
-
-# Custom Questionary style matching Hyphaed green theme
-VMWARE_STYLE = Style([
-    ('qmark', 'fg:#B0D56A bold'),           # Question mark - Hyphaed green
-    ('question', 'fg:#ffffff bold'),         # Question text - white
-    ('answer', 'fg:#B0D56A bold'),          # Answer - Hyphaed green
-    ('pointer', 'fg:#B0D56A bold'),         # Pointer - Hyphaed green
-    ('highlighted', 'fg:#B0D56A bold'),     # Highlighted option - Hyphaed green
-    ('selected', 'fg:#00ffff'),              # Selected - cyan
-    ('separator', 'fg:#6C6C6C'),            # Separator - gray
-    ('instruction', 'fg:#858585'),           # Instructions - light gray
-    ('text', 'fg:#ffffff'),                  # Text - white
-    ('disabled', 'fg:#858585 italic')       # Disabled - gray italic
+# Questionary style with GTK4 colors (this is what makes questionary beautiful!)
+QUESTIONARY_STYLE = QuestionaryStyle([
+    ('qmark', f'fg:{GTK_PURPLE} bold'),              # Question mark
+    ('question', f'fg:{GTK_FG} bold'),               # Question text
+    ('answer', f'fg:{GTK_PURPLE_LIGHT} bold'),       # Selected answer
+    ('pointer', f'fg:{GTK_PURPLE} bold'),            # Selection pointer (►)
+    ('highlighted', f'fg:{GTK_PURPLE_LIGHT} bold'),  # Highlighted option
+    ('selected', f'fg:{GTK_PURPLE} bold'),           # Selected item
+    ('separator', f'fg:{GTK_PURPLE_DARK}'),          # Separator lines
+    ('instruction', f'fg:{GTK_FG_DIM}'),             # Instructions (Use arrow keys, etc.)
+    ('text', f'fg:{GTK_FG}'),                        # Default text
+    ('disabled', f'fg:{GTK_FG_DIM} italic'),         # Disabled items
+    ('checkbox-selected', f'fg:{GTK_SUCCESS} bold'), # Selected checkbox [✓]
+    ('checkbox', f'fg:{GTK_FG}'),                    # Unselected checkbox [ ]
 ])
 
+
 class VMwareUI:
-    """Shared UI components for VMware scripts"""
+    """VMware installer UI using questionary + rich with GTK4 theme"""
     
     def __init__(self):
-        self.console = Console()
+        self.console = Console(theme=GTK_THEME)
+        self.width = self.console.width
     
-    def show_banner(self, title: str, subtitle: str = ""):
-        """Display a branded banner"""
+    def get_responsive_width(self, percentage: float = 0.90) -> int:
+        """Get responsive width based on terminal size"""
+        return max(60, int(self.width * percentage))
+    
+    # ============================================================================
+    # RICH OUTPUT METHODS (for beautiful printing)
+    # ============================================================================
+    
+    def show_banner(self, title: str, subtitle: str = "", icon: str = "⚙️") -> None:
+        """Display a beautiful GTK4-styled banner"""
         banner_text = Text()
-        banner_text.append("╔══════════════════════════════════════════════════════════════╗\n", style="bold")
-        banner_text.append("║                                                              ║\n", style="bold")
-        
-        # Center the title
-        padding = (62 - len(title)) // 2
-        banner_text.append("║" + " " * padding, style="bold")
-        banner_text.append(title, style=f"bold {HYPHAED_GREEN}")
-        banner_text.append(" " * (62 - len(title) - padding) + "║\n", style="bold")
+        banner_text.append(f"{icon}  ", style=f"bold {GTK_PURPLE}")
+        banner_text.append(title, style=f"bold {GTK_PURPLE_LIGHT}")
         
         if subtitle:
-            sub_padding = (62 - len(subtitle)) // 2
-            banner_text.append("║" + " " * sub_padding, style="bold")
-            banner_text.append(subtitle, style=f"italic {HYPHAED_GREEN}")
-            banner_text.append(" " * (62 - len(subtitle) - sub_padding) + "║\n", style="bold")
+            banner_text.append("\n")
+            banner_text.append(subtitle, style=f"italic {GTK_FG_DIM}")
         
-        banner_text.append("║                                                              ║\n", style="bold")
-        banner_text.append("╚══════════════════════════════════════════════════════════════╝", style="bold")
-        
-        self.console.print()
-        self.console.print(Align.center(banner_text))
-        self.console.print()
+        panel = Panel(
+            Align.center(banner_text),
+            border_style=GTK_PURPLE_DARK,
+            padding=(1, 2),
+            width=self.get_responsive_width()
+        )
+        self.console.print(panel)
     
-    def show_section(self, title: str):
+    def show_section(self, title: str, subtitle: str = "") -> None:
         """Display a section header"""
         self.console.print()
-        self.console.print(Panel.fit(
-            f"[bold cyan]{title}[/bold cyan]",
-            border_style=HYPHAED_GREEN
-        ))
+        self.console.print(f"[title]{'═' * 60}[/]")
+        self.console.print(f"[title]{title}[/]")
+        if subtitle:
+            self.console.print(f"[dimmed]{subtitle}[/]")
+        self.console.print(f"[title]{'═' * 60}[/]")
         self.console.print()
     
-    def show_info(self, message: str):
+    def show_step(self, step_num: int, total_steps: int, title: str) -> None:
+        """Display a step header"""
+        self.console.print()
+        self.console.print(f"[primary]╭{'─' * 58}╮[/]")
+        self.console.print(f"[primary]│[/] [title]Step {step_num}/{total_steps}: {title}[/]")
+        self.console.print(f"[primary]╰{'─' * 58}╯[/]")
+        self.console.print()
+    
+    def show_info(self, message: str) -> None:
         """Display info message"""
-        self.console.print(f"[blue]ℹ[/blue] {message}")
+        self.console.print(f"[info]ℹ[/] {message}")
     
-    def show_success(self, message: str):
+    def show_success(self, message: str) -> None:
         """Display success message"""
-        self.console.print(f"[green]✓[/green] {message}")
+        self.console.print(f"[success]✓[/] {message}")
     
-    def show_warning(self, message: str):
+    def show_warning(self, message: str) -> None:
         """Display warning message"""
-        self.console.print(f"[yellow]⚠[/yellow] {message}")
+        self.console.print(f"[warning]⚠[/] {message}")
     
-    def show_error(self, message: str):
+    def show_error(self, message: str) -> None:
         """Display error message"""
-        self.console.print(f"[red]✗[/red] {message}")
+        self.console.print(f"[error]✗[/] {message}")
     
-    def create_table(self, title: str = "", headers: List[str] = None) -> Table:
-        """Create a styled table"""
+    def show_panel(self, content: str, title: str = "", border_color: str = GTK_PURPLE_DARK) -> None:
+        """Display content in a panel"""
+        panel = Panel(
+            content,
+            title=f"[title]{title}[/]" if title else None,
+            border_style=border_color,
+            padding=(1, 2),
+            width=self.get_responsive_width()
+        )
+        self.console.print(panel)
+    
+    def create_table(self, title: str, headers: List[str], **kwargs) -> Table:
+        """Create a styled table with GTK4 theme"""
         table = Table(
-            show_header=bool(headers),
-            header_style=f"bold {HYPHAED_GREEN}",
-            box=box.ROUNDED,
-            border_style=HYPHAED_GREEN,
-            title=title if title else None,
-            title_style=f"bold {HYPHAED_GREEN}"
+            title=title,
+            title_style=f"bold {GTK_PURPLE_LIGHT}",
+            border_style=GTK_PURPLE_DARK,
+            header_style=f"bold {GTK_PURPLE}",
+            show_header=True,
+            show_lines=True,
+            padding=(0, 1),
+            width=self.get_responsive_width(),
+            **kwargs
         )
         
-        if headers:
-            for header in headers:
-                table.add_column(header)
+        for header in headers:
+            table.add_column(header)
         
         return table
     
-    def show_panel(self, content: str, title: str = "", border_color: str = HYPHAED_GREEN):
-        """Display content in a panel"""
-        self.console.print(Panel(
-            content,
-            title=f"[bold]{title}[/bold]" if title else None,
-            border_style=border_color
-        ))
+    def show_table(self, table: Table) -> None:
+        """Display a table"""
+        self.console.print(table)
+    
+    def show_welcome_steps(self, steps: List[str]) -> None:
+        """Show installation steps overview"""
+        self.console.print()
+        self.console.print("[title]Installation Steps:[/]")
+        self.console.print()
+        for i, step in enumerate(steps, 1):
+            self.console.print(f"  [primary]{i}.[/] {step}")
+        self.console.print()
+        self.console.print("[dimmed]Full keyboard navigation • Arrow keys ↑↓, Enter ⏎, Number shortcuts 1-9[/]")
+        self.console.print()
+    
+    def show_hardware_summary(self, hw_data: dict) -> None:
+        """Display hardware summary in a beautiful table"""
+        if not hw_data:
+            self.show_warning("Hardware detection data not available")
+            return
+        
+        table = self.create_table("🖥️  Hardware Configuration", ["Component", "Details"])
+        rows_added = 0
+        
+        # CPU
+        cpu = hw_data.get('cpu', {})
+        if cpu and cpu.get('model'):
+            cpu_text = f"{cpu.get('model', 'Unknown')}\n"
+            cpu_text += f"Cores: {cpu.get('cores', 0)} / Threads: {cpu.get('threads', 0)}\n"
+            features = []
+            if cpu.get('has_avx512f') or cpu.get('has_avx512'): features.append("AVX-512")
+            if cpu.get('has_avx2'): features.append("AVX2")
+            if cpu.get('has_aes_ni'): features.append("AES-NI")
+            if features:
+                cpu_text += f"SIMD: {', '.join(features)}"
+            table.add_row("CPU", cpu_text)
+            rows_added += 1
+        
+        # Virtualization
+        virt = hw_data.get('virtualization', {})
+        if virt:
+            virt_text = f"Intel VT-x: {'✓' if virt.get('has_vtx') or virt.get('vtx_supported') else '✗'}\n"
+            virt_text += f"EPT: {'✓' if virt.get('has_ept') or virt.get('ept_supported') else '✗'}"
+            table.add_row("Virtualization", virt_text)
+            rows_added += 1
+        
+        # Memory
+        memory = hw_data.get('memory', {})
+        if memory and memory.get('total_gb'):
+            mem_text = f"{memory.get('total_gb', 0):.1f} GB\n"
+            mem_text += f"Huge Pages: {'✓' if memory.get('hugepages_2mb') or memory.get('has_hugepages') else '○'}"
+            table.add_row("Memory", mem_text)
+            rows_added += 1
+        
+        # Storage
+        storage = hw_data.get('storage_devices', [])
+        if storage:
+            storage_text = f"{len(storage)} NVMe device(s)\n"
+            for dev in storage[:2]:  # Show first 2
+                storage_text += f"• {dev.get('model', 'Unknown')} ({dev.get('size_gb', 0):.0f} GB)\n"
+            table.add_row("Storage", storage_text.rstrip())
+            rows_added += 1
+        
+        # GPU
+        gpu = hw_data.get('gpu', {})
+        if gpu and gpu.get('vendor'):
+            gpu_text = f"{gpu.get('vendor', '')} {gpu.get('model', '')}\n"
+            if gpu.get('vram_gb'):
+                gpu_text += f"VRAM: {gpu.get('vram_gb', 0):.1f} GB"
+            table.add_row("GPU", gpu_text)
+            rows_added += 1
+        
+        # Only print table if we have data
+        if rows_added > 0:
+            self.console.print(table)
+        else:
+            self.show_info("Hardware details: Basic detection completed")
+    
+    def show_comparison_table(self, title: str, optimized_features: List[str], vanilla_features: List[str]) -> None:
+        """Show a comparison table between two modes"""
+        table = self.create_table(title, ["🚀 Optimized Mode", "🔒 Vanilla Mode"])
+        
+        max_rows = max(len(optimized_features), len(vanilla_features))
+        for i in range(max_rows):
+            opt_text = optimized_features[i] if i < len(optimized_features) else ""
+            van_text = vanilla_features[i] if i < len(vanilla_features) else ""
+            table.add_row(opt_text, van_text)
+        
+        self.console.print(table)
+    
+    # ============================================================================
+    # QUESTIONARY INTERACTION METHODS (for user input - THE CORE!)
+    # ============================================================================
+    
+    def select(
+        self,
+        message: str,
+        choices: List[Tuple[str, Any]],
+        default: Any = None,
+        instruction: str = None
+    ) -> Any:
+        """Create a selection menu (single choice)"""
+        # Convert to questionary choices
+        q_choices = [Choice(title=title, value=value) for title, value in choices]
+        
+        return questionary.select(
+            message,
+            choices=q_choices,
+            default=default,
+            style=QUESTIONARY_STYLE,
+            instruction=instruction or "(Use arrow keys ↑↓ or number shortcuts, press Enter to select)",
+            use_shortcuts=True,
+            use_arrow_keys=True,
+            use_jk_keys=True,  # Vim keys
+            show_selected=True,
+        ).ask()
+    
+    def checkbox(
+        self,
+        message: str,
+        choices: List[Tuple[str, Any]],
+        default: List[Any] = None,
+        instruction: str = None
+    ) -> List[Any]:
+        """Create a checkbox menu (multiple choice)"""
+        # Convert to questionary choices with checked state
+        q_choices = []
+        for title, value in choices:
+            is_checked = default and value in default
+            q_choices.append(Choice(title=title, value=value, checked=is_checked))
+        
+        return questionary.checkbox(
+            message,
+            choices=q_choices,
+            style=QUESTIONARY_STYLE,
+            instruction=instruction or "(Use arrow keys ↑↓, Space to select, Enter to confirm)",
+            use_shortcuts=True,
+            use_jk_keys=True,
+        ).ask()
     
     def confirm(self, message: str, default: bool = True) -> bool:
-        """Ask for confirmation"""
-        return Confirm.ask(f"[{HYPHAED_GREEN}]{message}[/{HYPHAED_GREEN}]", default=default)
+        """Create a yes/no confirmation"""
+        return questionary.confirm(
+            message,
+            default=default,
+            style=QUESTIONARY_STYLE,
+            auto_enter=False,
+        ).ask()
     
-    def prompt(self, message: str, choices: List[str] = None, default: str = None) -> str:
-        """Prompt for user input"""
-        return Prompt.ask(
-            f"[{HYPHAED_GREEN}]{message}[/{HYPHAED_GREEN}]",
-            choices=choices,
-            default=default
-        )
+    def input_text(self, message: str, default: str = "", validate: Any = None) -> str:
+        """Create a text input"""
+        return questionary.text(
+            message,
+            default=default,
+            style=QUESTIONARY_STYLE,
+            validate=validate,
+        ).ask()
     
-    def show_progress(self, message: str):
-        """Show a progress spinner"""
-        return Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=self.console,
-        )
+    def password(self, message: str) -> str:
+        """Create a password input (hidden)"""
+        return questionary.password(
+            message,
+            style=QUESTIONARY_STYLE,
+        ).ask()
     
-    def format_timestamp(self, timestamp: float) -> str:
-        """Format a timestamp for display"""
-        dt = datetime.fromtimestamp(timestamp)
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-    
-    def format_size(self, size_bytes: int) -> str:
-        """Format file size for display"""
-        for unit in ['B', 'KB', 'MB', 'GB']:
-            if size_bytes < 1024.0:
-                return f"{size_bytes:.1f} {unit}"
-            size_bytes /= 1024.0
-        return f"{size_bytes:.1f} TB"
+    def path(self, message: str, default: str = "", only_directories: bool = False) -> str:
+        """Create a path input with autocomplete"""
+        return questionary.path(
+            message,
+            default=default,
+            only_directories=only_directories,
+            style=QUESTIONARY_STYLE,
+        ).ask()
 
 
-def main():
-    """Demo of UI components"""
+# Convenience functions for standalone use
+def print_banner(title: str, subtitle: str = "", icon: str = "⚙️"):
+    """Quick banner print"""
     ui = VMwareUI()
-    
-    ui.show_banner("VMWARE UI LIBRARY", "Demonstration of UI Components")
-    
-    ui.show_section("Information Messages")
-    ui.show_info("This is an info message")
-    ui.show_success("This is a success message")
-    ui.show_warning("This is a warning message")
-    ui.show_error("This is an error message")
-    
-    ui.show_section("Table Example")
-    table = ui.create_table(
-        title="Sample Table",
-        headers=["Column 1", "Column 2", "Column 3"]
-    )
-    table.add_row("Row 1", "Data A", "Value 1")
-    table.add_row("Row 2", "Data B", "Value 2")
-    ui.console.print(table)
-    
-    ui.show_section("Panel Example")
-    ui.show_panel("This is content inside a panel", title="Panel Title")
-    
-    print()
+    ui.show_banner(title, subtitle, icon)
 
 
-if __name__ == "__main__":
-    main()
+def print_section(title: str, subtitle: str = ""):
+    """Quick section header"""
+    ui = VMwareUI()
+    ui.show_section(title, subtitle)
 
+
+def print_success(message: str):
+    """Quick success message"""
+    ui = VMwareUI()
+    ui.show_success(message)
+
+
+def print_error(message: str):
+    """Quick error message"""
+    ui = VMwareUI()
+    ui.show_error(message)
+
+
+def print_info(message: str):
+    """Quick info message"""
+    ui = VMwareUI()
+    ui.show_info(message)
+
+
+def print_warning(message: str):
+    """Quick warning message"""
+    ui = VMwareUI()
+    ui.show_warning(message)

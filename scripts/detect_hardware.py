@@ -1100,6 +1100,15 @@ def main():
         
         # Output JSON for script consumption
         output_file = Path('/tmp/vmware_hw_capabilities.json')
+        try:
+            # Remove old file if exists and we have permission
+            if output_file.exists():
+                output_file.unlink()
+        except PermissionError:
+            # If we can't delete, try a different file
+            import os
+            output_file = Path(f'/tmp/vmware_hw_capabilities_{os.getpid()}.json')
+        
         with open(output_file, 'w') as f:
             json.dump(output_data, f, indent=2)
         
@@ -1123,7 +1132,8 @@ def main():
         print("Falling back to basic detection...", file=sys.stderr)
         
         # Create minimal JSON for bash fallback
-        output_file = Path('/tmp/vmware_hw_capabilities.json')
+        import os
+        output_file = Path(f'/tmp/vmware_hw_capabilities_{os.getpid()}.json')
         minimal_data = {
             'error': str(e),
             'optimization': {
@@ -1131,8 +1141,11 @@ def main():
                 'optimization_score': 50
             }
         }
-        with open(output_file, 'w') as f:
-            json.dump(minimal_data, f, indent=2)
+        try:
+            with open(output_file, 'w') as f:
+                json.dump(minimal_data, f, indent=2)
+        except:
+            pass  # If we can't write, just continue
         
         return 1
 

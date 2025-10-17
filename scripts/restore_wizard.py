@@ -13,16 +13,13 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Tuple, Optional
 
-# Import shared UI
+# Import our PyTermGUI-based shared UI
 try:
-    from vmware_ui import VMwareUI, HYPHAED_GREEN
+    from vmware_ui import VMwareUI
 except ImportError:
     # If running from different directory, try to import from scripts/
     sys.path.insert(0, str(Path(__file__).parent))
-    from vmware_ui import VMwareUI, HYPHAED_GREEN
-
-from rich.table import Table
-from rich import box
+    from vmware_ui import VMwareUI
 
 
 class BackupInfo:

@@ -22,81 +22,29 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional
+from rich.panel import Panel
+from rich.table import Table
+from rich import box
 
+# Import our questionary + rich UI
+sys.path.insert(0, str(Path(__file__).parent))
 try:
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.table import Table
-    from rich.progress import Progress, SpinnerColumn, TextColumn
-    from rich import box
-    HAS_RICH = True
+    from vmware_ui import VMwareUI, GTK_PURPLE, GTK_PURPLE_DARK, GTK_SUCCESS
+    ui = VMwareUI()
+    HAS_GUI = True
 except ImportError:
-    HAS_RICH = False
-    print("Installing rich library for better UI...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "rich"])
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.table import Table
-    from rich.progress import Progress, SpinnerColumn, TextColumn
-    from rich import box
-    HAS_RICH = True
-
-try:
-    import questionary
-    from questionary import Style
-except ImportError:
-    print("Questionary not found. Attempting to install in conda environment...", file=sys.stderr)
-    
-    # Check if we're in a conda/mamba environment
-    conda_prefix = os.environ.get('CONDA_PREFIX')
-    if conda_prefix:
-        # We're in a conda environment, use conda/mamba to install
-        try:
-            # Try mamba first (faster), then conda
-            if shutil.which('mamba'):
-                subprocess.check_call(['mamba', 'install', '-y', '-c', 'conda-forge', 'questionary'])
-            elif shutil.which('conda'):
-                subprocess.check_call(['conda', 'install', '-y', '-c', 'conda-forge', 'questionary'])
-            else:
-                # Fallback to pip within conda environment (safe)
-                subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary"])
-        except subprocess.CalledProcessError:
-            print("Warning: Could not install questionary in conda environment.", file=sys.stderr)
-    else:
-        # Not in conda environment - warn user but continue
-        print("Warning: Not running in conda/mamba environment. Using basic prompts.", file=sys.stderr)
-    
-    try:
-        import questionary
-        from questionary import Style
-    except ImportError:
-        # Fallback mode
-        questionary = None
-        Style = None
-
-console = Console()
-HYPHAED_GREEN = "#B0D56A"
-
-# Custom Questionary style matching Hyphaed green theme
-OPTIMIZER_STYLE = Style([
-    ('qmark', 'fg:#B0D56A bold'),           # Question mark - Hyphaed green
-    ('question', 'fg:#ffffff bold'),         # Question text - white
-    ('answer', 'fg:#B0D56A bold'),          # Answer - Hyphaed green
-    ('pointer', 'fg:#B0D56A bold'),         # Pointer - Hyphaed green
-    ('highlighted', 'fg:#B0D56A bold'),     # Highlighted option - Hyphaed green
-    ('selected', 'fg:#00ffff'),              # Selected - cyan
-    ('separator', 'fg:#6C6C6C'),            # Separator - gray
-    ('instruction', 'fg:#858585'),           # Instructions - light gray
-    ('text', 'fg:#ffffff'),                  # Text - white
-    ('disabled', 'fg:#858585 italic')       # Disabled - gray italic
-])
+    print("Installing UI libraries...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary", "rich"])
+    from vmware_ui import VMwareUI, GTK_PURPLE, GTK_PURPLE_DARK, GTK_SUCCESS
+    ui = VMwareUI()
+    HAS_GUI = True
 
 
 class SystemOptimizer:
     """Main system optimization class"""
     
     def __init__(self):
-        self.console = Console()
+        self.ui = ui  # Use the global VMwareUI instance
         self.backup_dir = Path(f"/root/vmware-tune-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
         self.changes_made = []
         self.hw_info = self.detect_hardware()
@@ -212,18 +160,18 @@ class SystemOptimizer:
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 """
-        self.console.print(f"[{HYPHAED_GREEN}]{banner}[/{HYPHAED_GREEN}]")
-        self.console.print()
+        self.ui.console.print(f"[primary]{banner}[/primary]")
+        self.ui.console.print()
     
     def display_hardware_summary(self):
         """Show detected hardware"""
-        self.console.print(Panel.fit(
+        self.ui.console.print(Panel.fit(
             "[bold cyan]Detected Hardware Configuration[/bold cyan]",
-            border_style=HYPHAED_GREEN
+            border_style=GTK_PURPLE_DARK
         ))
-        self.console.print()
+        self.ui.console.print()
         
-        table = Table(show_header=False, box=box.SIMPLE, border_style=HYPHAED_GREEN)
+        table = Table(show_header=False, box=box.SIMPLE, border_style=GTK_PURPLE_DARK)
         table.add_column("Property", style="cyan", width=25)
         table.add_column("Value", style="white")
         
@@ -252,16 +200,16 @@ class SystemOptimizer:
         if self.hw_info['has_nvme']:
             table.add_row("NVMe Devices", f"{len(self.hw_info['nvme_devices'])} detected")
         
-        self.console.print(table)
-        self.console.print()
+        self.ui.console.print(table)
+        self.ui.console.print()
     
     def display_optimizations(self):
         """Show what will be optimized"""
-        self.console.print(Panel.fit(
+        self.ui.console.print(Panel.fit(
             "[bold yellow]Planned Optimizations[/bold yellow]",
-            border_style=HYPHAED_GREEN
+            border_style=GTK_PURPLE_DARK
         ))
-        self.console.print()
+        self.ui.console.print()
         
         opts = []
         
@@ -276,7 +224,6 @@ class SystemOptimizer:
         opts.append("   • default_hugepagesz=1G hugepagesz=1G - 1GB huge pages")
         opts.append(f"   • hugepages={int(self.hw_info['total_ram_gb'] * 0.25)} - Reserve 25% RAM")
         opts.append("   • transparent_hugepage=never - Disable THP (better for VMs)")
-        opts.append("   • mitigations=off - Disable CPU vulnerability mitigations (more performance)")
         
         # Kernel parameters
         opts.append("")
@@ -310,18 +257,18 @@ class SystemOptimizer:
             opts.append("   • tuned - System tuning daemon")
         
         for opt in opts:
-            self.console.print(opt)
+            self.ui.console.print(opt)
         
-        self.console.print()
+        self.ui.console.print()
         
         # Warnings
-        self.console.print("[yellow]⚠ Important Notes:[/yellow]")
-        self.console.print("  • All changes will be backed up automatically")
-        self.console.print("  • A system reboot is required for GRUB changes to take effect")
-        self.console.print("  • Disabling mitigations reduces security but improves performance")
-        self.console.print("  • You can revert changes using the backup at:", style="dim")
-        self.console.print(f"    [cyan]{self.backup_dir}[/cyan]", style="dim")
-        self.console.print()
+        self.ui.console.print("[yellow]⚠ Important Notes:[/yellow]")
+        self.ui.console.print("  • All changes will be backed up automatically")
+        self.ui.console.print("  • A system reboot is required for GRUB changes to take effect")
+        self.ui.console.print("  • Disabling mitigations reduces security but improves performance")
+        self.ui.console.print("  • You can revert changes using the backup at:", style="dim")
+        self.ui.console.print(f"    [cyan]{self.backup_dir}[/cyan]", style="dim")
+        self.ui.console.print()
     
     def backup_file(self, file_path: Path):
         """Backup a file before modifying"""
@@ -336,21 +283,21 @@ class SystemOptimizer:
         backup_path.parent.mkdir(parents=True, exist_ok=True)
         
         shutil.copy2(str(file_path), str(backup_path))
-        self.console.print(f"[dim]  Backed up: {file_path}[/dim]")
+        self.ui.console.print(f"[dim]  Backed up: {file_path}[/dim]")
     
     def optimize_grub(self) -> bool:
         """Optimize GRUB configuration"""
         if self.distro_info['bootloader'] != 'grub':
-            self.console.print("[yellow]Skipping GRUB optimization (not using GRUB)[/yellow]")
+            self.ui.console.print("[yellow]Skipping GRUB optimization (not using GRUB)[/yellow]")
             return False
         
         grub_config = Path(self.distro_info['grub_config'])
         if not grub_config.exists():
-            self.console.print(f"[red]GRUB config not found: {grub_config}[/red]")
+            self.ui.console.print(f"[red]GRUB config not found: {grub_config}[/red]")
             return False
         
-        self.console.print()
-        self.console.print("[cyan]Optimizing GRUB boot parameters...[/cyan]")
+        self.ui.console.print()
+        self.ui.console.print("[cyan]Optimizing GRUB boot parameters...[/cyan]")
         
         # Backup
         self.backup_file(grub_config)
@@ -379,8 +326,7 @@ class SystemOptimizer:
             'transparent_hugepage=never'
         ])
         
-        # Performance
-        opt_params.append('mitigations=off')
+        # Performance optimizations (removed mitigations=off for security)
         
         # Find and modify GRUB_CMDLINE_LINUX_DEFAULT
         modified = False
@@ -421,11 +367,11 @@ class SystemOptimizer:
         with open(grub_config, 'w') as f:
             f.writelines(new_lines)
         
-        self.console.print("  [green]✓[/green] GRUB parameters updated")
+        self.ui.console.print("  [green]✓[/green] GRUB parameters updated")
         self.changes_made.append("GRUB boot parameters optimized")
         
         # Update GRUB
-        self.console.print("  Updating GRUB configuration...")
+        self.ui.console.print("  Updating GRUB configuration...")
         try:
             if self.distro_info['family'] in ['debian', 'ubuntu']:
                 subprocess.run(['update-grub'], check=True, capture_output=True)
@@ -434,41 +380,41 @@ class SystemOptimizer:
             elif self.distro_info['family'] == 'arch':
                 subprocess.run(['grub-mkconfig', '-o', '/boot/grub/grub.cfg'], check=True, capture_output=True)
             else:
-                self.console.print("  [yellow]Please run 'update-grub' or equivalent manually[/yellow]")
+                self.ui.console.print("  [yellow]Please run 'update-grub' or equivalent manually[/yellow]")
             
-            self.console.print("  [green]✓[/green] GRUB configuration updated")
+            self.ui.console.print("  [green]✓[/green] GRUB configuration updated")
         except subprocess.CalledProcessError as e:
-            self.console.print(f"  [red]✗ Failed to update GRUB: {e}[/red]")
+            self.ui.console.print(f"  [red]✗ Failed to update GRUB: {e}[/red]")
             return False
         
         # Update initramfs (required after GRUB changes)
-        self.console.print("  Updating initramfs...")
+        self.ui.console.print("  Updating initramfs...")
         try:
             if self.distro_info['family'] in ['debian', 'ubuntu']:
                 # Update initramfs for all kernels
                 subprocess.run(['update-initramfs', '-u', '-k', 'all'], check=True, capture_output=True)
-                self.console.print("  [green]✓[/green] Initramfs updated")
+                self.ui.console.print("  [green]✓[/green] Initramfs updated")
             elif self.distro_info['family'] in ['rhel', 'fedora']:
                 # Dracut for RHEL/Fedora
                 subprocess.run(['dracut', '--force', '--regenerate-all'], check=True, capture_output=True)
-                self.console.print("  [green]✓[/green] Initramfs updated (dracut)")
+                self.ui.console.print("  [green]✓[/green] Initramfs updated (dracut)")
             elif self.distro_info['family'] == 'arch':
                 # mkinitcpio for Arch
                 subprocess.run(['mkinitcpio', '-P'], check=True, capture_output=True)
-                self.console.print("  [green]✓[/green] Initramfs updated (mkinitcpio)")
+                self.ui.console.print("  [green]✓[/green] Initramfs updated (mkinitcpio)")
             else:
-                self.console.print("  [yellow]⚠[/yellow] Please update initramfs manually")
+                self.ui.console.print("  [yellow]⚠[/yellow] Please update initramfs manually")
         except subprocess.CalledProcessError as e:
-            self.console.print(f"  [yellow]⚠ Failed to update initramfs: {e}[/yellow]")
-            self.console.print("  [yellow]Please run 'update-initramfs -u' or equivalent manually[/yellow]")
+            self.ui.console.print(f"  [yellow]⚠ Failed to update initramfs: {e}[/yellow]")
+            self.ui.console.print("  [yellow]Please run 'update-initramfs -u' or equivalent manually[/yellow]")
             # Don't fail the whole process if initramfs update fails
         
         return True
     
     def optimize_sysctl(self) -> bool:
         """Optimize kernel parameters"""
-        self.console.print()
-        self.console.print("[cyan]Optimizing kernel parameters (sysctl)...[/cyan]")
+        self.ui.console.print()
+        self.ui.console.print("[cyan]Optimizing kernel parameters (sysctl)...[/cyan]")
         
         sysctl_conf = Path('/etc/sysctl.d/99-vmware-optimization.conf')
         
@@ -511,12 +457,12 @@ class SystemOptimizer:
         try:
             result = subprocess.run(['sysctl', '-p', str(sysctl_conf)], capture_output=True, text=True)
             if result.returncode == 0:
-                self.console.print("  [green]✓[/green] Kernel parameters optimized")
+                self.ui.console.print("  [green]✓[/green] Kernel parameters optimized")
                 self.changes_made.append("Kernel parameters (sysctl) tuned")
                 return True
             else:
                 # Try to apply individual settings
-                self.console.print("  [yellow]⚠[/yellow] Some kernel parameters couldn't be applied")
+                self.ui.console.print("  [yellow]⚠[/yellow] Some kernel parameters couldn't be applied")
                 success_count = 0
                 with open(sysctl_conf, 'r') as f:
                     for line in f:
@@ -533,25 +479,25 @@ class SystemOptimizer:
                                 pass  # Skip parameters that fail
                 
                 if success_count > 0:
-                    self.console.print(f"  [green]✓[/green] Applied {success_count} kernel parameters successfully")
+                    self.ui.console.print(f"  [green]✓[/green] Applied {success_count} kernel parameters successfully")
                     self.changes_made.append("Kernel parameters (sysctl) partially tuned")
                     return True
                 else:
-                    self.console.print("  [red]✗[/red] No kernel parameters could be applied")
+                    self.ui.console.print("  [red]✗[/red] No kernel parameters could be applied")
                     return False
         except Exception as e:
-            self.console.print(f"  [red]✗ Failed to apply sysctl settings: {e}[/red]")
+            self.ui.console.print(f"  [red]✗ Failed to apply sysctl settings: {e}[/red]")
             return False
     
     def optimize_cpu_governor(self) -> bool:
         """Set CPU governor to performance"""
-        self.console.print()
-        self.console.print("[cyan]Setting CPU governor to performance mode...[/cyan]")
+        self.ui.console.print()
+        self.ui.console.print("[cyan]Setting CPU governor to performance mode...[/cyan]")
         
         # Check if cpufreq is available
         cpu0_governor = Path('/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor')
         if not cpu0_governor.exists():
-            self.console.print("  [yellow]CPU frequency scaling not available[/yellow]")
+            self.ui.console.print("  [yellow]CPU frequency scaling not available[/yellow]")
             return False
         
         # Set all CPUs to performance
@@ -569,7 +515,7 @@ class SystemOptimizer:
                     pass
         
         if success_count > 0:
-            self.console.print(f"  [green]✓[/green] Set {success_count}/{cpu_count} CPUs to performance mode")
+            self.ui.console.print(f"  [green]✓[/green] Set {success_count}/{cpu_count} CPUs to performance mode")
             
             # Make it permanent using cpupower or systemd
             systemd_service = """[Unit]
@@ -593,7 +539,7 @@ WantedBy=multi-user.target
             try:
                 subprocess.run(['systemctl', 'enable', 'vmware-cpu-performance.service'], 
                              check=True, capture_output=True)
-                self.console.print("  [green]✓[/green] CPU performance mode will persist across reboots")
+                self.ui.console.print("  [green]✓[/green] CPU performance mode will persist across reboots")
             except Exception:
                 pass
             
@@ -607,8 +553,8 @@ WantedBy=multi-user.target
         if not self.hw_info['has_nvme']:
             return False
         
-        self.console.print()
-        self.console.print("[cyan]Optimizing I/O scheduler for NVMe devices...[/cyan]")
+        self.ui.console.print()
+        self.ui.console.print("[cyan]Optimizing I/O scheduler for NVMe devices...[/cyan]")
         
         # Create udev rule to set scheduler to 'none' for NVMe
         udev_rule = """# VMware optimization: Set scheduler to none for NVMe devices
@@ -628,7 +574,7 @@ ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
                 try:
                     with open(scheduler_file, 'w') as f:
                         f.write('none')
-                    self.console.print(f"  [green]✓[/green] Set {nvme_dev} scheduler to 'none'")
+                    self.ui.console.print(f"  [green]✓[/green] Set {nvme_dev} scheduler to 'none'")
                 except Exception:
                     pass
         
@@ -644,8 +590,8 @@ ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
     
     def install_packages(self) -> bool:
         """Install performance-related packages"""
-        self.console.print()
-        self.console.print("[cyan]Installing performance packages...[/cyan]")
+        self.ui.console.print()
+        self.ui.console.print("[cyan]Installing performance packages...[/cyan]")
         
         packages = []
         install_cmd = []
@@ -660,29 +606,29 @@ ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
             packages = ['cpupower', 'tuned']
             install_cmd = ['pacman', '-S', '--noconfirm'] + packages
         else:
-            self.console.print("  [yellow]Package installation not supported for this distribution[/yellow]")
+            self.ui.console.print("  [yellow]Package installation not supported for this distribution[/yellow]")
             return False
         
         try:
-            self.console.print(f"  Installing: {', '.join(packages)}")
+            self.ui.console.print(f"  Installing: {', '.join(packages)}")
             subprocess.run(install_cmd, check=True, capture_output=True)
-            self.console.print("  [green]✓[/green] Performance packages installed")
+            self.ui.console.print("  [green]✓[/green] Performance packages installed")
             self.changes_made.append("Performance packages installed")
             return True
         except subprocess.CalledProcessError:
-            self.console.print("  [yellow]Some packages may not have been installed[/yellow]")
+            self.ui.console.print("  [yellow]Some packages may not have been installed[/yellow]")
             return False
     
     def apply_tuned_profile(self) -> bool:
         """Apply tuned virtual-host profile"""
-        self.console.print()
-        self.console.print("[cyan]Configuring tuned daemon...[/cyan]")
+        self.ui.console.print()
+        self.ui.console.print("[cyan]Configuring tuned daemon...[/cyan]")
         
         # Check if tuned is available
         try:
             subprocess.run(['which', 'tuned-adm'], check=True, capture_output=True)
         except subprocess.CalledProcessError:
-            self.console.print("  [yellow]tuned not available[/yellow]")
+            self.ui.console.print("  [yellow]tuned not available[/yellow]")
             return False
         
         # Enable and start tuned
@@ -693,51 +639,51 @@ ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
             # Set virtual-host profile (optimized for virtualization hosts)
             subprocess.run(['tuned-adm', 'profile', 'virtual-host'], check=True, capture_output=True)
             
-            self.console.print("  [green]✓[/green] tuned configured with 'virtual-host' profile")
+            self.ui.console.print("  [green]✓[/green] tuned configured with 'virtual-host' profile")
             self.changes_made.append("tuned daemon configured")
             return True
         except subprocess.CalledProcessError:
-            self.console.print("  [yellow]Failed to configure tuned[/yellow]")
+            self.ui.console.print("  [yellow]Failed to configure tuned[/yellow]")
             return False
     
     def show_summary(self):
         """Show summary of changes"""
-        self.console.print()
-        self.console.print(Panel.fit(
+        self.ui.console.print()
+        self.ui.console.print(Panel.fit(
             "[bold green]✓ System Optimization Complete![/bold green]",
-            border_style=HYPHAED_GREEN
+            border_style=GTK_PURPLE_DARK
         ))
-        self.console.print()
+        self.ui.console.print()
         
         if self.changes_made:
-            self.console.print("[bold]Changes Applied:[/bold]")
+            self.ui.console.print("[bold]Changes Applied:[/bold]")
             for change in self.changes_made:
-                self.console.print(f"  • {change}")
-            self.console.print()
+                self.ui.console.print(f"  • {change}")
+            self.ui.console.print()
         
-        self.console.print("[bold yellow]⚠ REBOOT REQUIRED[/bold yellow]")
-        self.console.print("  Most optimizations (especially GRUB changes) require a reboot to take effect.")
-        self.console.print()
-        self.console.print("[bold green]Please reboot your system manually to apply all changes.[/bold green]")
-        self.console.print("  Command: [cyan]sudo reboot[/cyan]")
-        self.console.print()
+        self.ui.console.print("[bold yellow]⚠ REBOOT REQUIRED[/bold yellow]")
+        self.ui.console.print("  Most optimizations (especially GRUB changes) require a reboot to take effect.")
+        self.ui.console.print()
+        self.ui.console.print("[bold green]Please reboot your system manually to apply all changes.[/bold green]")
+        self.ui.console.print("  Command: [cyan]sudo reboot[/cyan]")
+        self.ui.console.print()
         
-        self.console.print("[bold]Backup Location:[/bold]")
-        self.console.print(f"  [cyan]{self.backup_dir}[/cyan]")
-        self.console.print()
+        self.ui.console.print("[bold]Backup Location:[/bold]")
+        self.ui.console.print(f"  [cyan]{self.backup_dir}[/cyan]")
+        self.ui.console.print()
         
-        self.console.print("[dim]To verify changes after reboot:[/dim]")
-        self.console.print("  [dim]• Check huge pages: cat /proc/meminfo | grep Huge[/dim]")
-        self.console.print("  [dim]• Check IOMMU: dmesg | grep -i iommu[/dim]")
-        self.console.print("  [dim]• Check CPU governor: cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor[/dim]")
-        self.console.print()
+        self.ui.console.print("[dim]To verify changes after reboot:[/dim]")
+        self.ui.console.print("  [dim]• Check huge pages: cat /proc/meminfo | grep Huge[/dim]")
+        self.ui.console.print("  [dim]• Check IOMMU: dmesg | grep -i iommu[/dim]")
+        self.ui.console.print("  [dim]• Check CPU governor: cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor[/dim]")
+        self.ui.console.print()
     
     def run(self):
         """Main optimization flow"""
         try:
             # Check root
             if os.geteuid() != 0:
-                self.console.print("[red]✗ This script must be run as root (use sudo)[/red]")
+                self.ui.console.print("[red]✗ This script must be run as root (use sudo)[/red]")
                 return 1
             
             # Welcome
@@ -749,20 +695,18 @@ ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
             # Show planned optimizations
             self.display_optimizations()
             
-            # Confirm
-            proceed = questionary.confirm(
+            # Confirm using PyTermGUI
+            proceed = ui.confirm(
                 "Do you want to proceed with system optimization?",
-                default=True,
-                style=OPTIMIZER_STYLE,
-                qmark="🚀"
-            ).ask()
+                default=True
+            )
             
             if not proceed:
-                self.console.print("[yellow]Optimization cancelled by user.[/yellow]")
+                self.ui.console.print("[yellow]Optimization cancelled by user.[/yellow]")
                 return 0
             
-            self.console.print()
-            self.console.print("[bold]Starting system optimization...[/bold]")
+            self.ui.console.print()
+            self.ui.console.print("[bold]Starting system optimization...[/bold]")
             
             # Run optimizations
             self.optimize_grub()
@@ -778,10 +722,10 @@ ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
             return 0
             
         except KeyboardInterrupt:
-            self.console.print("\n\n[yellow]Optimization cancelled by user.[/yellow]")
+            self.ui.console.print("\n\n[yellow]Optimization cancelled by user.[/yellow]")
             return 1
         except Exception as e:
-            self.console.print(f"\n\n[red]Error: {e}[/red]")
+            self.ui.console.print(f"\n\n[red]Error: {e}[/red]")
             return 1
 
 

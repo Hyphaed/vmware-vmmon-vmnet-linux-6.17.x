@@ -7,6 +7,29 @@
 
 set -e
 
+# ============================================
+# ROOT CHECK - Must run as root/sudo
+# ============================================
+if [ "$EUID" -ne 0 ]; then 
+    echo ""
+    echo -e "\033[0;31m╭──────────────────────────────────────────────────────────────╮\033[0m"
+    echo -e "\033[0;31m│                                                              │\033[0m"
+    echo -e "\033[0;31m│                    ROOT PRIVILEGES REQUIRED                  │\033[0m"
+    echo -e "\033[0;31m│                                                              │\033[0m"
+    echo -e "\033[0;31m╰──────────────────────────────────────────────────────────────╯\033[0m"
+    echo ""
+    echo -e "\033[1;33m[!]\033[0m This script requires root privileges to:"
+    echo "    • Compile and install kernel modules"
+    echo "    • Modify system files in /usr/lib/vmware/"
+    echo "    • Load/unload kernel modules"
+    echo ""
+    echo -e "\033[0;36mPlease restart with sudo:\033[0m"
+    echo ""
+    echo -e "    \033[1;32msudo $0\033[0m"
+    echo ""
+    exit 1
+fi
+
 # Detectar automáticamente el directorio del script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="/tmp/vmware_build_$$"
@@ -16,19 +39,66 @@ LOG_FILE="$SCRIPT_DIR/vmware_build_$(date +%Y%m%d_%H%M%S).log"
 BACKUP_DIR=""
 VMWARE_MOD_DIR=""
 
-# Colors
+# Colors - GTK4 Purple Theme
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 CYAN='\033[0;36m'
 NC='\033[0m'
-HYPHAED_GREEN='\033[38;2;176;213;106m'  # #B0D56A
+# GTK4 Purple (changed from green to match wizard theme)
+HYPHAED_GREEN='\033[38;2;181;128;209m'  # #b580d1 (GTK_PURPLE)
+PURPLE='\033[38;2;181;128;209m'          # #b580d1
+PURPLE_LIGHT='\033[38;2;216;180;226m'    # #d8b4e2
 
 log() { echo -e "${GREEN}[✓]${NC} $1" | tee -a "$LOG_FILE"; }
 info() { echo -e "${BLUE}[i]${NC} $1" | tee -a "$LOG_FILE"; }
 warning() { echo -e "${YELLOW}[!]${NC} $1" | tee -a "$LOG_FILE"; }
 error() { echo -e "${RED}[✗]${NC} $1" | tee -a "$LOG_FILE"; }
+
+# Dynamic box drawing functions
+get_term_width() {
+    # Get terminal width, default to 160 if detection fails
+    local width=$(tput cols 2>/dev/null || echo "160")
+    echo "$width"
+}
+
+draw_box_top() {
+    local width=$(get_term_width)
+    echo -n "╭"
+    printf '─%.0s' $(seq 2 $((width - 1)))
+    echo "╮"
+}
+
+draw_box_bottom() {
+    local width=$(get_term_width)
+    echo -n "╰"
+    printf '─%.0s' $(seq 2 $((width - 1)))
+    echo "╯"
+}
+
+draw_box_line() {
+    local text="$1"
+    local color="${2:-$HYPHAED_GREEN}"
+    local width=$(get_term_width)
+    local text_len=${#text}
+    local padding=$(( (width - text_len - 2) / 2 ))
+    local right_padding=$(( width - text_len - padding - 2 ))
+    
+    echo -n "│"
+    printf ' %.0s' $(seq 1 $padding)
+    echo -n "$text"
+    printf ' %.0s' $(seq 1 $right_padding)
+    echo "│"
+}
+
+draw_section_header() {
+    local title="$1"
+    local color="${2:-$HYPHAED_GREEN}"
+    echo -e "${color}$(draw_box_top)${NC}"
+    echo -e "${color}│${NC} ${YELLOW}${title}${NC}$(printf ' %.0s' $(seq 1 $(($(get_term_width) - ${#title} - 4))))${color}│${NC}"
+    echo -e "${color}$(draw_box_bottom)${NC}"
+}
 
 # Cleanup function in case of error
 cleanup_on_error() {
@@ -40,21 +110,15 @@ cleanup_on_error() {
 
 trap cleanup_on_error ERR
 
-echo -e "${HYPHAED_GREEN}"
-cat << 'EOF'
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║     VMWARE MODULES COMPILER FOR KERNEL 6.16/6.17            ║
-║        (Multi-Distribution Linux Compatible)                 ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-EOF
-echo -e "${NC}"
+echo -e "${HYPHAED_GREEN}$(draw_box_top)${NC}"
+echo -e "${HYPHAED_GREEN}$(draw_box_line "")${NC}"
+echo -e "${HYPHAED_GREEN}$(draw_box_line "VMWARE MODULES COMPILER FOR KERNEL 6.16/6.17")${NC}"
+echo -e "${HYPHAED_GREEN}$(draw_box_line "(Multi-Distribution Linux Compatible)")${NC}"
+echo -e "${HYPHAED_GREEN}$(draw_box_line "")${NC}"
+echo -e "${HYPHAED_GREEN}$(draw_box_bottom)${NC}"
 
 echo ""
-echo -e "${HYPHAED_GREEN}═══════════════════════════════════════${NC}"
-echo -e "${HYPHAED_GREEN}IMPORTANT INFORMATION${NC}"
-echo -e "${HYPHAED_GREEN}═══════════════════════════════════════${NC}"
+draw_section_header "IMPORTANT INFORMATION"
 echo ""
 info "This script will create a backup of your current VMware modules"
 info "If something goes wrong, you can restore using:"
@@ -68,9 +132,7 @@ echo ""
 # 0. CHECK IF VMWARE IS RUNNING
 # ============================================
 echo ""
-echo -e "${HYPHAED_GREEN}════════════════════════════════════════${NC}"
-echo -e "${HYPHAED_GREEN}CHECKING VMWARE STATUS${NC}"
-echo -e "${HYPHAED_GREEN}════════════════════════════════════════${NC}"
+draw_section_header "CHECKING VMWARE STATUS"
 echo ""
 
 # Check for running VMware processes
@@ -106,9 +168,7 @@ fi
 # 1. RUN PYTHON WIZARD (Interactive TUI)
 # ============================================
 echo ""
-echo -e "${HYPHAED_GREEN}════════════════════════════════════════${NC}"
-echo -e "${HYPHAED_GREEN}LAUNCHING INTERACTIVE WIZARD${NC}"
-echo -e "${HYPHAED_GREEN}════════════════════════════════════════${NC}"
+draw_section_header "LAUNCHING INTERACTIVE WIZARD"
 echo ""
 
 info "Starting Python-powered installation wizard..."
@@ -187,32 +247,28 @@ else
                 source "$MINIFORGE_DIR/etc/profile.d/conda.sh"
             fi
             
-            # Check and install questionary if missing
+            # Check and install questionary + rich if missing
+            MISSING_DEPS=""
             if ! "$WIZARD_PYTHON" -c "import questionary" 2>/dev/null; then
-                info "Installing questionary in conda environment..."
-                
-                # Try mamba first (faster), then conda, finally pip
-                if [ -f "$MINIFORGE_DIR/bin/mamba" ]; then
-                    "$MINIFORGE_DIR/bin/mamba" install -y -n "$ENV_NAME" -c conda-forge questionary >/dev/null 2>&1 || \
-                    "$WIZARD_PYTHON" -m pip install questionary >/dev/null 2>&1 || true
-                elif [ -f "$MINIFORGE_DIR/bin/conda" ]; then
-                    "$MINIFORGE_DIR/bin/conda" install -y -n "$ENV_NAME" -c conda-forge questionary >/dev/null 2>&1 || \
-                    "$WIZARD_PYTHON" -m pip install questionary >/dev/null 2>&1 || true
-                else
-                    "$WIZARD_PYTHON" -m pip install questionary >/dev/null 2>&1 || true
-                fi
-                
-                if "$WIZARD_PYTHON" -c "import questionary" 2>/dev/null; then
-                    log "✓ questionary installed successfully"
-                else
-                    warning "Could not install questionary. Using basic UI."
-                fi
+                MISSING_DEPS="$MISSING_DEPS questionary"
+            fi
+            if ! "$WIZARD_PYTHON" -c "import rich" 2>/dev/null; then
+                MISSING_DEPS="$MISSING_DEPS rich"
             fi
             
-            # Check and install rich if missing
-            if ! "$WIZARD_PYTHON" -c "import rich" 2>/dev/null; then
-                info "Installing rich in conda environment..."
-                "$WIZARD_PYTHON" -m pip install rich >/dev/null 2>&1 || true
+            if [ -n "$MISSING_DEPS" ]; then
+                info "Installing UI libraries in conda environment:$MISSING_DEPS"
+                "$WIZARD_PYTHON" -m pip install$MISSING_DEPS >/dev/null 2>&1 || true
+                
+                if "$WIZARD_PYTHON" -c "import questionary; import rich" 2>/dev/null; then
+                    log "✓ UI libraries installed successfully"
+                else
+                    error "Could not install UI libraries. Installation cannot continue."
+                    echo ""
+                    echo "Please install manually:"
+                    echo "  $WIZARD_PYTHON -m pip install questionary rich"
+                    exit 1
+                fi
             fi
             
             # Activate the environment and run the wizard
@@ -238,6 +294,7 @@ else
                 # Extract selected kernels and their versions
                 SELECTED_KERNELS_JSON=$(jq -r '.selected_kernels' "$WIZARD_CONFIG" 2>/dev/null)
                 OPTIMIZATION_MODE=$(jq -r '.optimization_mode' "$WIZARD_CONFIG" 2>/dev/null)
+                APPLY_TUNING_FIRST=$(jq -r '.apply_tuning_first' "$WIZARD_CONFIG" 2>/dev/null)
                 
                 # Get first kernel's major.minor version to determine which patches to use
                 FIRST_KERNEL_MINOR=$(echo "$SELECTED_KERNELS_JSON" | jq -r '.[0].minor' 2>/dev/null)
@@ -260,6 +317,40 @@ else
                     log "Selected kernels: $SELECTED_KERNELS"
                     log "Target kernel version: $TARGET_KERNEL"
                     log "Optimization mode: $OPTIMIZATION_MODE"
+                    
+                    # Apply system tuning BEFORE compilation if requested
+                    if [ "$APPLY_TUNING_FIRST" = "true" ]; then
+                        echo ""
+                        draw_section_header "STEP 3/5: APPLYING SYSTEM TUNING (Before Compilation)"
+                        echo ""
+                        info "Applying system tuning optimizations before compilation..."
+                        info "This will optimize initramfs only once (saves time!)"
+                        echo ""
+                        
+                        TUNE_SCRIPT="$SCRIPT_DIR/tune-system.sh"
+                        if [ -f "$TUNE_SCRIPT" ]; then
+                            # Source .bashrc to ensure conda is available
+                            if [ -f "$HOME/.bashrc" ]; then
+                                source "$HOME/.bashrc"
+                            fi
+                            
+                            bash "$TUNE_SCRIPT"
+                            TUNE_EXIT_CODE=$?
+                            TUNING_APPLIED=true
+                            
+                            if [ $TUNE_EXIT_CODE -eq 0 ]; then
+                                log "System tuning completed successfully"
+                            else
+                                warning "System tuning exited with code: $TUNE_EXIT_CODE"
+                                info "Continuing with compilation anyway..."
+                            fi
+                        else
+                            error "System optimizer not found at: $TUNE_SCRIPT"
+                            info "Continuing with compilation without tuning..."
+                        fi
+                        
+                        echo ""
+                    fi
                 else
                     error "Failed to parse wizard configuration"
                     warning "Falling back to legacy installation mode..."
@@ -289,9 +380,7 @@ echo ""
 # ============================================
 if [ "$USE_WIZARD" = false ]; then
 echo ""
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}KERNEL VERSION SELECTION${NC}"
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
+draw_section_header "KERNEL VERSION SELECTION"
 echo ""
 echo "This script supports two kernel versions with specific patches:"
 echo ""
@@ -647,24 +736,34 @@ log "✓ System verification completed"
 # ============================================
 # 1.5. HARDWARE DETECTION & OPTIMIZATION
 # ============================================
-# Always run hardware detection (it's the core of the project!)
-# Only skip the VISUAL PROMPTS if wizard was used
-echo ""
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}HARDWARE OPTIMIZATION${NC}"
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
-echo ""
+# Skip hardware detection if wizard already did it
+if [ "$USE_WIZARD" = true ] && [ -f "/tmp/vmware_hw_capabilities.json" ]; then
+    info "Using hardware detection from wizard..."
+    USE_PYTHON_DETECTION=true
+    
+    # Extract values from wizard's JSON
+    PYTHON_OPT_SCORE=$(grep -o '"optimization_score":[[:space:]]*[0-9]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[0-9]*$' || echo "50")
+    PYTHON_RECOMMENDED=$(grep -o '"recommended_mode":[[:space:]]*"[^"]*"' /tmp/vmware_hw_capabilities.json 2>/dev/null | sed 's/.*"\([^"]*\)".*/\1/' || echo "optimized")
+    PYTHON_HAS_AVX512=$(grep -o '"has_avx512f":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "false")
+    PYTHON_HAS_VTX=$(grep -o '"has_vtx":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "true")
+    PYTHON_HAS_EPT=$(grep -o '"has_ept":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "true")
+    PYTHON_HAS_NVME=$(grep -o '"has_nvme":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "false")
+    
+    log "✓ Hardware configuration loaded from wizard"
+else
+    # Run hardware detection (only if wizard didn't run or no JSON found)
+    echo ""
+    draw_section_header "HARDWARE OPTIMIZATION"
+    # Try to use advanced Python-based detection with mamba/miniforge environment
+    PYTHON_DETECTOR="$SCRIPT_DIR/detect_hardware.py"
+    PYTHON_ENV_SETUP="$SCRIPT_DIR/setup_python_env.sh"
+    PYTHON_ENV_ACTIVATE="$SCRIPT_DIR/activate_optimizer_env.sh"
+    USE_PYTHON_DETECTION=false
 
-# Try to use advanced Python-based detection with mamba/miniforge environment
-PYTHON_DETECTOR="$SCRIPT_DIR/detect_hardware.py"
-PYTHON_ENV_SETUP="$SCRIPT_DIR/setup_python_env.sh"
-PYTHON_ENV_ACTIVATE="$SCRIPT_DIR/activate_optimizer_env.sh"
-USE_PYTHON_DETECTION=false
+    # Reuse MINIFORGE_DIR and ENV_NAME from wizard section (already defined above)
+    # They were set when the wizard ran, no need to redefine
 
-# Reuse MINIFORGE_DIR and ENV_NAME from wizard section (already defined above)
-# They were set when the wizard ran, no need to redefine
-
-if [ -f "$PYTHON_DETECTOR" ]; then
+    if [ -f "$PYTHON_DETECTOR" ]; then
     info "Attempting advanced Python-based hardware detection..."
     
     # Check for mamba/miniforge environment
@@ -722,7 +821,8 @@ if [ -f "$PYTHON_DETECTOR" ]; then
             warning "Python detection did not generate expected output, falling back to bash detection"
         fi
     fi
-fi
+    fi  # End of else block (hardware detection when wizard didn't run)
+fi  # End of wizard check
 
 if [ "$USE_PYTHON_DETECTION" = false ]; then
     info "Using standard bash hardware detection..."
@@ -1080,9 +1180,7 @@ if [ -n "$OPTIM_FLAGS" ] || [ -n "$KERNEL_FEATURES" ] || [ "$NVME_DETECTED" = tr
     echo "     • Standard VMware compilation with kernel compatibility patches only"
     echo "     • Works on any x86_64 CPU (portable)"
     echo ""
-    echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${YELLOW}Compiler Optimization Impact (Real Performance Gains)${NC}"
-    echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
+    draw_section_header "Compiler Optimization Impact (Real Performance Gains)"
     echo ""
     printf "  %-30s %-22s\n" "Operation Type" "Improvement vs Vanilla"
     echo "  ───────────────────────────────────────────────────────────────────"
@@ -1197,14 +1295,12 @@ if [ -n "$OPTIM_FLAGS" ] || [ -n "$KERNEL_FEATURES" ] || [ "$NVME_DETECTED" = tr
                 fi
             fi
             echo ""
-            echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
             if [ "$AVX512_DETECTED" = true ]; then
-                echo -e "${YELLOW}Estimated Total Improvement: 20-45% over vanilla (with AVX-512)${NC}"
+                info "Estimated Total Improvement: 20-45% over vanilla (with AVX-512)"
             else
-                echo -e "${YELLOW}Estimated Total Improvement: 15-35% over vanilla${NC}"
+                info "Estimated Total Improvement: 15-35% over vanilla"
             fi
-            echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-            echo -e "${YELLOW}Note:${NC} Modules work ONLY on similar CPUs (Intel 11th gen or newer)"
+            warning "Note: Modules work ONLY on similar CPUs (Intel 11th gen or newer)"
             ;;
         2|*)
             EXTRA_CFLAGS=""
@@ -2064,9 +2160,7 @@ rm -rf "$WORK_DIR"
 info "Temporary directory removed"
 
 echo ""
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}✓ COMPILATION AND INSTALLATION COMPLETED${NC}"
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
+draw_section_header "✓ COMPILATION AND INSTALLATION COMPLETED"
 echo ""
 
 info "Summary:"
@@ -2113,9 +2207,7 @@ echo ""
 # RUN AUTOMATIC TESTS
 # ============================================
 echo ""
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}RUNNING AUTOMATIC TESTS${NC}"
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
+draw_section_header "RUNNING AUTOMATIC TESTS"
 echo ""
 
 info "Running comprehensive module tests..."
@@ -2146,87 +2238,117 @@ else
 fi
 
 echo ""
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}✓ INSTALLATION AND TESTING COMPLETED${NC}"
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
+draw_section_header "✓ INSTALLATION AND TESTING COMPLETED"
 echo ""
 
 # ============================================
-# OFFER SYSTEM TUNING
+# OPTIONAL SYSTEM TUNING (Step 4/5)
 # ============================================
-echo ""
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}SYSTEM OPTIMIZATION AVAILABLE${NC}"
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
-echo ""
-echo -e "${CYAN}Would you like to optimize your system for VMware Workstation?${NC}"
-echo ""
-echo "This will tune your system to maximize VMware performance:"
-echo ""
-echo "  • GRUB boot parameters (IOMMU, hugepages, CPU mitigations)"
-echo "  • Kernel parameters (memory management, network, scheduler)"
-echo "  • CPU governor (performance mode)"
-echo "  • I/O scheduler (NVMe/SSD optimization)"
-echo "  • Install performance packages (tuned, cpufrequtils)"
-echo ""
-echo -e "${YELLOW}Note:${NC} System tuning requires a reboot to take full effect"
-echo -e "${YELLOW}Note:${NC} You can run this anytime with: ${GREEN}sudo bash scripts/tune-system.sh${NC}"
-echo ""
+# Skip if tuning was already applied before compilation
+if [ "$TUNING_APPLIED" != "true" ]; then
+    echo ""
+    draw_section_header "STEP 4/5: OPTIONAL SYSTEM TUNING"
+    echo ""
+    echo -e "${CYAN}Would you like to optimize your system for maximum VMware performance?${NC}"
+    echo ""
+    echo "This will tune your system to maximize VMware performance:"
+    echo ""
+    echo "  • GRUB boot parameters (IOMMU, hugepages)"
+    echo "  • Kernel parameters (memory management, network, scheduler)"
+    echo "  • CPU governor (performance mode)"
+    echo "  • I/O scheduler (NVMe/SSD optimization)"
+    echo "  • Install performance packages (tuned, cpufrequtils)"
+    echo ""
+    echo -e "${YELLOW}Note:${NC} System tuning requires a reboot to take full effect"
+    echo -e "${YELLOW}Note:${NC} You can run this anytime with: ${GREEN}sudo bash scripts/tune-system.sh${NC}"
+    echo -e "${YELLOW}Note:${NC} Tuning after compilation will rebuild initramfs again (slower)"
+    echo ""
 
-read -p "Optimize system now? (Y/n): " -n 1 -r
-echo
-# Default to Yes if user just presses Enter
-if [[ -z $REPLY ]] || [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo ""
-    info "Launching system optimizer..."
-    echo ""
-    
-    TUNE_SCRIPT="$SCRIPT_DIR/tune-system.sh"
-    if [ -f "$TUNE_SCRIPT" ]; then
-        bash "$TUNE_SCRIPT"
-        TUNE_EXIT_CODE=$?
+    read -p "Optimize system now? (Y/n): " -n 1 -r
+    echo
+    # Default to Yes if user just presses Enter
+    if [[ -z $REPLY ]] || [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo ""
+        info "Launching system optimizer..."
+        echo ""
         
-        if [ $TUNE_EXIT_CODE -eq 0 ]; then
-            echo ""
-            log "System optimization completed successfully!"
+        TUNE_SCRIPT="$SCRIPT_DIR/tune-system.sh"
+        if [ -f "$TUNE_SCRIPT" ]; then
+            # Source .bashrc to ensure conda is available
+            if [ -f "$HOME/.bashrc" ]; then
+                source "$HOME/.bashrc"
+            fi
+            
+            bash "$TUNE_SCRIPT"
+            TUNE_EXIT_CODE=$?
+            TUNING_APPLIED=true
+            
+            if [ $TUNE_EXIT_CODE -eq 0 ]; then
+                echo ""
+                log "System optimization completed successfully!"
+            else
+                echo ""
+                warning "System optimization exited with code: $TUNE_EXIT_CODE"
+                info "You can try again later with: sudo bash scripts/tune-system.sh"
+            fi
         else
-            echo ""
-            warning "System optimization exited with code: $TUNE_EXIT_CODE"
-            info "You can try again later with: sudo bash scripts/tune-system.sh"
+            error "System optimizer not found at: $TUNE_SCRIPT"
+            info "Please ensure all project files are present"
         fi
     else
-        error "System optimizer not found at: $TUNE_SCRIPT"
-        info "Please ensure all project files are present"
+        echo ""
+        info "System optimization skipped"
+        info "You can optimize your system anytime with:"
+        echo "  ${GREEN}sudo bash scripts/tune-system.sh${NC}"
     fi
 else
-    echo ""
-    info "System optimization skipped"
-    info "You can optimize your system anytime with:"
-    echo "  ${GREEN}sudo bash scripts/tune-system.sh${NC}"
+    info "System tuning was already applied before compilation - skipping duplicate prompt"
 fi
 
-echo ""
-echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
 info "To start VMware:"
 echo "  vmware &"
 echo ""
 
-# Show reboot recommendation if system was tuned
-if [[ $REPLY =~ ^[Yy]$ ]] 2>/dev/null && [ -f "$SCRIPT_DIR/tune-system.sh" ] && [ $TUNE_EXIT_CODE -eq 0 ] 2>/dev/null; then
+# Show reboot recommendation if system was tuned (Step 5/5)
+if [ "$TUNING_APPLIED" = "true" ]; then
     echo ""
-    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${YELLOW}REBOOT RECOMMENDED${NC}"
-    echo -e "${YELLOW}═══════════════════════════════════════════════════════════════════${NC}"
+    draw_section_header "STEP 5/5: REBOOT RECOMMENDED"
     echo ""
     warning "System optimizations require a reboot to take full effect"
     info "Some tuning (GRUB parameters, hugepages, IOMMU) will not be active until reboot"
     echo ""
-    info "Recommended next steps:"
-    echo "  1. Reboot your system: ${GREEN}sudo reboot${NC}"
-    echo "  2. After reboot, start VMware: ${GREEN}vmware &${NC}"
+    echo -e "${CYAN}Would you like to reboot now?${NC}"
     echo ""
+    echo -e "${YELLOW}⚠ IMPORTANT:${NC} Save all your work before rebooting!"
+    echo ""
+    echo -e "Type ${GREEN}'yes, reboot'${NC} to reboot immediately, or press Enter to skip:"
+    read -p "> " REBOOT_CONFIRM
+    echo ""
+    
+    if [ "$REBOOT_CONFIRM" = "yes, reboot" ]; then
+        log "Rebooting system in 5 seconds..."
+        echo ""
+        echo -e "${YELLOW}System will reboot in:${NC}"
+        for i in 5 4 3 2 1; do
+            echo -e "  ${GREEN}$i...${NC}"
+            sleep 1
+        done
+        echo ""
+        log "Rebooting now!"
+        sync  # Flush filesystem buffers
+        sudo reboot
+    else
+        echo -e "${CYAN}Reboot skipped.${NC}"
+        echo ""
+        info "To reboot later, run:"
+        echo "  ${GREEN}sudo reboot${NC}"
+        echo ""
+        info "After reboot, start VMware:"
+        echo "  ${GREEN}vmware &${NC}"
+        echo ""
+    fi
 fi
 
 log "Process completed successfully!"
