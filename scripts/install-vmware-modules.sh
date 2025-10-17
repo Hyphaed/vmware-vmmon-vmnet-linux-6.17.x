@@ -297,13 +297,19 @@ else
             if [ -f "$WIZARD_CONFIG" ]; then
                 info "Loading wizard configuration..."
                 
+                # DISABLE ERR trap for JSON parsing (jq might fail on missing keys)
+                trap - ERR
+                
                 # Extract selected kernels and their versions
-                SELECTED_KERNELS_JSON=$(jq -r '.selected_kernels' "$WIZARD_CONFIG" 2>/dev/null)
-                OPTIMIZATION_MODE=$(jq -r '.optimization_mode' "$WIZARD_CONFIG" 2>/dev/null)
-                APPLY_TUNING_FIRST=$(jq -r '.apply_tuning_first' "$WIZARD_CONFIG" 2>/dev/null)
+                SELECTED_KERNELS_JSON=$(jq -r '.selected_kernels' "$WIZARD_CONFIG" 2>/dev/null || echo "[]")
+                OPTIMIZATION_MODE=$(jq -r '.optimization_mode' "$WIZARD_CONFIG" 2>/dev/null || echo "optimized")
+                AUTO_IOMMU=$(jq -r '.auto_configure_iommu' "$WIZARD_CONFIG" 2>/dev/null || echo "false")
                 
                 # Get first kernel's major.minor version to determine which patches to use
-                FIRST_KERNEL_MINOR=$(echo "$SELECTED_KERNELS_JSON" | jq -r '.[0].minor' 2>/dev/null)
+                FIRST_KERNEL_MINOR=$(echo "$SELECTED_KERNELS_JSON" | jq -r '.[0].minor' 2>/dev/null || echo "")
+                
+                # Re-enable ERR trap
+                trap cleanup_on_error ERR
                 
                 if [ -n "$FIRST_KERNEL_MINOR" ] && [ "$FIRST_KERNEL_MINOR" != "null" ]; then
                     # Determine TARGET_KERNEL based on detected version
@@ -323,9 +329,7 @@ else
                     log "Selected kernels: $SELECTED_KERNELS"
                     log "Target kernel version: $TARGET_KERNEL"
                     log "Optimization mode: $OPTIMIZATION_MODE"
-                    
-                    # Auto-configure IOMMU if optimized mode is selected
-                    AUTO_IOMMU=$(echo "$WIZARD_DATA" | grep -o '"auto_configure_iommu":[[:space:]]*[a-z]*' | grep -o '[a-z]*$')
+                    log "Auto-configure IOMMU: $AUTO_IOMMU"
                     if [ "$AUTO_IOMMU" = "true" ] && [ "$OPTIMIZATION_MODE" = "optimized" ]; then
                         echo ""
                         draw_section_header "CONFIGURING IOMMU FOR VMWARE (Optimized Mode)"
@@ -750,6 +754,9 @@ if [ "$USE_WIZARD" = true ] && [ -f "/tmp/vmware_hw_capabilities.json" ]; then
     info "Using hardware detection from wizard..."
     USE_PYTHON_DETECTION=true
     
+    # DISABLE ERR trap for grep operations (failures are normal with || fallbacks)
+    trap - ERR
+    
     # Extract values from wizard's JSON (all grep operations have || fallbacks)
     PYTHON_OPT_SCORE=$(grep -o '"optimization_score":[[:space:]]*[0-9]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[0-9]*$' || echo "50")
     PYTHON_RECOMMENDED=$(grep -o '"recommended_mode":[[:space:]]*"[^"]*"' /tmp/vmware_hw_capabilities.json 2>/dev/null | sed 's/.*"\([^"]*\)".*/\1/' || echo "optimized")
@@ -757,6 +764,9 @@ if [ "$USE_WIZARD" = true ] && [ -f "/tmp/vmware_hw_capabilities.json" ]; then
     PYTHON_HAS_VTX=$(grep -o '"has_vtx":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "true")
     PYTHON_HAS_EPT=$(grep -o '"has_ept":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "true")
     PYTHON_HAS_NVME=$(grep -o '"has_nvme":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json 2>/dev/null | grep -o '[a-z]*$' || echo "false")
+    
+    # Re-enable ERR trap
+    trap cleanup_on_error ERR
     
     log "✓ Hardware configuration loaded from wizard"
 else
