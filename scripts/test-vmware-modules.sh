@@ -1,44 +1,36 @@
 #!/bin/bash
-# Script de prueba rápida de módulos VMWare
-# Verifica que los módulos estén correctamente compilados y cargados
+# Comprehensive VMware Modules Test Script
+# Verifies modules are correctly compiled, loaded, and running
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 HYPHAED_GREEN='\033[38;2;176;213;106m'
 
-# Animation
-ANIMATION_PID=""
-ANIMATION_ENABLED=false
-[ -t 1 ] && command -v tput &>/dev/null && ANIMATION_ENABLED=true
+log() { echo -e "${GREEN}[✓]${NC} $1"; }
+info() { echo -e "${BLUE}[i]${NC} $1"; }
+warning() { echo -e "${YELLOW}[!]${NC} $1"; }
+error() { echo -e "${RED}[✗]${NC} $1"; }
 
-start_animation() {
-    [ "$ANIMATION_ENABLED" = false ] && return
-    local frames=("    ╭─○" "   ╭──○" "  ╭───○" " ╭────○" "╭─────○" "│─────○" "╰─────○" " ╰────○" "  ╰───○" "   ╰──○" "    ╰─○" "    ○─╯" "    ○──╯" "    ○───╯" "    ○────╯" "    ○─────╯" "    ○─────│" "    ○─────╮" "    ○────╮" "    ○───╮" "    ○──╮" "    ○─╮")
-    ( local cols=$(tput cols) frame_idx=0 total_frames=${#frames[@]}
-      while true; do local x=$((cols - 15)) y=2; tput sc; tput cup $y $x
-        echo -ne "${HYPHAED_GREEN}${frames[$frame_idx]}${NC}"; tput cup $((y + 1)) $((x + 1))
-        echo -ne "${HYPHAED_GREEN}Hyphaed${NC}"; tput rc; frame_idx=$(( (frame_idx + 1) % total_frames )); sleep 0.1
-      done ) &
-    ANIMATION_PID=$!
-}
-
-stop_animation() {
-    [ -n "$ANIMATION_PID" ] && { kill $ANIMATION_PID 2>/dev/null || true; wait $ANIMATION_PID 2>/dev/null || true; ANIMATION_PID=""
-    [ "$ANIMATION_ENABLED" = true ] && { local cols=$(tput cols) x=$((cols - 15)) y=2
-    tput sc; tput cup $y $x; echo -ne "          "; tput cup $((y + 1)) $x; echo -ne "          "; tput rc; }; }
-}
-
-trap stop_animation EXIT
-
-echo -e "${BLUE}═══════════════════════════════════════${NC}"
-echo -e "${BLUE}  TEST DE MÓDULOS VMWARE${NC}"
-echo -e "${BLUE}═══════════════════════════════════════${NC}"
+echo -e "${CYAN}"
+cat << 'EOF'
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║        VMWARE MODULES COMPREHENSIVE TEST SUITE               ║
+║         Verification of Installation & Runtime               ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+EOF
+echo -e "${NC}"
 echo ""
 
-start_animation
+# Test counter
+TESTS_PASSED=0
+TESTS_FAILED=0
+TESTS_TOTAL=0
 
 # Información del sistema
 echo -e "${YELLOW}📋 INFORMACIÓN DEL SISTEMA${NC}"

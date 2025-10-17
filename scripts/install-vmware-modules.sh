@@ -40,21 +40,21 @@ cleanup_on_error() {
 
 trap cleanup_on_error ERR
 
-echo -e "${CYAN}"
+echo -e "${HYPHAED_GREEN}"
 cat << 'EOF'
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║     VMWARE MODULES COMPILER FOR KERNEL 6.16/6.17            ║
-║           (Ubuntu/Fedora/Gentoo Compatible)                  ║
+║        (Multi-Distribution Linux Compatible)                 ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
 
 echo ""
-echo -e "${CYAN}═══════════════════════════════════════${NC}"
-echo -e "${GREEN}IMPORTANT INFORMATION${NC}"
-echo -e "${CYAN}═══════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}═══════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}IMPORTANT INFORMATION${NC}"
+echo -e "${HYPHAED_GREEN}═══════════════════════════════════════${NC}"
 echo ""
 info "This script will create a backup of your current VMware modules"
 info "If something goes wrong, you can restore using:"
@@ -68,9 +68,9 @@ echo ""
 # 0. CHECK IF VMWARE IS RUNNING
 # ============================================
 echo ""
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-echo -e "${YELLOW}CHECKING VMWARE STATUS${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}════════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}CHECKING VMWARE STATUS${NC}"
+echo -e "${HYPHAED_GREEN}════════════════════════════════════════${NC}"
 echo ""
 
 # Check for running VMware processes
@@ -106,9 +106,9 @@ fi
 # 1. SELECT KERNEL VERSION
 # ============================================
 echo ""
-echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo -e "${YELLOW}KERNEL VERSION SELECTION${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 echo "This script supports two kernel versions with specific patches:"
 echo ""
@@ -160,31 +160,225 @@ info "Detected kernel: $KERNEL_VERSION"
 info "Version: $KERNEL_MAJOR.$KERNEL_MINOR"
 
 # Detect distribution
+echo ""
+info "Detecting Linux distribution..."
+
+# Read os-release for detailed info
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    DISTRO_NAME="$NAME"
+    DISTRO_ID="$ID"
+    DISTRO_VERSION="$VERSION_ID"
+else
+    DISTRO_NAME="Unknown"
+    DISTRO_ID="unknown"
+    DISTRO_VERSION="unknown"
+fi
+
+# Detect specific distributions (order matters - most specific first)
 if [ -f /etc/gentoo-release ]; then
     DISTRO="gentoo"
     PKG_MANAGER="emerge"
     VMWARE_MOD_DIR="/opt/vmware/lib/vmware/modules/source"
     BACKUP_DIR="/tmp/vmware-backup-$(date +%Y%m%d-%H%M%S)"
-    info "Distribution: Gentoo Linux"
-elif [ -f /etc/fedora-release ]; then
+    log "✓ Detected: ${HYPHAED_GREEN}Gentoo Linux${NC}"
+    
+elif [ -f /etc/arch-release ] || [ "$DISTRO_ID" = "arch" ] || [ "$DISTRO_ID" = "manjaro" ]; then
+    DISTRO="arch"
+    PKG_MANAGER="pacman"
+    VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
+    BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
+    if [ "$DISTRO_ID" = "manjaro" ]; then
+        log "✓ Detected: ${HYPHAED_GREEN}Manjaro Linux${NC} (Arch-based)"
+    else
+        log "✓ Detected: ${HYPHAED_GREEN}Arch Linux${NC}"
+    fi
+    
+elif [ -f /etc/fedora-release ] || [ "$DISTRO_ID" = "fedora" ]; then
     DISTRO="fedora"
     PKG_MANAGER="dnf"
     VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
     BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
-    info "Distribution: Fedora"
-elif [ -f /etc/debian_version ]; then
+    log "✓ Detected: ${HYPHAED_GREEN}Fedora Linux${NC}"
+    
+elif [ -f /etc/centos-release ] || [ "$DISTRO_ID" = "centos" ] || [ "$DISTRO_ID" = "rhel" ] || [ "$DISTRO_ID" = "rocky" ] || [ "$DISTRO_ID" = "almalinux" ]; then
+    DISTRO="centos"
+    # CentOS 8+/RHEL 8+/Rocky/AlmaLinux use dnf, older versions use yum
+    if command -v dnf &>/dev/null; then
+        PKG_MANAGER="dnf"
+    else
+        PKG_MANAGER="yum"
+    fi
+    VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
+    BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
+    case "$DISTRO_ID" in
+        "rocky") log "✓ Detected: ${HYPHAED_GREEN}Rocky Linux${NC} (RHEL-compatible)" ;;
+        "almalinux") log "✓ Detected: ${HYPHAED_GREEN}AlmaLinux${NC} (RHEL-compatible)" ;;
+        "rhel") log "✓ Detected: ${HYPHAED_GREEN}Red Hat Enterprise Linux${NC}" ;;
+        *) log "✓ Detected: ${HYPHAED_GREEN}CentOS${NC}" ;;
+    esac
+    
+elif [ "$DISTRO_ID" = "ubuntu" ] || [ "$DISTRO_ID" = "pop" ] || [ "$DISTRO_ID" = "linuxmint" ] || [ "$DISTRO_ID" = "elementary" ]; then
+    DISTRO="ubuntu"
+    PKG_MANAGER="apt"
+    VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
+    BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
+    case "$DISTRO_ID" in
+        "pop") log "✓ Detected: ${HYPHAED_GREEN}Pop!_OS${NC} (Ubuntu-based)" ;;
+        "linuxmint") log "✓ Detected: ${HYPHAED_GREEN}Linux Mint${NC} (Ubuntu-based)" ;;
+        "elementary") log "✓ Detected: ${HYPHAED_GREEN}elementary OS${NC} (Ubuntu-based)" ;;
+        *) log "✓ Detected: ${HYPHAED_GREEN}Ubuntu${NC}" ;;
+    esac
+    
+elif [ -f /etc/debian_version ] || [ "$DISTRO_ID" = "debian" ]; then
     DISTRO="debian"
     PKG_MANAGER="apt"
     VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
     BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
-    info "Distribution: Debian/Ubuntu"
+    log "✓ Detected: ${HYPHAED_GREEN}Debian${NC}"
+    
+elif [ -f /etc/SuSE-release ] || [ -f /etc/SUSE-brand ] || [ "$DISTRO_ID" = "opensuse" ] || [ "$DISTRO_ID" = "opensuse-leap" ] || [ "$DISTRO_ID" = "opensuse-tumbleweed" ] || [ "$DISTRO_ID" = "sles" ]; then
+    DISTRO="suse"
+    PKG_MANAGER="zypper"
+    VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
+    BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
+    case "$DISTRO_ID" in
+        "opensuse-tumbleweed") log "✓ Detected: ${HYPHAED_GREEN}openSUSE Tumbleweed${NC}" ;;
+        "opensuse-leap") log "✓ Detected: ${HYPHAED_GREEN}openSUSE Leap${NC}" ;;
+        "sles") log "✓ Detected: ${HYPHAED_GREEN}SUSE Linux Enterprise${NC}" ;;
+        *) log "✓ Detected: ${HYPHAED_GREEN}openSUSE${NC}" ;;
+    esac
+    
+elif [ "$DISTRO_ID" = "void" ]; then
+    DISTRO="void"
+    PKG_MANAGER="xbps"
+    VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
+    BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
+    log "✓ Detected: ${HYPHAED_GREEN}Void Linux${NC}"
+    
+elif [ "$DISTRO_ID" = "alpine" ]; then
+    DISTRO="alpine"
+    PKG_MANAGER="apk"
+    VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
+    BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
+    log "✓ Detected: ${HYPHAED_GREEN}Alpine Linux${NC}"
+    
 else
     DISTRO="unknown"
     PKG_MANAGER="unknown"
     VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
     BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
-    warning "Unrecognized distribution"
+    warning "Unknown distribution: $DISTRO_NAME"
+    info "Will attempt generic installation"
 fi
+
+echo ""
+info "Distribution details:"
+echo "  • Name: ${HYPHAED_GREEN}$DISTRO_NAME${NC}"
+echo "  • Version: $DISTRO_VERSION"
+
+# Determine distribution family/branch
+case "$DISTRO" in
+    "gentoo")
+        DISTRO_FAMILY="Gentoo"
+        DISTRO_APPROACH="Source-based compilation with Portage"
+        echo "  • Family: ${HYPHAED_GREEN}Gentoo Branch${NC} (Source-based)"
+        ;;
+    "arch")
+        DISTRO_FAMILY="Arch"
+        DISTRO_APPROACH="Rolling release with pacman"
+        echo "  • Family: ${HYPHAED_GREEN}Arch Branch${NC} (Rolling release)"
+        ;;
+    "fedora")
+        DISTRO_FAMILY="Red Hat"
+        DISTRO_APPROACH="RPM-based with DNF package manager"
+        echo "  • Family: ${HYPHAED_GREEN}Red Hat Branch${NC} (Fedora/RPM-based)"
+        ;;
+    "centos")
+        DISTRO_FAMILY="Red Hat"
+        DISTRO_APPROACH="Enterprise RPM-based with DNF/YUM"
+        echo "  • Family: ${HYPHAED_GREEN}Red Hat Branch${NC} (RHEL/CentOS/RPM-based)"
+        ;;
+    "ubuntu")
+        DISTRO_FAMILY="Debian"
+        DISTRO_APPROACH="DEB-based with APT, LTS releases"
+        echo "  • Family: ${HYPHAED_GREEN}Debian Branch${NC} (Ubuntu/DEB-based)"
+        ;;
+    "debian")
+        DISTRO_FAMILY="Debian"
+        DISTRO_APPROACH="Pure DEB-based with APT"
+        echo "  • Family: ${HYPHAED_GREEN}Debian Branch${NC} (Pure Debian)"
+        ;;
+    "suse")
+        DISTRO_FAMILY="SUSE"
+        DISTRO_APPROACH="RPM-based with Zypper package manager"
+        echo "  • Family: ${HYPHAED_GREEN}SUSE Branch${NC} (openSUSE/RPM-based)"
+        ;;
+    "void")
+        DISTRO_FAMILY="Independent"
+        DISTRO_APPROACH="XBPS package manager, musl/glibc options"
+        echo "  • Family: ${HYPHAED_GREEN}Void Branch${NC} (Independent)"
+        ;;
+    "alpine")
+        DISTRO_FAMILY="Independent"
+        DISTRO_APPROACH="APK package manager, musl-based"
+        echo "  • Family: ${HYPHAED_GREEN}Alpine Branch${NC} (Independent/musl)"
+        ;;
+    *)
+        DISTRO_FAMILY="Unknown"
+        DISTRO_APPROACH="Generic approach"
+        echo "  • Family: ${YELLOW}Unknown Branch${NC}"
+        ;;
+esac
+
+echo "  • Package Manager: $PKG_MANAGER"
+echo "  • Approach: $DISTRO_APPROACH"
+echo "  • VMware Module Directory: $VMWARE_MOD_DIR"
+
+echo ""
+info "Installation strategy for ${HYPHAED_GREEN}$DISTRO_FAMILY${NC} family:"
+case "$DISTRO" in
+    "gentoo")
+        echo "  → Using Gentoo-specific paths (/opt/vmware)"
+        echo "  → Will use emerge for system dependencies"
+        echo "  → Kernel headers from /usr/src/linux"
+        ;;
+    "arch")
+        echo "  → Using standard paths (/usr/lib/vmware)"
+        echo "  → Will use pacman for system dependencies"
+        echo "  → Kernel headers from linux-headers package"
+        ;;
+    "fedora"|"centos")
+        echo "  → Using standard Red Hat paths"
+        echo "  → Will use $PKG_MANAGER for system dependencies"
+        echo "  → Kernel headers from kernel-devel package"
+        ;;
+    "ubuntu"|"debian")
+        echo "  → Using standard Debian paths"
+        echo "  → Will use APT for system dependencies"
+        echo "  → Kernel headers from linux-headers package"
+        ;;
+    "suse")
+        echo "  → Using standard SUSE paths"
+        echo "  → Will use Zypper for system dependencies"
+        echo "  → Kernel headers from kernel-default-devel"
+        ;;
+    "void")
+        echo "  → Using standard paths"
+        echo "  → Will use XBPS for system dependencies"
+        echo "  → Kernel headers from linux-headers package"
+        ;;
+    "alpine")
+        echo "  → Using standard paths (musl-based)"
+        echo "  → Will use APK for system dependencies"
+        echo "  → Kernel headers from linux-headers package"
+        warning "Note: Alpine uses musl libc, may require additional patches"
+        ;;
+    *)
+        echo "  → Using generic paths and approaches"
+        warning "Distribution not fully tested, using safe defaults"
+        ;;
+esac
 
 # Warning if there's a mismatch between detected kernel and selection
 if [ "$KERNEL_MAJOR" = "6" ]; then
@@ -266,25 +460,50 @@ log "✓ System verification completed"
 # 1.5. HARDWARE DETECTION & OPTIMIZATION (Python-Enhanced)
 # ============================================
 echo ""
-echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo -e "${YELLOW}HARDWARE OPTIMIZATION (OPTIONAL)${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
-# Try to use advanced Python-based detection
+# Try to use advanced Python-based detection with mamba/miniforge environment
 PYTHON_DETECTOR="$SCRIPT_DIR/detect_hardware.py"
+PYTHON_ENV_SETUP="$SCRIPT_DIR/setup_python_env.sh"
+PYTHON_ENV_ACTIVATE="$SCRIPT_DIR/activate_optimizer_env.sh"
 USE_PYTHON_DETECTION=false
+MINIFORGE_DIR="$HOME/.miniforge3"
+ENV_NAME="vmware-optimizer"
 
 if [ -f "$PYTHON_DETECTOR" ]; then
-    # Check for Python 3
-    if command -v python3 &>/dev/null; then
-        info "Using advanced Python-based hardware detection..."
-        
+    info "Attempting advanced Python-based hardware detection..."
+    
+    # Check for mamba/miniforge environment
+    if [ -f "$MINIFORGE_DIR/envs/$ENV_NAME/bin/python" ]; then
+        log "✓ Found optimized Python environment (mamba)"
+        PYTHON_CMD="$MINIFORGE_DIR/envs/$ENV_NAME/bin/python"
+    elif [ -f "$PYTHON_ENV_ACTIVATE" ]; then
+        info "Activating Python environment..."
+        source "$PYTHON_ENV_ACTIVATE" 2>/dev/null && PYTHON_CMD="python3"
+    elif command -v python3 &>/dev/null; then
+        info "Using system Python 3"
+        PYTHON_CMD="python3"
+    else
+        warning "Python 3 not found. Would you like to set up the optimized environment?"
+        read -p "Set up Python environment with mamba? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]] && [ -f "$PYTHON_ENV_SETUP" ]; then
+            bash "$PYTHON_ENV_SETUP" && PYTHON_CMD="$MINIFORGE_DIR/envs/$ENV_NAME/bin/python"
+        else
+            PYTHON_CMD=""
+        fi
+    fi
+    
+    if [ -n "$PYTHON_CMD" ]; then
         # Make script executable
         chmod +x "$PYTHON_DETECTOR" 2>/dev/null || true
         
-        # Run Python detector
-        if python3 "$PYTHON_DETECTOR" 2>/dev/null; then
+        # Run Python detector with enhanced detection
+        info "Running comprehensive hardware analysis..."
+        if $PYTHON_CMD "$PYTHON_DETECTOR" 2>/dev/null; then
             USE_PYTHON_DETECTION=true
             
             # Load detected capabilities from JSON
@@ -293,13 +512,22 @@ if [ -f "$PYTHON_DETECTOR" ]; then
                 PYTHON_OPT_SCORE=$(grep -o '"optimization_score":[[:space:]]*[0-9]*' /tmp/vmware_hw_capabilities.json | grep -o '[0-9]*$')
                 PYTHON_RECOMMENDED=$(grep -o '"recommended_mode":[[:space:]]*"[^"]*"' /tmp/vmware_hw_capabilities.json | sed 's/.*"\([^"]*\)".*/\1/')
                 PYTHON_HAS_AVX512=$(grep -o '"has_avx512f":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
+                PYTHON_HAS_VTX=$(grep -o '"has_vtx":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
+                PYTHON_HAS_EPT=$(grep -o '"has_ept":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
+                PYTHON_HAS_NVME=$(grep -o '"has_nvme":[[:space:]]*[a-z]*' /tmp/vmware_hw_capabilities.json | grep -o '[a-z]*$')
                 
-                log "✓ Python hardware detection completed"
-                info "Optimization Score: $PYTHON_OPT_SCORE/100"
-                info "Recommended Mode: $PYTHON_RECOMMENDED"
+                log "✓ Advanced Python hardware detection completed"
+                echo ""
+                info "Hardware Analysis Results:"
+                echo "  • Optimization Score: ${HYPHAED_GREEN}$PYTHON_OPT_SCORE/100${NC}"
+                echo "  • Recommended Mode: ${HYPHAED_GREEN}$PYTHON_RECOMMENDED${NC}"
+                echo "  • AVX-512 Support: $([ "$PYTHON_HAS_AVX512" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
+                echo "  • VT-x/EPT Support: $([ "$PYTHON_HAS_VTX" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
+                echo "  • NVMe Storage: $([ "$PYTHON_HAS_NVME" = "true" ] && echo "${GREEN}YES${NC}" || echo "${YELLOW}NO${NC}")"
+                echo ""
             fi
         else
-            warning "Python detection failed, falling back to bash detection"
+            warning "Python detection encountered errors, falling back to bash detection"
         fi
     fi
 fi
@@ -658,9 +886,9 @@ if [ -n "$OPTIM_FLAGS" ] || [ -n "$KERNEL_FEATURES" ] || [ "$NVME_DETECTED" = tr
     echo "     • Standard VMware compilation with kernel compatibility patches only"
     echo "     • Works on any x86_64 CPU (portable)"
     echo ""
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
     echo -e "${YELLOW}Compiler Optimization Impact (Real Performance Gains)${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
     echo ""
     printf "  %-30s %-22s\n" "Operation Type" "Improvement vs Vanilla"
     echo "  ───────────────────────────────────────────────────────────────────"
@@ -1481,9 +1709,9 @@ rm -rf "$WORK_DIR"
 info "Temporary directory removed"
 
 echo ""
-echo -e "${CYAN}═══════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}✓ COMPILATION AND INSTALLATION COMPLETED${NC}"
-echo -e "${CYAN}═══════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
 info "Summary:"
@@ -1530,9 +1758,9 @@ echo ""
 # RUN AUTOMATIC TESTS
 # ============================================
 echo ""
-echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo -e "${YELLOW}RUNNING AUTOMATIC TESTS${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
 info "Running comprehensive module tests..."
@@ -1563,9 +1791,9 @@ else
 fi
 
 echo ""
-echo -e "${CYAN}═══════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}✓ INSTALLATION AND TESTING COMPLETED${NC}"
-echo -e "${CYAN}═══════════════════════════════════════${NC}"
+echo -e "${HYPHAED_GREEN}═════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 
 info "To start VMware:"
