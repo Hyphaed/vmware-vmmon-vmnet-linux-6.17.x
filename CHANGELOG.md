@@ -243,8 +243,14 @@ CHANGELOG.md                       # This file
   - Portage integration with emerge package manager
   - Source-based compilation approach
   - Gentoo-specific kernel header detection
-- Initial kernel 6.16.x and 6.17.x support
-- Basic automated installation script
+- **Initial optimization framework**: Foundation for hardware-specific optimizations
+  - Basic compiler flags: `-O2`, `-O3`, `-march=native`, `-mtune=native`
+  - Optional mode selection: Optimized vs Vanilla
+  - SIMD detection: AVX-512, AVX2, SSE4.2
+  - Kernel feature detection: CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS
+  - Safe optimization flags: `-fno-strict-aliasing`, `-fno-strict-overflow`
+- Kernel 6.16.x and 6.17.x support
+- Automated installation script with interactive wizard
 - Multi-distribution support (Ubuntu, Fedora, Gentoo)
 - Backup and restore functionality
 - Update and uninstall scripts
@@ -257,12 +263,16 @@ CHANGELOG.md                       # This file
 - Module initialization (module_init/module_exit)
 - Build system updates (EXTRA_CFLAGS → ccflags-y)
 
-### Coming in v1.0.5
-- Advanced Python-based hardware detection
-- Automatic compilation flag generation
-- Kernel-aware optimization system
-- Comprehensive multi-distribution support
-- Intelligent optimization recommendations
+### Notes
+v1.0.4 introduced the **foundation for intelligent optimizations** through Gentoo support, which naturally required handling source-based compilation with optimization flags. This laid the groundwork for the advanced detection system coming in v1.0.5.
+
+### Preview: Coming in v1.0.5
+Work is underway on a **major enhancement** to the optimization system:
+- **Python-based hardware detector**: Deep analysis with automatic flag generation
+- **Multi-architecture support**: Intel (VT-x, EPT) and AMD (AMD-V, NPT)
+- **Comprehensive distribution support**: 18+ distributions with family detection
+- **Intelligent recommendations**: Hardware scoring with performance predictions
+- **Runtime optimization patches**: VT-x/EPT, branch hints, cache alignment
 
 ---
 
