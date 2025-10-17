@@ -8,9 +8,10 @@ import os
 import sys
 import json
 import shutil
+import hashlib
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 # Import shared UI
 try:
@@ -32,6 +33,8 @@ class BackupInfo:
         self.timestamp = path.stat().st_mtime
         self.size = self._calculate_size()
         self.files = self._list_files()
+        self.hashes = self._calculate_hashes()
+        self.is_original = False  # Will be determined by comparing hashes
     
     def _calculate_size(self) -> int:
         """Calculate total size of backup"""
@@ -54,6 +57,28 @@ class BackupInfo:
                 if item.is_file():
                     files.append(item.name)
         return files
+    
+    def _calculate_hashes(self) -> Dict[str, str]:
+        """Calculate MD5 hashes of tar files in backup"""
+        hashes = {}
+        try:
+            if self.path.is_dir():
+                for item in self.path.iterdir():
+                    if item.suffix == '.tar' and item.is_file():
+                        hashes[item.name] = self._md5_file(item)
+            elif self.path.is_file() and self.path.suffix == '.tar':
+                hashes[self.path.name] = self._md5_file(self.path)
+        except Exception:
+            pass  # If hash calculation fails, just skip
+        return hashes
+    
+    def _md5_file(self, filepath: Path) -> str:
+        """Calculate MD5 hash of a file"""
+        md5 = hashlib.md5()
+        with open(filepath, 'rb') as f:
+            for chunk in iter(lambda: f.read(8192), b''):
+                md5.update(chunk)
+        return md5.hexdigest()
 
 
 class RestoreWizard:
@@ -114,9 +139,28 @@ class RestoreWizard:
             
             progress.update(task, completed=True)
         
-        # Sort by timestamp (newest first)
+        # Sort by timestamp (oldest first to find original)
+        backups.sort(key=lambda b: b.timestamp)
+        
+        # Identify the original backup (oldest one with valid hashes)
+        if backups:
+            oldest_backup = backups[0]
+            if oldest_backup.hashes:
+                oldest_backup.is_original = True
+                self._mark_original_backup(oldest_backup, backups[1:])
+        
+        # Sort by timestamp (newest first for display)
         backups.sort(key=lambda b: b.timestamp, reverse=True)
         return backups
+    
+    def _mark_original_backup(self, original: BackupInfo, other_backups: List[BackupInfo]):
+        """Mark backups that match the original based on hash comparison"""
+        if not original.hashes:
+            return
+        
+        for backup in other_backups:
+            if backup.hashes == original.hashes:
+                backup.is_original = True
     
     def display_backups_table(self):
         """Display backups in a table"""
@@ -127,34 +171,55 @@ class RestoreWizard:
             self.ui.show_info(f"Checked directory: {self.backup_base_dir}")
             return False
         
+        # Check if we have original backups
+        has_original = any(b.is_original for b in self.backups)
+        if has_original:
+            self.ui.show_info("✨ [bold green]Original VMware modules backup detected![/bold green]")
+            self.ui.console.print("[dim]Original backups contain unmodified VMware modules (verified by hash)[/dim]")
+            self.ui.console.print()
+        
         table = self.ui.create_table(
-            headers=["#", "Backup Name", "Date/Time", "Size", "Files"]
+            headers=["#", "Backup Name", "Date/Time", "Size", "Type"]
         )
         
         for idx, backup in enumerate(self.backups, 1):
             timestamp_str = self.ui.format_timestamp(backup.timestamp)
             size_str = self.ui.format_size(backup.size)
-            files_str = ", ".join(backup.files[:3])
-            if len(backup.files) > 3:
-                files_str += f" (+{len(backup.files) - 3} more)"
             
-            # Highlight recent backups (< 7 days)
-            age_days = (datetime.now().timestamp() - backup.timestamp) / 86400
-            if age_days < 1:
-                timestamp_str = f"[green]{timestamp_str}[/green]"
-            elif age_days < 7:
-                timestamp_str = f"[yellow]{timestamp_str}[/yellow]"
+            # Determine backup type
+            if backup.is_original:
+                type_str = "[bold green]✓ Original[/bold green]"
+            else:
+                type_str = "[yellow]Modified[/yellow]"
+            
+            # Format backup name
+            backup_name = backup.name
+            if backup.is_original:
+                backup_name = f"[bold]{backup_name}[/bold]"
+            
+            # Highlight recent backups (< 7 days) only for non-original
+            if not backup.is_original:
+                age_days = (datetime.now().timestamp() - backup.timestamp) / 86400
+                if age_days < 1:
+                    timestamp_str = f"[green]{timestamp_str}[/green]"
+                elif age_days < 7:
+                    timestamp_str = f"[yellow]{timestamp_str}[/yellow]"
             
             table.add_row(
                 str(idx),
-                backup.name,
+                backup_name,
                 timestamp_str,
                 size_str,
-                files_str
+                type_str
             )
         
         self.ui.console.print(table)
         self.ui.console.print()
+        
+        if has_original:
+            self.ui.console.print("[dim]💡 Tip: Original backups can be used to restore factory VMware modules[/dim]")
+            self.ui.console.print()
+        
         return True
     
     def select_backup(self) -> BackupInfo:
@@ -189,6 +254,14 @@ class RestoreWizard:
         details_table.add_column("Value", style="white")
         
         details_table.add_row("Backup Name", backup.name)
+        
+        # Show backup type prominently
+        if backup.is_original:
+            details_table.add_row("Type", "[bold green]✓ Original VMware Modules[/bold green]")
+            details_table.add_row("", "[dim](Unmodified factory modules)[/dim]")
+        else:
+            details_table.add_row("Type", "[yellow]Modified/Patched Modules[/yellow]")
+        
         details_table.add_row("Created", self.ui.format_timestamp(backup.timestamp))
         details_table.add_row("Total Size", self.ui.format_size(backup.size))
         details_table.add_row("Location", str(backup.path))
