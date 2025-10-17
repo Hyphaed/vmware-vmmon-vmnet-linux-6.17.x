@@ -1256,28 +1256,61 @@ if [ -f "$VMWARE_MOD_DIR/vmmon.tar" ]; then
 fi
 
 # Extract modules in current working directory
+# CRITICAL: Always extract from backup if available (current modules may be dirty/patched)
+# We copy backup tarballs to working directory, then extract (preserves original backup)
+USE_BACKUP=false
+if [ -n "$ORIGINAL_BACKUP" ]; then
+    if [ -f "$ORIGINAL_BACKUP/vmmon.tar" ] && [ -f "$ORIGINAL_BACKUP/vmnet.tar" ]; then
+        info "Using ORIGINAL BACKUP as clean source (current system modules may be dirty)"
+        info "Backup source: $(basename "$ORIGINAL_BACKUP")"
+        
+        # Copy backup tarballs to working directory (preserves original backup)
+        cp "$ORIGINAL_BACKUP/vmmon.tar" "$WORK_DIR/" 2>/dev/null || true
+        cp "$ORIGINAL_BACKUP/vmnet.tar" "$WORK_DIR/" 2>/dev/null || true
+        
+        if [ "$HASH_VERIFIED" = true ]; then
+            log "✓ Using hash-verified original factory modules"
+        else
+            warning "Using oldest backup (hash verification failed - modules may differ)"
+            warning "If compilation fails, reinstall VMware Workstation fresh"
+        fi
+        USE_BACKUP=true
+    fi
+fi
+
+# If no backup available, use current system modules
+if [ "$USE_BACKUP" = false ]; then
+    info "No backup available - using current system modules"
+    warning "System modules may contain previous patches (could cause issues)"
+    
+    if [ ! -f "$VMWARE_MOD_DIR/vmmon.tar" ] || [ ! -f "$VMWARE_MOD_DIR/vmnet.tar" ]; then
+        error "Module tarballs not found at $VMWARE_MOD_DIR"
+        error "Please verify VMware Workstation is properly installed"
+        echo ""
+        warning "RECOMMENDED SOLUTION:"
+        echo "  1. Completely uninstall VMware Workstation:"
+        echo "     sudo vmware-installer -u vmware-workstation"
+        echo "  2. Remove leftover files:"
+        echo "     sudo rm -rf /usr/lib/vmware /etc/vmware"
+        echo "  3. Reinstall VMware Workstation from official download"
+        echo "  4. Run this script again"
+        echo ""
+        exit 1
+    fi
+    
+    # Copy current system modules to working directory
+    cp "$VMWARE_MOD_DIR/vmmon.tar" "$WORK_DIR/" 2>/dev/null || true
+    cp "$VMWARE_MOD_DIR/vmnet.tar" "$WORK_DIR/" 2>/dev/null || true
+fi
+
+# Extract vmmon (from working directory copy)
 info "Extracting vmmon.tar..."
-if [ ! -f "$VMWARE_MOD_DIR/vmmon.tar" ]; then
-    error "vmmon.tar not found at $VMWARE_MOD_DIR/vmmon.tar"
-    error "Please verify VMware Workstation is properly installed"
-    echo ""
-    warning "POSSIBLE CAUSES:"
-    echo "  • VMware Workstation not installed correctly"
-    echo "  • Previous patching attempts using other scripts may have broken the modules"
-    echo "  • Manual modifications to VMware files"
-    echo ""
-    warning "RECOMMENDED SOLUTION:"
-    echo "  1. Completely uninstall VMware Workstation:"
-    echo "     sudo vmware-installer -u vmware-workstation"
-    echo "  2. Remove leftover files:"
-    echo "     sudo rm -rf /usr/lib/vmware /etc/vmware"
-    echo "  3. Reinstall VMware Workstation from official download"
-    echo "  4. Run this script again"
-    echo ""
+if [ ! -f "$WORK_DIR/vmmon.tar" ]; then
+    error "vmmon.tar not found in working directory"
     exit 1
 fi
 
-if ! tar -xf "$VMWARE_MOD_DIR/vmmon.tar" 2>&1 | tee -a "$LOG_FILE"; then
+if ! tar -xf "$WORK_DIR/vmmon.tar" 2>&1 | tee -a "$LOG_FILE"; then
     error "Failed to extract vmmon.tar"
     error "The tar file is corrupted or inaccessible"
     echo ""
@@ -1298,28 +1331,14 @@ if ! tar -xf "$VMWARE_MOD_DIR/vmmon.tar" 2>&1 | tee -a "$LOG_FILE"; then
     exit 1
 fi
 
+# Extract vmnet (from working directory copy)
 info "Extracting vmnet.tar..."
-if [ ! -f "$VMWARE_MOD_DIR/vmnet.tar" ]; then
-    error "vmnet.tar not found at $VMWARE_MOD_DIR/vmnet.tar"
-    error "Please verify VMware Workstation is properly installed"
-    echo ""
-    warning "POSSIBLE CAUSES:"
-    echo "  • VMware Workstation not installed correctly"
-    echo "  • Previous patching attempts using other scripts may have broken the modules"
-    echo "  • Manual modifications to VMware files"
-    echo ""
-    warning "RECOMMENDED SOLUTION:"
-    echo "  1. Completely uninstall VMware Workstation:"
-    echo "     sudo vmware-installer -u vmware-workstation"
-    echo "  2. Remove leftover files:"
-    echo "     sudo rm -rf /usr/lib/vmware /etc/vmware"
-    echo "  3. Reinstall VMware Workstation from official download"
-    echo "  4. Run this script again"
-    echo ""
+if [ ! -f "$WORK_DIR/vmnet.tar" ]; then
+    error "vmnet.tar not found in working directory"
     exit 1
 fi
 
-if ! tar -xf "$VMWARE_MOD_DIR/vmnet.tar" 2>&1 | tee -a "$LOG_FILE"; then
+if ! tar -xf "$WORK_DIR/vmnet.tar" 2>&1 | tee -a "$LOG_FILE"; then
     error "Failed to extract vmnet.tar"
     error "The tar file is corrupted or inaccessible"
     echo ""

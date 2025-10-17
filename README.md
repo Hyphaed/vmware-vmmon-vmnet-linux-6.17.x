@@ -96,11 +96,14 @@ Then **auto-generates optimal compilation flags** for your hardware!
 - **Independent:** Gentoo, Void, Alpine
 
 ### 🛡️ **Safety Features**
-- **Smart backup management:** Hash-verified backup system
-  - Oldest backup = Original factory modules
-  - Skips redundant backups if original already exists
-  - Auto-cleanup of duplicate backups
-  - Warns if hash verification fails
+- **Smart backup management:** Hash-verified backup system with clean extraction
+  - **Oldest backup = Original factory modules:** First backup always preserved
+  - **Clean source guarantee:** Patches always applied to backup copy (never to dirty system modules)
+  - **Hash verification:** Confirms module integrity before use
+  - **Skips redundant backups:** Won't create duplicates if original already exists
+  - **Auto-cleanup:** Removes duplicate backups from older script versions
+  - **Integrity warnings:** Alerts if hash verification fails, recommends fresh VMware install
+  - **Backup preservation:** Original backup never modified, only copied to working directory
 - **VMware process detection:** Prevents installation conflicts
 - **Automatic initramfs update:** Ensures modules load on boot
 - **Comprehensive testing:** Verifies everything works after installation
