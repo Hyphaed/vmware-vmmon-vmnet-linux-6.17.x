@@ -167,11 +167,10 @@ class VMwareWizard:
             
             # Show installation steps
             steps = [
-                "System Tuning Decision (Optional but Recommended - saves time!)",
                 "Kernel Detection & Selection",
                 "Hardware Detection & Analysis",
-                "Optimization Mode Selection (Optimized vs Vanilla)",
-                "Module Compilation & Installation (initramfs updated once)",
+                "Optimization Mode Selection (Optimized vs Vanilla + IOMMU)",
+                "Module Compilation & Installation",
             ]
             self.ui.show_welcome_steps(steps)
             
@@ -180,27 +179,8 @@ class VMwareWizard:
                 self.ui.show_warning("Installation cancelled by user")
                 return 1
             
-            # STEP 1: System Tuning Decision (FIRST - before everything)
-            self.ui.show_step(1, 5, "System Tuning Decision (Optional)")
-            
-            self.ui.console.print("[success]💡 Recommended:[/] Apply tuning FIRST for best results")
-            self.ui.console.print("[warning]ℹ️  Note:[/] This step is optional but highly recommended for optimal performance")
-            self.ui.console.print()
-            
-            apply_tuning = self.ui.confirm(
-                "Apply system tuning optimizations before compilation? (Recommended but optional)\n"
-                "  (GRUB parameters, CPU governor, I/O scheduler, kernel parameters)",
-                default=True
-            )
-            
-            self.ui.console.print()
-            if apply_tuning:
-                self.ui.show_success("✓ Tuning will be applied FIRST, then compilation")
-            else:
-                self.ui.show_info("Tuning skipped - you can apply it later with: sudo bash scripts/tune-system.sh")
-            
-            # STEP 2: Kernel Detection & Selection
-            self.ui.show_step(2, 5, "Kernel Detection & Selection")
+            # STEP 1: Kernel Detection & Selection
+            self.ui.show_step(1, 4, "Kernel Detection & Selection")
             
             self.detected_kernels = self.detect_installed_kernels()
             if not self.detected_kernels:
@@ -248,8 +228,8 @@ class VMwareWizard:
             for k in self.selected_kernels:
                 self.ui.show_info(f"  • {k.full_version} (kernel {k.version})")
             
-            # STEP 3: Hardware Detection & Analysis
-            self.ui.show_step(3, 5, "Hardware Detection & Analysis")
+            # STEP 2: Hardware Detection & Analysis
+            self.ui.show_step(2, 4, "Hardware Detection & Analysis")
             self.ui.show_info("Analyzing your hardware...")
             
             self.run_hardware_detection()
@@ -257,8 +237,8 @@ class VMwareWizard:
             if self.hw_capabilities:
                 self.ui.show_hardware_summary(self.hw_capabilities)
             
-            # STEP 4: Optimization Mode Selection
-            self.ui.show_step(4, 5, "Optimization Mode Selection")
+            # STEP 3: Optimization Mode Selection
+            self.ui.show_step(3, 4, "Optimization Mode Selection")
             
             # Get recommendation
             recommended = self.hw_capabilities.get('optimization', {}).get('recommended_mode', 'optimized')
@@ -271,6 +251,7 @@ class VMwareWizard:
                     "✓ 30-45% better performance",
                     "✓ CPU-specific optimizations (AVX-512, AVX2, AES-NI)",
                     "✓ Enhanced VT-x/EPT features",
+                    "✓ IOMMU auto-configuration (Intel VT-d/AMD-Vi in GRUB)",
                     "✓ Better Wayland integration (~90% success rate)",
                     "✓ Auto-hide toolbar fix included",
                     "✓ Branch prediction hints + cache alignment",
@@ -281,6 +262,7 @@ class VMwareWizard:
                     "• Baseline performance",
                     "• No hardware-specific optimizations",
                     "• Standard VMware compilation",
+                    "• No IOMMU auto-configuration",
                     "• Works on any x86_64 CPU",
                     "• Maximum portability",
                     "• Only kernel compatibility patches",
@@ -309,16 +291,16 @@ class VMwareWizard:
             
             self.ui.show_success(f"Selected: {self.optimization_mode.upper()} mode")
             
-            # STEP 5: Final Review & Confirmation
-            self.ui.show_step(5, 5, "Final Review & Confirmation")
+            # STEP 4: Final Review & Confirmation
+            self.ui.show_step(4, 4, "Final Review & Confirmation")
             self.ui.console.print()
             self.ui.show_panel(
                 f"[primary]Installation Plan:[/]\n\n"
                 f"  • Kernels: {', '.join([k.full_version for k in self.selected_kernels])}\n"
                 f"  • Mode: {self.optimization_mode.upper()}\n"
-                f"  • Patches: {'All optimizations + VT-x/EPT + performance' if self.optimization_mode == 'optimized' else 'Kernel compatibility only'}\n"
-                f"  • Tuning: {'✓ FIRST (before compilation - saves time!)' if apply_tuning else '✗ Skip tuning'}\n"
-                f"  • initramfs: Will be updated only ONCE (after compilation)\n",
+                f"  • Patches: {'All optimizations + VT-x/EPT + IOMMU' if self.optimization_mode == 'optimized' else 'Kernel compatibility only'}\n"
+                f"  • IOMMU: {'✓ Automatic (enabled in GRUB)' if self.optimization_mode == 'optimized' else '✗ Not configured'}\n"
+                f"  • initramfs: Will be updated after compilation\n",
                 title="🚀 Ready to Start"
             )
             
@@ -340,8 +322,7 @@ class VMwareWizard:
                 'optimization_mode': self.optimization_mode,
                 'hw_capabilities': self.hw_capabilities,
                 'timestamp': time.time(),
-                'apply_tuning_first': apply_tuning,
-                'offer_system_tuning': False  # Don't ask again after compilation
+                'auto_configure_iommu': (self.optimization_mode == 'optimized'),  # IOMMU is part of optimized mode
             }
             
             config_file = Path("/tmp/vmware_wizard_config.json")
@@ -351,11 +332,7 @@ class VMwareWizard:
             self.ui.console.print()
             self.ui.show_success("Configuration saved successfully!")
             self.ui.console.print()
-            
-            if apply_tuning:
-                self.ui.show_info("📋 Next steps: Tuning → Compilation → initramfs (updated once)")
-            else:
-                self.ui.show_info("📋 Next steps: Compilation → initramfs update")
+            self.ui.show_info("📋 Next steps: Compilation → IOMMU configuration → initramfs update → Done!")
             
             return 0
             

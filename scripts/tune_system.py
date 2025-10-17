@@ -214,46 +214,18 @@ class SystemOptimizer:
         
         opts = []
         
-        # GRUB optimizations
-        opts.append("[bold]1. GRUB Boot Parameters[/bold]")
+        # GRUB optimizations (ONLY ESSENTIAL)
+        opts.append("[bold]Essential Optimizations (Minimal Changes)[/bold]")
+        opts.append("")
         if self.hw_info['cpu_vendor'] == 'intel':
-            opts.append("   • intel_iommu=on - Enable Intel VT-d for device passthrough")
+            opts.append("   • intel_iommu=on - Enable Intel VT-d for VMware passthrough")
         elif self.hw_info['cpu_vendor'] == 'amd':
-            opts.append("   • amd_iommu=on - Enable AMD-Vi for device passthrough")
+            opts.append("   • amd_iommu=on - Enable AMD-Vi for VMware passthrough")
         
-        opts.append("   • iommu=pt - IOMMU pass-through mode (best for VMs)")
-        opts.append("   • transparent_hugepage=madvise - THP on-demand (better for VMs)")
-        
-        # Kernel parameters
+        opts.append("   • iommu=pt - IOMMU pass-through mode (required for VMs)")
         opts.append("")
-        opts.append("[bold]2. Kernel Parameters (sysctl)[/bold]")
-        opts.append("   • vm.swappiness=10 - Minimize swapping")
-        opts.append("   • vm.dirty_ratio=15 - Better write performance")
-        opts.append("   • vm.vfs_cache_pressure=50 - Keep more cache")
-        opts.append("   • kernel.sched_migration_cost_ns=5000000 - Reduce CPU migrations")
-        opts.append("   • net.core.netdev_max_backlog=16384 - Better network performance")
-        
-        # CPU governor
-        opts.append("")
-        opts.append("[bold]3. CPU Governor[/bold]")
-        opts.append("   • Set to 'performance' mode - Maximum CPU frequency")
-        
-        # I/O scheduler
-        if self.hw_info['has_nvme']:
-            opts.append("")
-            opts.append("[bold]4. I/O Scheduler[/bold]")
-            opts.append("   • Set NVMe devices to 'none' scheduler - Best for SSD/NVMe")
-        
-        # Packages
-        opts.append("")
-        opts.append("[bold]5. Performance Packages[/bold]")
-        if self.distro_info['family'] in ['debian', 'ubuntu']:
-            opts.append("   • cpufrequtils - CPU frequency management")
-            opts.append("   • linux-tools-generic - Performance profiling tools")
-            opts.append("   • tuned - System tuning daemon")
-        elif self.distro_info['family'] in ['rhel', 'fedora']:
-            opts.append("   • kernel-tools - Performance profiling tools")
-            opts.append("   • tuned - System tuning daemon")
+        opts.append("[dim]That's it! Only 2 critical GRUB parameters.[/dim]")
+        opts.append("[dim]No memory tuning, no governor changes, no extra packages.[/dim]")
         
         for opt in opts:
             self.ui.console.print(opt)

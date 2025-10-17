@@ -324,36 +324,38 @@ else
                     log "Target kernel version: $TARGET_KERNEL"
                     log "Optimization mode: $OPTIMIZATION_MODE"
                     
-                    # Apply system tuning BEFORE compilation if requested
-                    if [ "$APPLY_TUNING_FIRST" = "true" ]; then
+                    # Auto-configure IOMMU if optimized mode is selected
+                    AUTO_IOMMU=$(echo "$WIZARD_DATA" | grep -o '"auto_configure_iommu":[[:space:]]*[a-z]*' | grep -o '[a-z]*$')
+                    if [ "$AUTO_IOMMU" = "true" ] && [ "$OPTIMIZATION_MODE" = "optimized" ]; then
                         echo ""
-                        draw_section_header "STEP 3/5: APPLYING SYSTEM TUNING (Before Compilation)"
+                        draw_section_header "CONFIGURING IOMMU FOR VMWARE (Optimized Mode)"
                         echo ""
-                        info "Applying system tuning optimizations before compilation..."
-                        info "This will optimize initramfs only once (saves time!)"
+                        info "Optimized mode includes automatic IOMMU configuration..."
+                        info "This enables Intel VT-d / AMD-Vi for better VM performance"
                         echo ""
                         
-                        TUNE_SCRIPT="$SCRIPT_DIR/tune-system.sh"
-                        if [ -f "$TUNE_SCRIPT" ]; then
-                            # Source .bashrc to ensure conda is available
-                            if [ -f "$HOME/.bashrc" ]; then
-                                source "$HOME/.bashrc"
+                        # Detect CPU vendor
+                        CPU_VENDOR=$(lscpu | grep "Vendor ID" | awk '{print $3}' | tr '[:upper:]' '[:lower:]')
+                        if [ -z "$CPU_VENDOR" ]; then
+                            CPU_VENDOR=$(grep -m1 vendor_id /proc/cpuinfo | cut -d: -f2 | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+                        fi
+                        
+                        # Configure GRUB
+                        if [ -f "/etc/default/grub" ]; then
+                            # Backup GRUB config
+                            cp /etc/default/grub /etc/default/grub.backup-vmware-$(date +%Y%m%d-%H%M%S)
+                            
+                            # Add IOMMU parameters
+                            if grep -q "intel" <<< "$CPU_VENDOR"; then
+                                info "Detected Intel CPU - enabling Intel VT-d..."
+                                sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/&intel_iommu=on iommu=pt /' /etc/default/grub
+                            elif grep -q "amd" <<< "$CPU_VENDOR"; then
+                                info "Detected AMD CPU - enabling AMD-Vi..."
+                                sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/&amd_iommu=on iommu=pt /' /etc/default/grub
                             fi
                             
-                            # Pass --auto-confirm to skip duplicate confirmation
-                            bash "$TUNE_SCRIPT" --auto-confirm
-                            TUNE_EXIT_CODE=$?
-                            TUNING_APPLIED=true
-                            
-                            if [ $TUNE_EXIT_CODE -eq 0 ]; then
-                                log "System tuning completed successfully"
-                            else
-                                warning "System tuning exited with code: $TUNE_EXIT_CODE"
-                                info "Continuing with compilation anyway..."
-                            fi
-                        else
-                            error "System optimizer not found at: $TUNE_SCRIPT"
-                            info "Continuing with compilation without tuning..."
+                            log "✓ IOMMU parameters added to GRUB"
+                            info "GRUB will be updated after module compilation (single initramfs rebuild)"
                         fi
                         
                         echo ""
@@ -2016,6 +2018,18 @@ sudo cp "$WORK_DIR/vmnet-only/vmnet.ko" "/lib/modules/$KERNEL_VERSION/misc/"
 info "Updating module dependencies..."
 sudo depmod -a
 
+# Update GRUB if IOMMU was configured
+if [ "$AUTO_IOMMU" = "true" ] && [ "$OPTIMIZATION_MODE" = "optimized" ]; then
+    info "Updating GRUB configuration (IOMMU parameters added)..."
+    if command -v update-grub >/dev/null 2>&1; then
+        update-grub 2>/dev/null || true
+        log "✓ GRUB updated"
+    elif command -v grub2-mkconfig >/dev/null 2>&1; then
+        grub2-mkconfig -o /boot/grub2/grub.cfg 2>/dev/null || grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg 2>/dev/null || true
+        log "✓ GRUB2 updated"
+    fi
+fi
+
 # Update initramfs (helps with module loading on boot)
 info "Updating initramfs..."
 if command -v update-initramfs >/dev/null 2>&1; then
@@ -2258,13 +2272,13 @@ echo ""
 # ============================================
 # REBOOT RECOMMENDATION (if tuning was applied)
 # ============================================
-# Show reboot recommendation if system was tuned
-if [ "$TUNING_APPLIED" = "true" ]; then
+# Show reboot recommendation if IOMMU was configured
+if [ "$AUTO_IOMMU" = "true" ] && [ "$OPTIMIZATION_MODE" = "optimized" ]; then
     echo ""
     draw_section_header "⚠️  REBOOT REQUIRED"
     echo ""
-    warning "System optimizations require a reboot to take full effect"
-    info "Some tuning (GRUB parameters, hugepages, IOMMU) will not be active until reboot"
+    warning "IOMMU configuration requires a reboot to take effect"
+    info "Intel VT-d / AMD-Vi will be active after reboot for better VM performance"
     echo ""
     echo -e "${CYAN}Would you like to reboot now?${NC}"
     echo ""
