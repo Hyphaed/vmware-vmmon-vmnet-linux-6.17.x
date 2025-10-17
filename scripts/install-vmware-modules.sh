@@ -2533,12 +2533,22 @@ EOF
             log "✓ vmware-usb.service created"
         fi
         
-        # Reload systemd and enable services
+        # Stop and disable old SysV services first
+        info "Disabling old SysV-generated services..."
+        sudo systemctl stop vmware-USBArbitrator.service 2>/dev/null || true
+        sudo systemctl disable vmware-USBArbitrator.service 2>/dev/null || true
+        
+        # Reload systemd and enable new native services
+        info "Enabling new native systemd units..."
         sudo systemctl daemon-reload 2>/dev/null || true
         sudo systemctl enable vmware.service 2>/dev/null || true
         sudo systemctl enable vmware-usb.service 2>/dev/null || true
         
-        log "✓ Native systemd units installed"
+        # Restart services to use new units
+        sudo systemctl restart vmware.service 2>/dev/null || true
+        sudo systemctl start vmware-usb.service 2>/dev/null || true
+        
+        log "✓ Native systemd units installed and activated"
         info "Benefits: No more 'lacks a native systemd unit file' warnings"
     else
         info "Systemd unit creation disabled (CREATE_SYSTEMD_UNITS=false)"
