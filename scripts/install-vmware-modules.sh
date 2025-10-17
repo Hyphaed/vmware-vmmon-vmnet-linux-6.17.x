@@ -282,11 +282,11 @@ OPTIM_FLAGS=""
 OPTIM_DESC=""
 KERNEL_FEATURES=""
 
-# Check for CPU features (SIMD instructions)
-# These improve memory operations, crypto, and vector processing
-# Works for both Intel and AMD CPUs
+# Check for CPU features (SIMD instructions) using standard CPU flags
+# These flags are reported by /proc/cpuinfo regardless of vendor (Intel/AMD)
+# The kernel exposes what the CPU actually supports via cpuid instruction
 
-# Detect CPU vendor
+# Detect CPU vendor (for informational purposes only)
 CPU_VENDOR="unknown"
 if echo "$CPU_MODEL" | grep -qi "Intel"; then
     CPU_VENDOR="Intel"
@@ -294,62 +294,91 @@ elif echo "$CPU_MODEL" | grep -qi "AMD"; then
     CPU_VENDOR="AMD"
 fi
 
-# AVX-512 detection (Intel: Skylake-X+, Ice Lake+, Rocket Lake+, Alder Lake+)
-# AMD: Zen 4+ (Ryzen 7000 series)
+info "Detecting SIMD and crypto features from CPU flags..."
+
+# AVX-512 detection (standard flag: avx512f = AVX-512 Foundation)
+# Supported by: Intel Skylake-X+ (2017+), AMD Zen 4+ (2022+)
 AVX512_DETECTED=false
-if echo "$CPU_FLAGS" | grep -q "avx512"; then
+if echo "$CPU_FLAGS" | grep -q "avx512f"; then
     AVX512_DETECTED=true
     # Don't add explicit flag - march=native will enable it
-    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AVX-512${NC} ($CPU_VENDOR CPU detected)"
-    OPTIM_DESC="$OPTIM_DESC\n    - 512-bit SIMD: 64 bytes/instruction vs AVX2's 32 bytes"
-    OPTIM_DESC="$OPTIM_DESC\n    - Impact: 40-60% faster memory operations (memcpy, memset)"
-    if [ "$CPU_VENDOR" = "Intel" ]; then
-        OPTIM_DESC="$OPTIM_DESC\n    - Your CPU: Skylake-X/Ice Lake/Rocket Lake or newer"
-    elif [ "$CPU_VENDOR" = "AMD" ]; then
-        OPTIM_DESC="$OPTIM_DESC\n    - Your CPU: Zen 4 (Ryzen 7000 series) or newer"
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AVX-512 Foundation${NC}: Detected via 'avx512f' flag"
+    OPTIM_DESC="$OPTIM_DESC\n    - CPU: $CPU_MODEL"
+    OPTIM_DESC="$OPTIM_DESC\n    - 512-bit SIMD: 64 bytes/instruction (vs AVX2: 32 bytes)"
+    OPTIM_DESC="$OPTIM_DESC\n    - Impact: 40-60% faster memory operations"
+    
+    # Detect additional AVX-512 extensions (all are standard flags)
+    AVX512_EXTENSIONS=""
+    echo "$CPU_FLAGS" | grep -q "avx512dq" && AVX512_EXTENSIONS="$AVX512_EXTENSIONS DQ"
+    echo "$CPU_FLAGS" | grep -q "avx512bw" && AVX512_EXTENSIONS="$AVX512_EXTENSIONS BW"
+    echo "$CPU_FLAGS" | grep -q "avx512vl" && AVX512_EXTENSIONS="$AVX512_EXTENSIONS VL"
+    echo "$CPU_FLAGS" | grep -q "avx512cd" && AVX512_EXTENSIONS="$AVX512_EXTENSIONS CD"
+    echo "$CPU_FLAGS" | grep -q "avx512vnni" && AVX512_EXTENSIONS="$AVX512_EXTENSIONS VNNI"
+    
+    if [ -n "$AVX512_EXTENSIONS" ]; then
+        OPTIM_DESC="$OPTIM_DESC\n    - Extensions:$AVX512_EXTENSIONS"
     fi
 fi
 
-# AVX2 detection (Intel: Haswell+, AMD: Excavator+ and Zen+)
+# AVX2 detection (standard flag: avx2)
+# Supported by: Intel Haswell+ (2013+), AMD Excavator+ (2015+), AMD Zen+ (2017+)
 if [ "$AVX512_DETECTED" = false ] && echo "$CPU_FLAGS" | grep -q "avx2"; then
     OPTIM_FLAGS="$OPTIM_FLAGS -mavx2"
-    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AVX2${NC} ($CPU_VENDOR CPU detected)"
-    OPTIM_DESC="$OPTIM_DESC\n    - 256-bit SIMD: 32 bytes/instruction vs SSE's 16 bytes"
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AVX2${NC}: Detected via 'avx2' flag"
+    OPTIM_DESC="$OPTIM_DESC\n    - CPU: $CPU_MODEL"
+    OPTIM_DESC="$OPTIM_DESC\n    - 256-bit SIMD: 32 bytes/instruction (vs SSE: 16 bytes)"
     OPTIM_DESC="$OPTIM_DESC\n    - Impact: 20-30% faster memory operations"
-    if [ "$CPU_VENDOR" = "Intel" ]; then
-        OPTIM_DESC="$OPTIM_DESC\n    - Your CPU: Haswell (2013) or newer"
-    elif [ "$CPU_VENDOR" = "AMD" ]; then
-        OPTIM_DESC="$OPTIM_DESC\n    - Your CPU: Excavator or Zen (Ryzen) or newer"
-    fi
 fi
 
-# AVX detection (Intel: Sandy Bridge+, AMD: Bulldozer+)
+# AVX detection (standard flag: avx)
+# Supported by: Intel Sandy Bridge+ (2011+), AMD Bulldozer+ (2011+)
 if [ "$AVX512_DETECTED" = false ] && ! echo "$CPU_FLAGS" | grep -q "avx2" && echo "$CPU_FLAGS" | grep -q "avx"; then
-    OPTIM_DESC="$OPTIM_DESC\n  • AVX ($CPU_VENDOR CPU detected)"
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AVX${NC}: Detected via 'avx' flag"
+    OPTIM_DESC="$OPTIM_DESC\n    - CPU: $CPU_MODEL"
     OPTIM_DESC="$OPTIM_DESC\n    - 256-bit SIMD: 32 bytes/instruction"
     OPTIM_DESC="$OPTIM_DESC\n    - Impact: 15-20% faster memory operations"
 fi
 
-# SSE4.2 (baseline for modern CPUs)
+# SSE4.2 detection (standard flag: sse4_2)
+# Baseline for modern CPUs (2008+)
 if echo "$CPU_FLAGS" | grep -q "sse4_2"; then
-    OPTIM_FLAGS="$OPTIM_FLAGS -msse4.2"
-    OPTIM_DESC="$OPTIM_DESC\n  • SSE4.2 (Streaming SIMD Extensions): String/text operations"
+    if [ "$AVX512_DETECTED" = false ] && ! echo "$CPU_FLAGS" | grep -q "avx2" && ! echo "$CPU_FLAGS" | grep -q "avx"; then
+        OPTIM_DESC="$OPTIM_DESC\n  • SSE4.2: Detected via 'sse4_2' flag"
+        OPTIM_DESC="$OPTIM_DESC\n    - CPU: $CPU_MODEL"
+        OPTIM_DESC="$OPTIM_DESC\n    - 128-bit SIMD (baseline modern performance)"
+    fi
 fi
 
-# AES-NI (hardware crypto) - Both Intel and AMD
+# AES-NI detection (standard flag: aes)
+# Hardware AES encryption - both Intel and AMD
 if echo "$CPU_FLAGS" | grep -q "aes"; then
-    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AES-NI${NC}: Hardware AES encryption (10x faster than software)"
-    OPTIM_DESC="$OPTIM_DESC\n    Impact: 30-50% faster crypto in VMware modules"
-    OPTIM_DESC="$OPTIM_DESC\n    Supported by: Intel Westmere+ (2010+), AMD Bulldozer+ (2011+)"
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AES-NI${NC}: Detected via 'aes' flag"
+    OPTIM_DESC="$OPTIM_DESC\n    - Hardware AES encryption (10x faster than software)"
+    OPTIM_DESC="$OPTIM_DESC\n    - Impact: 30-50% faster crypto operations"
 fi
 
-# SHA-NI (SHA extensions) - Both Intel and AMD
+# VAES detection (standard flag: vaes) - Vector AES (AVX-512 + AES)
+if echo "$CPU_FLAGS" | grep -q "vaes"; then
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}VAES${NC}: Vector AES detected (AVX + AES combined)"
+    OPTIM_DESC="$OPTIM_DESC\n    - Even faster than AES-NI for bulk encryption"
+fi
+
+# SHA-NI detection (standard flag: sha_ni)
+# Hardware SHA-1/SHA-256 acceleration - both Intel and AMD
 if echo "$CPU_FLAGS" | grep -q "sha_ni"; then
-    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}SHA-NI${NC}: Hardware SHA-1/SHA-256 acceleration"
-    OPTIM_DESC="$OPTIM_DESC\n    Impact: 2-4x faster SHA hashing"
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}SHA-NI${NC}: Detected via 'sha_ni' flag"
+    OPTIM_DESC="$OPTIM_DESC\n    - Hardware SHA-1/SHA-256 acceleration"
+    OPTIM_DESC="$OPTIM_DESC\n    - Impact: 2-4x faster SHA hashing"
 fi
 
-# Hardware Virtualization Technology Detection (Intel VT-x or AMD-V)
+# BMI1/BMI2 detection (standard flags: bmi1, bmi2)
+# Bit Manipulation Instructions - improve performance
+if echo "$CPU_FLAGS" | grep -q "bmi1" && echo "$CPU_FLAGS" | grep -q "bmi2"; then
+    OPTIM_DESC="$OPTIM_DESC\n  • BMI1/BMI2: Bit manipulation instructions detected"
+    OPTIM_DESC="$OPTIM_DESC\n    - Impact: 3-5% faster bit operations"
+fi
+
+# Hardware Virtualization Detection using standard CPU flags
 info "Detecting hardware virtualization features..."
 
 VT_X_ENABLED=false
@@ -361,48 +390,58 @@ EPT_AD_BITS_ENABLED=false
 POSTED_INTERRUPTS_ENABLED=false
 VMFUNC_ENABLED=false
 
-# Check for Intel VT-x (vmx flag) or AMD-V (svm flag)
+# Check for hardware virtualization using standard flags
+# Intel: 'vmx' flag (Virtual Machine Extensions)
+# AMD: 'svm' flag (Secure Virtual Machine)
 if echo "$CPU_FLAGS" | grep -q "vmx"; then
     VT_X_ENABLED=true
-    if [ "$CPU_VENDOR" = "Intel" ]; then
-        OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}Intel VT-x${NC}: Hardware virtualization ENABLED"
-    else
-        OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}VT-x${NC}: Hardware virtualization ENABLED"
-    fi
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}Intel VT-x${NC}: Detected via 'vmx' flag"
+    OPTIM_DESC="$OPTIM_DESC\n    - Hardware virtualization enabled (required for VMware)"
 elif echo "$CPU_FLAGS" | grep -q "svm"; then
     VT_X_ENABLED=true
-    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AMD-V (SVM)${NC}: Hardware virtualization ENABLED"
+    OPTIM_DESC="$OPTIM_DESC\n  • ${GREEN}AMD-V${NC}: Detected via 'svm' flag"
+    OPTIM_DESC="$OPTIM_DESC\n    - Hardware virtualization enabled (required for VMware)"
     
-    # Check VPID (Virtual Processor ID) - reduces TLB flushes
+    # Check VPID (standard flag: vpid)
+    # Intel: Virtual Processor ID
+    # AMD: Equivalent is ASID (Address Space ID)
     if echo "$CPU_FLAGS" | grep -q "vpid"; then
         VPID_ENABLED=true
-        OPTIM_DESC="$OPTIM_DESC\n    ├─ ${GREEN}VPID${NC}: Virtual Processor ID (10-30% faster VM switches)"
+        OPTIM_DESC="$OPTIM_DESC\n    ├─ ${GREEN}VPID${NC}: Detected via 'vpid' flag"
+        OPTIM_DESC="$OPTIM_DESC\n    │  Impact: 10-30% faster VM context switches"
         OPTIM_DESC="$OPTIM_DESC\n    │  Why: Avoids TLB flush on VM entry/exit"
     fi
     
-    # Check EPT (Extended Page Tables) for Intel or NPT/RVI for AMD
+    # Check EPT/NPT (standard flags: ept, npt)
+    # Intel: EPT (Extended Page Tables) - flag: 'ept'
+    # AMD: NPT/RVI (Nested/Rapid Virtualization Indexing) - flag: 'npt'
     if echo "$CPU_FLAGS" | grep -q "ept"; then
         EPT_ENABLED=true
-        if [ "$CPU_VENDOR" = "Intel" ]; then
-            OPTIM_DESC="$OPTIM_DESC\n    ├─ ${GREEN}EPT${NC}: Extended Page Tables (faster guest memory)"
-        else
-            OPTIM_DESC="$OPTIM_DESC\n    ├─ ${GREEN}EPT${NC}: Extended Page Tables (faster guest memory)"
-        fi
+        OPTIM_DESC="$OPTIM_DESC\n    ├─ ${GREEN}EPT${NC}: Detected via 'ept' flag (Intel)"
+        OPTIM_DESC="$OPTIM_DESC\n    │  Extended Page Tables - 2nd level address translation"
+        OPTIM_DESC="$OPTIM_DESC\n    │  Impact: 15-35% faster guest memory access"
     elif echo "$CPU_FLAGS" | grep -q "npt"; then
         EPT_ENABLED=true
-        OPTIM_DESC="$OPTIM_DESC\n    ├─ ${GREEN}NPT/RVI${NC}: Nested Page Tables (AMD, faster guest memory)"
+        OPTIM_DESC="$OPTIM_DESC\n    ├─ ${GREEN}NPT${NC}: Detected via 'npt' flag (AMD)"
+        OPTIM_DESC="$OPTIM_DESC\n    │  Nested Page Tables - 2nd level address translation"
+        OPTIM_DESC="$OPTIM_DESC\n    │  Impact: 15-35% faster guest memory access"
         
-        # Check EPT huge pages (2MB/1GB pages reduce TLB pressure)
-        if echo "$CPU_FLAGS" | grep -q "ept_1gb" || echo "$CPU_FLAGS" | grep -q "pdpe1gb"; then
+        # Check for huge page support (standard flags)
+        # 'pdpe1gb' = 1GB pages support
+        # Both Intel EPT and AMD NPT can use this
+        if echo "$CPU_FLAGS" | grep -q "pdpe1gb"; then
             EPT_HUGEPAGES_ENABLED=true
-            OPTIM_DESC="$OPTIM_DESC\n    │  ├─ ${GREEN}EPT Huge Pages (1GB)${NC}: 15-35% faster VM memory access"
+            OPTIM_DESC="$OPTIM_DESC\n    │  ├─ ${GREEN}Huge Pages (1GB)${NC}: Detected via 'pdpe1gb' flag"
+            OPTIM_DESC="$OPTIM_DESC\n    │  │  Impact: 15-35% faster VM memory access"
             OPTIM_DESC="$OPTIM_DESC\n    │  │  Why: Reduces page table walks (1 walk vs 4)"
         fi
         
-        # Check EPT Accessed/Dirty bits
+        # Check EPT Accessed/Dirty bits (standard flag: ept_ad)
+        # Intel-specific feature for better memory management
         if echo "$CPU_FLAGS" | grep -q "ept_ad"; then
             EPT_AD_BITS_ENABLED=true
-            OPTIM_DESC="$OPTIM_DESC\n    │  └─ ${GREEN}EPT A/D bits${NC}: 5-10% better memory management"
+            OPTIM_DESC="$OPTIM_DESC\n    │  └─ ${GREEN}EPT A/D bits${NC}: Detected via 'ept_ad' flag"
+            OPTIM_DESC="$OPTIM_DESC\n    │     Impact: 5-10% better memory management"
             OPTIM_DESC="$OPTIM_DESC\n    │     Why: Hardware tracks accessed/dirty pages"
         fi
     fi
