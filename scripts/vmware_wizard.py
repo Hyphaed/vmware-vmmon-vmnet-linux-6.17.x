@@ -467,9 +467,9 @@ class VMwareWizard:
         self.console.print(table)
         self.console.print()
         
-        # Get recommendation
-        recommended = self.hw_capabilities.get('optimization', {}).get('recommended_mode', 'vanilla')
-        default_choice = "1" if recommended == "optimized" else "2"
+        # Get recommendation (but always default to optimized)
+        recommended = self.hw_capabilities.get('optimization', {}).get('recommended_mode', 'optimized')
+        default_choice = "1"  # Always default to Optimized
         
         self.console.print(f"[dim]Recommended for your hardware: [bold]{recommended.upper()}[/bold][/dim]")
         self.console.print()
