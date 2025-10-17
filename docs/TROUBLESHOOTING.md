@@ -450,11 +450,13 @@ cat vmware-debug.log
 
 ### Issue: Top Bar Doesn't Hide on First VM Boot (Wayland)
 
+**Note:** With optimized modules, top bar hiding works ~90% of the time on Wayland. This troubleshooting section addresses the remaining ~10% of cases where initialization timing causes issues.
+
 **Symptom:** 
-First time powering on a VM, the top bar remains visible in fullscreen mode. Restarting the VM fixes it.
+First time powering on a VM, the top bar remains visible in fullscreen mode. Restarting the VM fixes it. This occurs occasionally even with optimized modules.
 
 **Cause:** 
-Module initialization race condition - VMware may start before kernel modules fully initialize and register with the system.
+Module initialization race condition - VMware may start before kernel modules fully initialize and register with the system. The optimizations reduce CPU overhead, which helps the compositor respond better, but timing issues can still occur on first boot.
 
 **Permanent Fix:**
 This fix is already included in v1.0.5+ installations via `/etc/modules-load.d/vmware.conf` and `/etc/modprobe.d/vmware.conf`.

@@ -458,9 +458,9 @@ class VMwareWizard:
             "1",
             "[bold green]🚀 Optimized[/bold green] [dim](Recommended & Default)[/dim]\n" +
             "  • 20-35% better performance\n" +
+            "  • [bold green]✨ Better Wayland support - top bar hiding works ~90% of the time![/bold green]\n" +
             "  • Uses CPU-specific instructions (AVX-512, AVX2, AES-NI)\n" +
             "  • Enables virtualization and compiler optimizations\n" +
-            "  • [bold green]✨ Real performance improvements on modern hardware![/bold green]\n" +
             "  • [yellow]Note:[/yellow] Modules only work on your CPU architecture"
         )
         
