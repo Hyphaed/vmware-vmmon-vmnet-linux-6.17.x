@@ -195,10 +195,15 @@ The defining feature that sets this project apart:
 - **Package manager integration**: apt, dnf, yum, pacman, emerge, zypper, xbps, apk
 
 ### 🛡️ **Safety Features**
-- **Automatic backups**: Created before every installation/update
+- **Smart backup management**: Intelligent backup creation with hash verification
+  - **Oldest backup = Original**: Always considers the first backup as factory modules
+  - **Hash verification**: Confirms module integrity when possible
+  - **Skip redundant backups**: Won't create duplicates if original already exists
+  - **Auto-cleanup**: Removes duplicate backups from older script versions
+  - **Integrity warnings**: Alerts if hash verification fails, recommends fresh VMware install if needed
+  - **Preservation guarantee**: Original backup always kept, even when modules are modified
 - **Smart detection**: Warns if modules already exist
-- **Easy restore**: Timestamped backups with interactive selection
-- **Original modules detection**: First backup identified via hash verification (restore factory modules)
+- **Easy restore**: Timestamped backups with interactive selection (Python wizard highlights original)
 - **Confirmation prompts**: Prevents accidental overwrites
 
 ### ⚙️ **Smart Patching**

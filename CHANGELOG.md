@@ -61,6 +61,13 @@ Top bar hiding now works perfectly on Wayland systems! This comes from hardware-
   - Lists all running VMware applications
   - Provides clear shutdown instructions
   - Exits cleanly if VMware is running
+- **Smart backup management**: Intelligent backup creation with hash verification
+  - Identifies oldest backup as original factory modules
+  - Hash verification to confirm module integrity
+  - Skips redundant backups if original already exists
+  - Auto-cleanup of duplicate backups (from older script versions)
+  - Warns if hash verification fails, recommends fresh VMware install
+  - Preserves original backup even when modules are modified
 - **Automatic comprehensive testing**: Post-installation verification
   - Module loading tests (vmmon, vmnet)
   - Device file verification (/dev/vmmon, /dev/vmnet*)

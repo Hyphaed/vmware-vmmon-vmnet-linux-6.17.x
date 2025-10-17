@@ -1191,13 +1191,68 @@ log "✓ Directory prepared"
 # ============================================
 log "4. Extracting original VMware modules..."
 
-# Backup current modules
+# Smart backup: Check if original backup already exists
 if [ -f "$VMWARE_MOD_DIR/vmmon.tar" ]; then
-    info "Creating backup of current modules..."
-    sudo mkdir -p "$BACKUP_DIR"
-    sudo cp "$VMWARE_MOD_DIR/vmmon.tar" "$BACKUP_DIR/" 2>/dev/null || true
-    sudo cp "$VMWARE_MOD_DIR/vmnet.tar" "$BACKUP_DIR/" 2>/dev/null || true
-    info "Backup saved to: $BACKUP_DIR"
+    info "Checking for existing backups..."
+    
+    # Find all existing backups (oldest first)
+    EXISTING_BACKUPS=$(sudo find "$(dirname "$VMWARE_MOD_DIR")/modules/source" -maxdepth 1 -type d -name "backup-*" 2>/dev/null | sort)
+    
+    SHOULD_CREATE_BACKUP=true
+    ORIGINAL_BACKUP=""
+    HASH_VERIFIED=false
+    
+    if [ -n "$EXISTING_BACKUPS" ]; then
+        # The oldest backup is considered the original factory modules backup
+        OLDEST_BACKUP=$(echo "$EXISTING_BACKUPS" | head -1)
+        
+        if [ -f "$OLDEST_BACKUP/vmmon.tar" ] && [ -f "$OLDEST_BACKUP/vmnet.tar" ]; then
+            ORIGINAL_BACKUP="$OLDEST_BACKUP"
+            
+            # Calculate hash to verify if current modules match the original
+            CURRENT_HASH=$(cat "$VMWARE_MOD_DIR/vmmon.tar" "$VMWARE_MOD_DIR/vmnet.tar" 2>/dev/null | md5sum | awk '{print $1}')
+            BACKUP_HASH=$(cat "$OLDEST_BACKUP/vmmon.tar" "$OLDEST_BACKUP/vmnet.tar" 2>/dev/null | md5sum | awk '{print $1}')
+            
+            if [ "$CURRENT_HASH" = "$BACKUP_HASH" ]; then
+                HASH_VERIFIED=true
+                SHOULD_CREATE_BACKUP=false
+                info "Original factory modules backup found: $(basename "$ORIGINAL_BACKUP") ✓ Hash verified"
+                info "Skipping backup creation (original modules are already preserved)"
+            else
+                HASH_VERIFIED=false
+                SHOULD_CREATE_BACKUP=false
+                warning "Original backup found: $(basename "$ORIGINAL_BACKUP") - Hash verification failed"
+                warning "Current modules differ from the oldest backup (modules may have been modified)"
+                info "Using oldest backup as original, but hash mismatch noted"
+                info "If compilation fails, consider reinstalling VMware Workstation fresh"
+            fi
+            
+            # Clean up redundant backups (keep only the original and any truly different ones)
+            BACKUP_COUNT=$(echo "$EXISTING_BACKUPS" | wc -l)
+            if [ "$BACKUP_COUNT" -gt 1 ]; then
+                info "Found $BACKUP_COUNT backups - cleaning redundant ones (residues from older script versions)..."
+                echo "$EXISTING_BACKUPS" | tail -n +2 | while read REDUNDANT_BACKUP; do
+                    REDUNDANT_HASH=$(cat "$REDUNDANT_BACKUP/vmmon.tar" "$REDUNDANT_BACKUP/vmnet.tar" 2>/dev/null | md5sum | awk '{print $1}')
+                    if [ "$REDUNDANT_HASH" = "$BACKUP_HASH" ]; then
+                        info "Removing redundant backup: $(basename "$REDUNDANT_BACKUP") (identical to original)"
+                        sudo rm -rf "$REDUNDANT_BACKUP"
+                    else
+                        info "Keeping modified backup: $(basename "$REDUNDANT_BACKUP") (contains different modules)"
+                    fi
+                done
+                log "✓ Redundant backups cleaned"
+            fi
+        fi
+    fi
+    
+    if [ "$SHOULD_CREATE_BACKUP" = true ]; then
+        info "Creating first backup (will be marked as original factory modules)..."
+        sudo mkdir -p "$BACKUP_DIR"
+        sudo cp "$VMWARE_MOD_DIR/vmmon.tar" "$BACKUP_DIR/" 2>/dev/null || true
+        sudo cp "$VMWARE_MOD_DIR/vmnet.tar" "$BACKUP_DIR/" 2>/dev/null || true
+        info "Backup saved to: $BACKUP_DIR"
+        info "This backup is marked as your original VMware factory modules"
+    fi
 fi
 
 # Extract modules in current working directory
