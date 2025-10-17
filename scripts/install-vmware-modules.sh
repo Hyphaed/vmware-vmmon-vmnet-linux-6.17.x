@@ -605,6 +605,43 @@ else
     info "Will attempt generic installation"
 fi
 
+# ============================================
+# AUTO-DETECT BINARY PATHS (Distribution-Agnostic)
+# ============================================
+info "Auto-detecting system binary paths..."
+
+# Critical binaries with fallbacks
+export MODPROBE_BIN=$(command -v modprobe 2>/dev/null || echo "/usr/sbin/modprobe")
+export DEPMOD_BIN=$(command -v depmod 2>/dev/null || echo "/usr/sbin/depmod")
+export UPDATE_INITRAMFS_BIN=$(command -v update-initramfs 2>/dev/null || echo "")
+export DRACUT_BIN=$(command -v dracut 2>/dev/null || echo "")
+export MKINITCPIO_BIN=$(command -v mkinitcpio 2>/dev/null || echo "")
+export UPDATE_GRUB_BIN=$(command -v update-grub 2>/dev/null || command -v grub-mkconfig 2>/dev/null || command -v grub2-mkconfig 2>/dev/null || echo "")
+export SYSTEMCTL_BIN=$(command -v systemctl 2>/dev/null || echo "")
+export JQ_BIN=$(command -v jq 2>/dev/null || echo "")
+
+# Verification
+if [ ! -x "$MODPROBE_BIN" ]; then
+    error "modprobe not found - critical tool missing!"
+    exit 1
+else
+    log "✓ modprobe: $MODPROBE_BIN"
+fi
+
+if [ ! -x "$DEPMOD_BIN" ]; then
+    warning "depmod not found at expected location"
+else
+    log "✓ depmod: $DEPMOD_BIN"
+fi
+
+# Log detected tools (optional ones)
+[ -n "$UPDATE_INITRAMFS_BIN" ] && log "✓ update-initramfs: $UPDATE_INITRAMFS_BIN"
+[ -n "$DRACUT_BIN" ] && log "✓ dracut: $DRACUT_BIN"
+[ -n "$MKINITCPIO_BIN" ] && log "✓ mkinitcpio: $MKINITCPIO_BIN"
+[ -n "$UPDATE_GRUB_BIN" ] && log "✓ grub updater: $UPDATE_GRUB_BIN"
+[ -n "$SYSTEMCTL_BIN" ] && log "✓ systemctl: $SYSTEMCTL_BIN"
+[ -n "$JQ_BIN" ] && log "✓ jq: $JQ_BIN"
+
 echo ""
 info "Distribution details:"
 echo -e "  • Name: ${HYPHAED_GREEN}$DISTRO_NAME${NC}"
@@ -2441,8 +2478,10 @@ if command -v systemctl &> /dev/null && [ -f "/etc/init.d/vmware" ]; then
     # Check if we should create systemd units
     if [ "${CREATE_SYSTEMD_UNITS:-true}" = "true" ]; then
         
-        # Create vmware.service
-        cat > /tmp/vmware.service << 'EOF'
+        info "Using modprobe from: $MODPROBE_BIN"
+        
+        # Create vmware.service with auto-detected paths
+        cat > /tmp/vmware.service << EOF
 [Unit]
 Description=VMware Workstation Services
 Documentation=https://www.vmware.com/
@@ -2452,7 +2491,7 @@ Before=vmware-usb.service
 
 [Service]
 Type=forking
-ExecStartPre=/usr/bin/modprobe -a vmmon vmnet
+ExecStartPre=$MODPROBE_BIN -a vmmon vmnet
 ExecStart=/etc/init.d/vmware start
 ExecStop=/etc/init.d/vmware stop
 RemainAfterExit=yes

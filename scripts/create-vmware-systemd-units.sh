@@ -139,7 +139,7 @@ Before=vmware-usb.service
 
 [Service]
 Type=forking
-ExecStartPre=/usr/bin/modprobe -a vmmon vmnet
+ExecStartPre=/usr/sbin/modprobe -a vmmon vmnet
 ExecStart=/etc/init.d/vmware start
 ExecStop=/etc/init.d/vmware stop
 RemainAfterExit=yes
