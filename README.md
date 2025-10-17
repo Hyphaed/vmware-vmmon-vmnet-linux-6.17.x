@@ -1,11 +1,10 @@
-# VMware Workstation Modules for Linux Kernel 6.16.x & 6.17.x + Better Wayland support
+### ⚡ VMware Workstation Modules for Linux Kernel 6.16.x & 6.17.x + Better Wayland support
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 [![Kernel](https://img.shields.io/badge/Kernel-6.16.x%20%7C%206.17.x-orange.svg)](https://kernel.org/)
 [![VMware](https://img.shields.io/badge/VMware-17.6.4-green.svg)](https://www.vmware.com/)
 [![Gentoo](https://img.shields.io/badge/Gentoo-Supported-purple.svg)](https://www.gentoo.org/)
 
----
 ### 🐍 **Interactive Python Wizard** - Beautiful terminal UI that guides you through installation
 ### 🚀 **Enjoy 20-40% faster VMware performance**
 ### ✨ **Top bar auto-hiding now works perfectly on Wayland**
