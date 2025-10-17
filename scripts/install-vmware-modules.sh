@@ -334,7 +334,8 @@ else
                                 source "$HOME/.bashrc"
                             fi
                             
-                            bash "$TUNE_SCRIPT"
+                            # Pass --auto-confirm to skip duplicate confirmation
+                            bash "$TUNE_SCRIPT" --auto-confirm
                             TUNE_EXIT_CODE=$?
                             TUNING_APPLIED=true
                             

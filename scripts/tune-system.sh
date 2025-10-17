@@ -81,7 +81,12 @@ chmod +x "$OPTIMIZER_SCRIPT"
 echo -e "${GREEN}Launching system optimizer...${NC}"
 echo ""
 
-"$PYTHON_CMD" "$OPTIMIZER_SCRIPT"
+# Pass --auto-confirm flag if first argument is provided
+if [ "$1" = "--auto-confirm" ]; then
+    "$PYTHON_CMD" "$OPTIMIZER_SCRIPT" --auto-confirm
+else
+    "$PYTHON_CMD" "$OPTIMIZER_SCRIPT"
+fi
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then

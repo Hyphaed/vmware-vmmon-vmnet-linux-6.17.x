@@ -19,6 +19,7 @@ import sys
 import subprocess
 import re
 import shutil
+import argparse
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional
@@ -695,15 +696,20 @@ ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
             # Show planned optimizations
             self.display_optimizations()
             
-            # Confirm using PyTermGUI
-            proceed = ui.confirm(
-                "Do you want to proceed with system optimization?",
-                default=True
-            )
+            # Confirm (skip if --auto-confirm flag is provided)
+            auto_confirm = '--auto-confirm' in sys.argv
             
-            if not proceed:
-                self.ui.console.print("[yellow]Optimization cancelled by user.[/yellow]")
-                return 0
+            if not auto_confirm:
+                proceed = ui.confirm(
+                    "Do you want to proceed with system optimization?",
+                    default=True
+                )
+                
+                if not proceed:
+                    self.ui.console.print("[yellow]Optimization cancelled by user.[/yellow]")
+                    return 0
+            else:
+                self.ui.console.print("[success]✓ Auto-confirmed (already approved in wizard)[/success]")
             
             self.ui.console.print()
             self.ui.console.print("[bold]Starting system optimization...[/bold]")
