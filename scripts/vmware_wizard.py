@@ -370,18 +370,30 @@ class VMwareWizard:
             virt_table.add_column("Feature", style="cyan", width=20)
             virt_table.add_column("Status", style="white")
             
-            if virt.get('vtx_supported') or virt.get('svm_supported'):
-                virt_type = "Intel VT-x" if virt.get('vtx_supported') else "AMD-V"
+            # Check if virtualization is enabled
+            if virt.get('enabled'):
+                virt_type = virt.get('technology', 'Unknown')
                 virt_table.add_row("Virtualization", f"[green]✓[/green] {virt_type}")
             else:
-                virt_table.add_row("Virtualization", "[red]✗ Not supported[/red]")
+                virt_table.add_row("Virtualization", "[red]✗ Not enabled[/red]")
             
+            # EPT/NPT support
             if virt.get('ept_supported'):
-                virt_table.add_row("EPT/NPT", "[green]✓ Supported[/green]")
+                virt_table.add_row("EPT", "[green]✓ Supported[/green]")
+            elif virt.get('npt_supported'):
+                virt_table.add_row("NPT", "[green]✓ Supported[/green]")
+            
+            # VPID support
             if virt.get('vpid_supported'):
                 virt_table.add_row("VPID", "[green]✓ Supported[/green]")
+            
+            # VMFUNC support
             if virt.get('vmfunc_supported'):
                 virt_table.add_row("VMFUNC", "[green]✓ Supported[/green]")
+            
+            # Posted Interrupts
+            if virt.get('posted_interrupts'):
+                virt_table.add_row("Posted Interrupts", "[green]✓ Supported[/green]")
             
             self.console.print(Panel(virt_table, title="[bold]Virtualization[/bold]", border_style=HYPHAED_GREEN))
             self.console.print()

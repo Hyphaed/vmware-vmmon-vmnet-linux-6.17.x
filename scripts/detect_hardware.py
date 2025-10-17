@@ -686,8 +686,9 @@ class HardwareDetector:
     
     def detect_gpu(self) -> Optional[GPUInfo]:
         """Detect GPU information"""
+        
+        # Try NVIDIA first
         try:
-            # Check for NVIDIA GPU
             nvidia_smi = self._run_command(['nvidia-smi', '--query-gpu=name,memory.total,driver_version', '--format=csv,noheader'])
             if nvidia_smi:
                 parts = nvidia_smi.split(',')
@@ -701,16 +702,15 @@ class HardwareDetector:
                     if match:
                         vram_gb = float(match.group(1)) / 1024
                     
-                    # Detect PCIe info
-                    pcie_gen = 4  # Default
-                    pcie_lanes = 16
+                    # Detect PCIe info from sysfs
+                    pcie_gen, pcie_lanes = self._detect_gpu_pcie("nvidia")
                     
                     return GPUInfo(
                         vendor="NVIDIA",
                         model=name,
                         vram_gb=vram_gb,
-                        pcie_generation=pcie_gen,
-                        pcie_lanes=pcie_lanes,
+                        pcie_generation=pcie_gen if pcie_gen else 4,
+                        pcie_lanes=pcie_lanes if pcie_lanes else 16,
                         driver_version=driver,
                         cuda_version=None,
                         supports_vgpu=True
@@ -718,7 +718,127 @@ class HardwareDetector:
         except Exception:
             pass
         
+        # Try AMD
+        try:
+            # Check for AMD GPU using lspci
+            lspci_output = self._run_command(['lspci', '-v'])
+            if 'AMD' in lspci_output or 'Radeon' in lspci_output or 'NAVI' in lspci_output:
+                # Parse lspci for AMD GPU
+                for line in lspci_output.split('\n'):
+                    if ('VGA' in line or 'Display' in line) and ('AMD' in line or 'Radeon' in line):
+                        # Extract GPU name
+                        match = re.search(r'\[AMD/ATI\]\s+(.+?)(?:\[|$)', line)
+                        if not match:
+                            match = re.search(r':\s+(.+?)(?:\(|$)', line)
+                        
+                        if match:
+                            model = match.group(1).strip()
+                            
+                            # Try to get VRAM from ROCm or sysfs
+                            vram_gb = 0.0
+                            try:
+                                rocm_smi = self._run_command(['rocm-smi', '--showmeminfo', 'vram'])
+                                if rocm_smi:
+                                    vram_match = re.search(r'(\d+)\s*MB', rocm_smi)
+                                    if vram_match:
+                                        vram_gb = float(vram_match.group(1)) / 1024
+                            except:
+                                # Default VRAM estimates for common AMD GPUs
+                                if 'RX 7900' in model:
+                                    vram_gb = 20.0 if 'XTX' in model else 16.0
+                                elif 'RX 7800' in model or 'RX 7700' in model:
+                                    vram_gb = 16.0
+                                elif 'RX 7600' in model:
+                                    vram_gb = 8.0
+                                elif 'RX 6900' in model or 'RX 6800' in model:
+                                    vram_gb = 16.0
+                                elif 'RX 6700' in model:
+                                    vram_gb = 12.0
+                                elif 'RX 6600' in model:
+                                    vram_gb = 8.0
+                                else:
+                                    vram_gb = 8.0  # Generic fallback
+                            
+                            # Get driver version
+                            driver = "Unknown"
+                            try:
+                                modinfo_out = self._run_command(['modinfo', 'amdgpu'])
+                                for line in modinfo_out.split('\n'):
+                                    if line.startswith('version:'):
+                                        driver = line.split(':', 1)[1].strip()
+                                        break
+                            except:
+                                pass
+                            
+                            # Detect PCIe info
+                            pcie_gen, pcie_lanes = self._detect_gpu_pcie("amd")
+                            
+                            # Check for ROCm support
+                            supports_rocm = Path('/opt/rocm').exists() or self._run_command(['which', 'rocm-smi']) != ""
+                            
+                            return GPUInfo(
+                                vendor="AMD",
+                                model=model,
+                                vram_gb=vram_gb,
+                                pcie_generation=pcie_gen if pcie_gen else 4,
+                                pcie_lanes=pcie_lanes if pcie_lanes else 16,
+                                driver_version=driver,
+                                cuda_version=None,
+                                supports_vgpu=supports_rocm  # Use ROCm support as proxy for advanced features
+                            )
+        except Exception as e:
+            print(f"Debug: AMD GPU detection failed: {e}", file=sys.stderr)
+        
         return None
+    
+    def _detect_gpu_pcie(self, vendor: str) -> Tuple[Optional[int], Optional[int]]:
+        """Detect GPU PCIe generation and lanes"""
+        try:
+            # Find GPU PCIe device
+            if vendor == "nvidia":
+                device_path = Path('/sys/class/drm').glob('card*/device')
+            else:  # AMD
+                device_path = Path('/sys/class/drm').glob('card*/device')
+            
+            for dev in device_path:
+                if not dev.exists():
+                    continue
+                
+                # Check if this is a GPU (not display)
+                device_file = dev / 'device'
+                if not device_file.exists():
+                    continue
+                
+                # Read PCIe speed and width
+                speed_file = dev / 'current_link_speed'
+                width_file = dev / 'current_link_width'
+                
+                pcie_gen = None
+                pcie_lanes = None
+                
+                if speed_file.exists():
+                    speed = speed_file.read_text().strip()
+                    if '16.0 GT/s' in speed or '16 GT/s' in speed:
+                        pcie_gen = 4
+                    elif '32.0 GT/s' in speed or '32 GT/s' in speed:
+                        pcie_gen = 5
+                    elif '8.0 GT/s' in speed or '8 GT/s' in speed:
+                        pcie_gen = 3
+                    elif '5.0 GT/s' in speed or '5 GT/s' in speed:
+                        pcie_gen = 2
+                
+                if width_file.exists():
+                    width = width_file.read_text().strip()
+                    match = re.search(r'x?(\d+)', width)
+                    if match:
+                        pcie_lanes = int(match.group(1))
+                
+                if pcie_gen or pcie_lanes:
+                    return pcie_gen, pcie_lanes
+        except Exception:
+            pass
+        
+        return None, None
     
     def calculate_optimization_score(self, cpu: CPUCapabilities, 
                                      virt: VirtualizationCapabilities,
