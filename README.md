@@ -337,7 +337,7 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues and sol
 
 ## 🙏 Credits
 
-- **Includes patches from** [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x)
+- Includes patches from [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x)
 - Gentoo support thanks to community contributions
 - VMware community for continuous feedback
 - Thanks to all users for testing and bug reports
