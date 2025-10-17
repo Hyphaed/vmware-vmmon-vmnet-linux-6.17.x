@@ -207,7 +207,7 @@ class SystemOptimizer:
     def display_optimizations(self):
         """Show what will be optimized"""
         self.ui.console.print(Panel.fit(
-            "[bold yellow]Planned Optimizations[/bold yellow]",
+            "[bold yellow]Planned Tuned Configurations to Apply[/bold yellow]",
             border_style=GTK_PURPLE_DARK
         ))
         self.ui.console.print()
@@ -370,6 +370,15 @@ class SystemOptimizer:
         
         self.ui.console.print("  [green]✓[/green] GRUB parameters updated")
         self.changes_made.append("GRUB boot parameters optimized")
+        
+        # Skip GRUB and initramfs updates if called from wizard (--auto-confirm)
+        # They will be updated AFTER module compilation instead
+        skip_updates = '--auto-confirm' in sys.argv
+        
+        if skip_updates:
+            self.ui.console.print("  [yellow]ℹ️[/yellow] GRUB and initramfs updates deferred (will run after module compilation)")
+            self.changes_made.append("GRUB parameters configured (updates deferred)")
+            return True
         
         # Update GRUB
         self.ui.console.print("  Updating GRUB configuration...")
