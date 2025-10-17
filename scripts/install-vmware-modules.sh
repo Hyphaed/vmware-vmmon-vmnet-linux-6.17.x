@@ -110,11 +110,64 @@ cleanup_on_error() {
 
 trap cleanup_on_error ERR
 
-# Clean system RAM/cache before starting (free up memory)
-echo "Clearing system caches..."
-sync
-echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
-sleep 1
+# ============================================
+# CHECK AND FIX MEMORY SATURATION
+# ============================================
+# Check for huge pages consuming memory
+HUGEPAGES_TOTAL=$(grep "HugePages_Total:" /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "0")
+HUGEPAGES_SIZE=$(grep "Hugepagesize:" /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "0")
+RESERVED_MB=$((HUGEPAGES_TOTAL * HUGEPAGES_SIZE / 1024))
+RESERVED_GB=$((RESERVED_MB / 1024))
+
+if [ "$RESERVED_GB" -gt 1 ]; then
+    echo ""
+    echo -e "${YELLOW}⚠️  MEMORY SATURATION DETECTED!${NC}"
+    echo ""
+    echo -e "${YELLOW}Huge pages are reserving ${RESERVED_GB} GB of RAM${NC}"
+    echo -e "${CYAN}This was likely caused by previous tuning attempts${NC}"
+    echo ""
+    echo -e "${GREEN}🔧 Automatically fixing memory saturation...${NC}"
+    echo ""
+    
+    # Fix 1: Disable huge pages immediately
+    echo 0 > /proc/sys/vm/nr_hugepages 2>/dev/null || true
+    echo -e "${GREEN}✓ Disabled huge pages (runtime)${NC}"
+    
+    # Fix 2: Clear caches
+    sync
+    echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
+    echo -e "${GREEN}✓ Cleared system caches${NC}"
+    
+    # Fix 3: Remove from GRUB if present
+    if grep -q "hugepage" /etc/default/grub 2>/dev/null; then
+        cp /etc/default/grub /etc/default/grub.backup-memory-fix-$(date +%Y%m%d-%H%M%S)
+        sed -i 's/hugepages=[0-9]* //g' /etc/default/grub
+        sed -i 's/hugepagesz=[^ ]* //g' /etc/default/grub
+        sed -i 's/default_hugepagesz=[^ ]* //g' /etc/default/grub
+        sed -i 's/transparent_hugepage=never/transparent_hugepage=madvise/g' /etc/default/grub
+        echo -e "${GREEN}✓ Removed huge pages from GRUB${NC}"
+        
+        # Update GRUB
+        if command -v update-grub >/dev/null 2>&1; then
+            update-grub >/dev/null 2>&1 || true
+        elif command -v grub2-mkconfig >/dev/null 2>&1; then
+            grub2-mkconfig -o /boot/grub2/grub.cfg >/dev/null 2>&1 || true
+        fi
+        echo -e "${GREEN}✓ Updated GRUB configuration${NC}"
+    fi
+    
+    echo ""
+    echo -e "${GREEN}✅ Memory fixed! ${RESERVED_GB} GB freed${NC}"
+    echo -e "${CYAN}💡 Memory will be fully available after reboot${NC}"
+    echo ""
+    sleep 2
+else
+    # Clean system RAM/cache before starting (free up memory)
+    echo "Clearing system caches..."
+    sync
+    echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
+    sleep 1
+fi
 
 echo -e "${HYPHAED_GREEN}$(draw_box_top)${NC}"
 echo -e "${HYPHAED_GREEN}$(draw_box_line "")${NC}"

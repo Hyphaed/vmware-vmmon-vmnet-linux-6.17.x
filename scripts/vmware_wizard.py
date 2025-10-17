@@ -155,9 +155,91 @@ class VMwareWizard:
         
         self.ui.show_success(f"Configuration saved successfully")
     
+    def check_and_fix_memory_saturation(self):
+        """Check for memory saturation (huge pages) and fix automatically"""
+        try:
+            # Check if huge pages are consuming memory
+            with open('/proc/meminfo', 'r') as f:
+                meminfo = f.read()
+            
+            # Extract huge pages info
+            hugepages_total = 0
+            hugepages_size = 0
+            for line in meminfo.split('\n'):
+                if 'HugePages_Total:' in line:
+                    hugepages_total = int(line.split()[1])
+                elif 'Hugepagesize:' in line:
+                    hugepages_size = int(line.split()[1])  # in KB
+            
+            # Calculate reserved memory (in GB)
+            reserved_gb = (hugepages_total * hugepages_size) / (1024 * 1024)
+            
+            if reserved_gb > 1.0:  # More than 1GB reserved
+                self.ui.show_warning(f"⚠️  Memory Saturation Detected!")
+                self.ui.console.print()
+                self.ui.console.print(f"[warning]Huge pages are reserving {reserved_gb:.1f} GB of RAM[/warning]")
+                self.ui.console.print("[info]This was likely caused by previous tuning attempts[/info]")
+                self.ui.console.print()
+                self.ui.show_info("🔧 Automatically fixing memory saturation...")
+                self.ui.console.print()
+                
+                # Fix 1: Disable huge pages immediately
+                subprocess.run(['sudo', 'sh', '-c', 'echo 0 > /proc/sys/vm/nr_hugepages'], 
+                             check=False, capture_output=True)
+                self.ui.show_success("✓ Disabled huge pages (runtime)")
+                
+                # Fix 2: Clear caches
+                subprocess.run(['sudo', 'sync'], check=False)
+                subprocess.run(['sudo', 'sh', '-c', 'echo 3 > /proc/sys/vm/drop_caches'], 
+                             check=False, capture_output=True)
+                self.ui.show_success("✓ Cleared system caches")
+                
+                # Fix 3: Remove from GRUB
+                try:
+                    with open('/etc/default/grub', 'r') as f:
+                        grub_content = f.read()
+                    
+                    if 'hugepage' in grub_content:
+                        import re
+                        grub_content = re.sub(r'hugepages=\d+\s*', '', grub_content)
+                        grub_content = re.sub(r'hugepagesz=[^\s]+\s*', '', grub_content)
+                        grub_content = re.sub(r'default_hugepagesz=[^\s]+\s*', '', grub_content)
+                        grub_content = grub_content.replace('transparent_hugepage=never', 'transparent_hugepage=madvise')
+                        
+                        # Backup and write
+                        subprocess.run(['sudo', 'cp', '/etc/default/grub', 
+                                      f'/etc/default/grub.backup-wizard-{int(time.time())}'], check=False)
+                        
+                        with open('/tmp/grub_fixed', 'w') as f:
+                            f.write(grub_content)
+                        subprocess.run(['sudo', 'cp', '/tmp/grub_fixed', '/etc/default/grub'], check=False)
+                        
+                        self.ui.show_success("✓ Removed huge pages from GRUB")
+                        
+                        # Update GRUB
+                        subprocess.run(['sudo', 'update-grub'], check=False, capture_output=True)
+                        self.ui.show_success("✓ Updated GRUB configuration")
+                except Exception as e:
+                    self.ui.show_warning(f"Could not update GRUB: {e}")
+                
+                self.ui.console.print()
+                self.ui.show_success(f"✅ Memory fixed! {reserved_gb:.1f} GB freed")
+                self.ui.console.print()
+                self.ui.show_info("💡 Memory will be fully available after reboot")
+                self.ui.console.print()
+                
+                time.sleep(2)  # Let user see the message
+                
+        except Exception as e:
+            # If check fails, continue silently
+            pass
+    
     def run(self):
         """Main wizard flow"""
         try:
+            # Check and fix memory saturation first
+            self.check_and_fix_memory_saturation()
+            
             # Welcome banner
             self.ui.show_banner(
                 "VMware Module Installation Wizard",
