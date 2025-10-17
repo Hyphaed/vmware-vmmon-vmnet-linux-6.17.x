@@ -122,6 +122,34 @@ if [ ! -f "$INSTALL_SCRIPT" ]; then
 fi
 
 echo ""
+echo -e "${CYAN}═══════════════════════════════════════${NC}"
+echo -e "${GREEN}UNLOADING CURRENT MODULES${NC}"
+echo -e "${CYAN}═══════════════════════════════════════${NC}"
+echo ""
+
+# Unload modules before update (critical for clean update)
+if [ "$VMMON_LOADED" -gt 0 ] || [ "$VMNET_LOADED" -gt 0 ]; then
+    info "Stopping VMware services..."
+    systemctl stop vmware.service 2>/dev/null || true
+    systemctl stop vmware-USBArbitrator.service 2>/dev/null || true
+    /etc/init.d/vmware stop 2>/dev/null || true
+    
+    sleep 2
+    
+    info "Unloading vmnet module..."
+    rmmod vmnet 2>/dev/null || warning "vmnet was not loaded or already unloaded"
+    
+    info "Unloading vmmon module..."
+    rmmod vmmon 2>/dev/null || warning "vmmon was not loaded or already unloaded"
+    
+    log "✓ Modules unloaded successfully"
+    echo ""
+else
+    info "No modules currently loaded (skipping unload)"
+    echo ""
+fi
+
+echo ""
 log "Launching installation script..."
 echo ""
 
