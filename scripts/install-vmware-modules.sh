@@ -2322,11 +2322,19 @@ if [ "$AUTO_IOMMU" = "true" ] && [ "$OPTIMIZATION_MODE" = "optimized" ]; then
     echo ""
     echo -e "${YELLOW}⚠ IMPORTANT:${NC} Save all your work before rebooting!"
     echo ""
-    echo -e "Type ${GREEN}'yes, reboot'${NC} to reboot immediately, or press Enter to skip:"
+    echo -e "Type ${GREEN}'yes, reboot'${NC} to reboot immediately"
+    echo -e "Type ${YELLOW}'no'${NC} or press ${YELLOW}Enter${NC} (or ${YELLOW}Ctrl+C${NC}) to skip:"
     read -p "> " REBOOT_CONFIRM
     echo ""
     
-    if [ "$REBOOT_CONFIRM" = "yes, reboot" ]; then
+    # Check for explicit no or empty
+    if [ "$REBOOT_CONFIRM" = "no" ] || [ -z "$REBOOT_CONFIRM" ]; then
+        echo ""
+        log "Reboot skipped by user"
+        echo ""
+        log "✓ Process completed successfully!"
+        exit 0
+    elif [ "$REBOOT_CONFIRM" = "yes, reboot" ]; then
         log "Rebooting system in 5 seconds..."
         echo ""
         echo -e "${YELLOW}System will reboot in:${NC}"
@@ -2339,8 +2347,11 @@ if [ "$AUTO_IOMMU" = "true" ] && [ "$OPTIMIZATION_MODE" = "optimized" ]; then
         sync  # Flush filesystem buffers
         sudo reboot
     else
-        echo -e "${CYAN}Reboot skipped.${NC}"
+        # Any other input, skip reboot
         echo ""
+        log "Reboot skipped by user"
+        echo ""
+        log "✓ Process completed successfully!"
     fi
 fi
 
