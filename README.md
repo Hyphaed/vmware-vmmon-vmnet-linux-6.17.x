@@ -957,7 +957,7 @@ The VMware modules themselves are proprietary software by Broadcom Inc. These pa
 
 **Enjoy 20-40% faster VMware performance + Better Wayland support!** 🎉
 
-Top bar hiding now works perfectly on Wayland systems! This performance boost and improved Wayland compatibility comes from applying hardware-specific optimizations during module compilation (**Optimized mode** - the default choice during installation, though **Vanilla mode** is also available if you need portable modules).
+Top bar hiding now works perfectly on Wayland systems! This performance boost and improved Wayland compatibility comes from applying hardware-specific optimizations during module compilation (**Optimized mode** - the default choice during installation, though **Vanilla mode** is also available if you want to skip optimizations).
 
 ---
 
