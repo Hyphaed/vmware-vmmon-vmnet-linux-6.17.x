@@ -18,3 +18,6 @@ vmnet-only/
 *.log
 scripts/*.log
 scripts/*.log.*
+
+# System-specific utility scripts (not for distribution)
+scripts/disable-ollama.sh
