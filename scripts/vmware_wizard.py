@@ -167,7 +167,7 @@ class VMwareWizard:
             
             # Show installation steps
             steps = [
-                "System Tuning Decision (Applied FIRST - saves time!)",
+                "System Tuning Decision (Optional but Recommended - saves time!)",
                 "Kernel Detection & Selection",
                 "Hardware Detection & Analysis",
                 "Optimization Mode Selection (Optimized vs Vanilla)",
@@ -181,14 +181,15 @@ class VMwareWizard:
                 return 1
             
             # STEP 1: System Tuning Decision (FIRST - before everything)
-            self.ui.show_step(1, 5, "System Tuning Decision")
+            self.ui.show_step(1, 5, "System Tuning Decision (Optional)")
             
-            self.ui.console.print("[success]💡 Smart Workflow:[/] Deciding on tuning FIRST")
-            self.ui.console.print("[info]✨ Benefit:[/] Tuning applied before compilation = initramfs rebuilt only once!")
+            self.ui.console.print("[success]💡 Recommended:[/] Apply tuning FIRST for best results")
+            self.ui.console.print("[info]✨ Benefit:[/] Tuning before compilation = initramfs rebuilt only once!")
+            self.ui.console.print("[warning]ℹ️  Note:[/] This step is optional but highly recommended for optimal performance")
             self.ui.console.print()
             
             apply_tuning = self.ui.confirm(
-                "Apply system tuning optimizations before compilation?\n"
+                "Apply system tuning optimizations before compilation? (Recommended but optional)\n"
                 "  (GRUB parameters, CPU governor, I/O scheduler, kernel parameters)",
                 default=True
             )
