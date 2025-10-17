@@ -7,7 +7,7 @@
 
 ---
 ### 🐍 **Interactive Python Wizard** - Beautiful terminal UI that guides you through installation
-### 🚀 **Enjoy 20-40% faster VMware performance + Better Wayland support!**
+### 🚀 **Enjoy 20-40% faster VMware performance**
 ### ✨ **Top bar auto-hiding now works perfectly on Wayland!**
 
 No more stuck top bars when running VMs in fullscreen - this has been **fixed** by applying hardware-specific optimizations during module compilation.
