@@ -15,7 +15,6 @@ try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    from rich.prompt import Prompt, Confirm
     from rich.text import Text
     from rich import box
     from rich.align import Align
@@ -27,14 +26,37 @@ except ImportError:
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    from rich.prompt import Prompt, Confirm
     from rich.text import Text
     from rich import box
     from rich.align import Align
     from rich.progress import Progress, SpinnerColumn, TextColumn
 
+try:
+    import questionary
+    from questionary import Style
+except ImportError:
+    print("Installing questionary for better UI...")
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary"])
+    import questionary
+    from questionary import Style
+
 # Hyphaed green color
 HYPHAED_GREEN = "#B0D56A"
+
+# Custom Questionary style matching Hyphaed green theme
+VMWARE_STYLE = Style([
+    ('qmark', 'fg:#B0D56A bold'),           # Question mark - Hyphaed green
+    ('question', 'fg:#ffffff bold'),         # Question text - white
+    ('answer', 'fg:#B0D56A bold'),          # Answer - Hyphaed green
+    ('pointer', 'fg:#B0D56A bold'),         # Pointer - Hyphaed green
+    ('highlighted', 'fg:#B0D56A bold'),     # Highlighted option - Hyphaed green
+    ('selected', 'fg:#00ffff'),              # Selected - cyan
+    ('separator', 'fg:#6C6C6C'),            # Separator - gray
+    ('instruction', 'fg:#858585'),           # Instructions - light gray
+    ('text', 'fg:#ffffff'),                  # Text - white
+    ('disabled', 'fg:#858585 italic')       # Disabled - gray italic
+])
 
 class VMwareUI:
     """Shared UI components for VMware scripts"""

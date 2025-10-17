@@ -19,7 +19,6 @@ try:
     from rich.panel import Panel
     from rich.table import Table
     from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
-    from rich.prompt import Prompt, Confirm
     from rich.layout import Layout
     from rich.text import Text
     from rich import box
@@ -31,13 +30,35 @@ except ImportError:
     from rich.panel import Panel
     from rich.table import Table
     from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
-    from rich.prompt import Prompt, Confirm
     from rich.layout import Layout
     from rich.text import Text
     from rich import box
     from rich.align import Align
 
+try:
+    import questionary
+    from questionary import Style
+except ImportError:
+    print("Installing questionary for better UI...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary"])
+    import questionary
+    from questionary import Style
+
 console = Console()
+
+# Custom Questionary style matching Hyphaed green theme
+WIZARD_STYLE = Style([
+    ('qmark', 'fg:#B0D56A bold'),           # Question mark - Hyphaed green
+    ('question', 'fg:#ffffff bold'),         # Question text - white
+    ('answer', 'fg:#B0D56A bold'),          # Answer - Hyphaed green
+    ('pointer', 'fg:#B0D56A bold'),         # Pointer - Hyphaed green
+    ('highlighted', 'fg:#B0D56A bold'),     # Highlighted option - Hyphaed green
+    ('selected', 'fg:#00ffff'),              # Selected - cyan
+    ('separator', 'fg:#6C6C6C'),            # Separator - gray
+    ('instruction', 'fg:#858585'),           # Instructions - light gray
+    ('text', 'fg:#ffffff'),                  # Text - white
+    ('disabled', 'fg:#858585 italic')       # Disabled - gray italic
+])
 
 # Hyphaed green color
 HYPHAED_GREEN = "#B0D56A"
@@ -233,50 +254,58 @@ class VMwareWizard:
             self.console.print(line)
         
         self.console.print()
-        self.console.print("[dim]Enter comma-separated numbers (e.g., '1,2') or 'all'[/dim]")
         
         # Find current kernel index for default
-        current_idx = "1"
-        for idx, kernel in enumerate(supported_kernels, 1):
+        current_idx = 0
+        for idx, kernel in enumerate(supported_kernels):
             if kernel.is_current and kernel.headers_installed:
-                current_idx = str(idx)
+                current_idx = idx
                 break
         
-        while True:
-            choice = Prompt.ask(
-                f"[{HYPHAED_GREEN}]Select kernel(s)[/{HYPHAED_GREEN}]",
-                default=current_idx
-            )
-            
-            selected_kernels = []
-            
-            # Handle "all" option
-            if choice.lower() == 'all' or choice == str(len(supported_kernels) + 1):
-                selected_kernels = [k for k in supported_kernels if k.headers_installed]
-                if not selected_kernels:
-                    self.console.print("[red]✗ No kernels with headers installed![/red]")
-                    continue
-                break
-            
-            # Parse comma-separated numbers
-            try:
-                indices = [int(x.strip()) for x in choice.split(',')]
-                for idx in indices:
-                    if 1 <= idx <= len(supported_kernels):
-                        kernel = supported_kernels[idx - 1]
-                        if not kernel.headers_installed:
-                            self.console.print(f"[yellow]⚠ Skipping {kernel.full_version} - no headers installed[/yellow]")
-                        else:
-                            selected_kernels.append(kernel)
-                    else:
-                        self.console.print(f"[red]✗ Invalid selection: {idx}[/red]")
-                        selected_kernels = []
-                        break
-                
-                if selected_kernels:
-                    break
-            except ValueError:
-                self.console.print("[red]✗ Invalid input. Please enter numbers separated by commas.[/red]")
+        # Build choices for questionary
+        kernel_choices = []
+        for idx, kernel in enumerate(supported_kernels):
+            marker = "→ " if kernel.is_current else "  "
+            headers_mark = "✓" if kernel.headers_installed else "✗"
+            if kernel.headers_installed:
+                kernel_choices.append({
+                    'name': f"{marker}{kernel.full_version} [{headers_mark}]",
+                    'value': kernel,
+                    'disabled': None
+                })
+            else:
+                kernel_choices.append({
+                    'name': f"{marker}{kernel.full_version} [{headers_mark}] (no headers)",
+                    'value': kernel,
+                    'disabled': "Headers required"
+                })
+        
+        kernel_choices.append({
+            'name': "→ All supported kernels with headers",
+            'value': 'all'
+        })
+        
+        choice = questionary.select(
+            "Select kernel(s) to compile for:",
+            choices=kernel_choices,
+            default=kernel_choices[current_idx] if current_idx < len(kernel_choices) else None,
+            style=WIZARD_STYLE,
+            qmark="🔧",
+            instruction="(Use arrow keys)"
+        ).ask()
+        
+        if choice is None:
+            self.console.print("[yellow]Selection cancelled[/yellow]")
+            sys.exit(0)
+        
+        # Handle selection
+        if choice == 'all':
+            selected_kernels = [k for k in supported_kernels if k.headers_installed]
+            if not selected_kernels:
+                self.console.print("[red]✗ No kernels with headers installed![/red]")
+                sys.exit(1)
+        else:
+            selected_kernels = [choice]
         
         self.console.print()
         self.console.print(Panel.fit(
@@ -478,18 +507,35 @@ class VMwareWizard:
         
         # Get recommendation (but always default to optimized)
         recommended = self.hw_capabilities.get('optimization', {}).get('recommended_mode', 'optimized')
-        default_choice = "1"  # Always default to Optimized
         
-        self.console.print(f"[dim]Recommended for your hardware: [bold]{recommended.upper()}[/bold][/dim]")
+        self.console.print(f"[dim]💡 Recommended for your hardware: [bold]{recommended.upper()}[/bold][/dim]")
         self.console.print()
         
-        choice = Prompt.ask(
-            f"[{HYPHAED_GREEN}]Select mode[/{HYPHAED_GREEN}]",
-            choices=["1", "2"],
-            default=default_choice
-        )
+        choices = [
+            {
+                'name': '🚀 Optimized (Recommended) - 20-35% faster + better Wayland',
+                'value': 'optimized'
+            },
+            {
+                'name': '🔒 Vanilla - Portable, works on any CPU',
+                'value': 'vanilla'
+            }
+        ]
         
-        self.optimization_mode = "optimized" if choice == "1" else "vanilla"
+        choice = questionary.select(
+            "Select compilation mode:",
+            choices=choices,
+            default=choices[0],
+            style=WIZARD_STYLE,
+            qmark="⚙️",
+            instruction="(Use arrow keys)"
+        ).ask()
+        
+        if choice is None:
+            self.console.print("[yellow]Selection cancelled[/yellow]")
+            sys.exit(0)
+        
+        self.optimization_mode = choice
         
         self.console.print()
         mode_display = "🚀 OPTIMIZED" if self.optimization_mode == "optimized" else "🔒 VANILLA"
@@ -522,7 +568,14 @@ class VMwareWizard:
         self.console.print(summary)
         self.console.print()
         
-        if not Confirm.ask(f"[{HYPHAED_GREEN}]Proceed with compilation?[/{HYPHAED_GREEN}]", default=True):
+        proceed = questionary.confirm(
+            "Proceed with compilation?",
+            default=True,
+            style=WIZARD_STYLE,
+            qmark="❓"
+        ).ask()
+        
+        if not proceed:
             self.console.print("[yellow]Installation cancelled by user.[/yellow]")
             sys.exit(0)
     
@@ -622,10 +675,14 @@ class VMwareWizard:
                 self.console.print()
                 
                 # Ask user (default to Yes for reinstall)
-                if not Confirm.ask(
-                    f"[{HYPHAED_GREEN}]Do you want to reinstall/recompile the modules?[/{HYPHAED_GREEN}]",
-                    default=True
-                ):
+                proceed = questionary.confirm(
+                    "Do you want to reinstall/recompile the modules?",
+                    default=True,
+                    style=WIZARD_STYLE,
+                    qmark="❓"
+                ).ask()
+                
+                if not proceed:
                     self.console.print()
                     self.console.print("[yellow]Installation cancelled by user.[/yellow]")
                     self.console.print()

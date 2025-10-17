@@ -27,7 +27,6 @@ try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    from rich.prompt import Confirm, Prompt
     from rich.progress import Progress, SpinnerColumn, TextColumn
     from rich import box
     HAS_RICH = True
@@ -38,13 +37,35 @@ except ImportError:
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    from rich.prompt import Confirm, Prompt
     from rich.progress import Progress, SpinnerColumn, TextColumn
     from rich import box
     HAS_RICH = True
 
+try:
+    import questionary
+    from questionary import Style
+except ImportError:
+    print("Installing questionary for better UI...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "questionary"])
+    import questionary
+    from questionary import Style
+
 console = Console()
 HYPHAED_GREEN = "#B0D56A"
+
+# Custom Questionary style matching Hyphaed green theme
+OPTIMIZER_STYLE = Style([
+    ('qmark', 'fg:#B0D56A bold'),           # Question mark - Hyphaed green
+    ('question', 'fg:#ffffff bold'),         # Question text - white
+    ('answer', 'fg:#B0D56A bold'),          # Answer - Hyphaed green
+    ('pointer', 'fg:#B0D56A bold'),         # Pointer - Hyphaed green
+    ('highlighted', 'fg:#B0D56A bold'),     # Highlighted option - Hyphaed green
+    ('selected', 'fg:#00ffff'),              # Selected - cyan
+    ('separator', 'fg:#6C6C6C'),            # Separator - gray
+    ('instruction', 'fg:#858585'),           # Instructions - light gray
+    ('text', 'fg:#ffffff'),                  # Text - white
+    ('disabled', 'fg:#858585 italic')       # Disabled - gray italic
+])
 
 
 class SystemOptimizer:
@@ -683,10 +704,14 @@ ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
             self.display_optimizations()
             
             # Confirm
-            if not Confirm.ask(
-                f"[{HYPHAED_GREEN}]Do you want to proceed with system optimization?[/{HYPHAED_GREEN}]",
-                default=True
-            ):
+            proceed = questionary.confirm(
+                "Do you want to proceed with system optimization?",
+                default=True,
+                style=OPTIMIZER_STYLE,
+                qmark="🚀"
+            ).ask()
+            
+            if not proceed:
                 self.console.print("[yellow]Optimization cancelled by user.[/yellow]")
                 return 0
             
