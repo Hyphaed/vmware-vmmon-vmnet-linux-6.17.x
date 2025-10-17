@@ -30,122 +30,15 @@ info() { echo -e "${BLUE}[i]${NC} $1" | tee -a "$LOG_FILE"; }
 warning() { echo -e "${YELLOW}[!]${NC} $1" | tee -a "$LOG_FILE"; }
 error() { echo -e "${RED}[✗]${NC} $1" | tee -a "$LOG_FILE"; }
 
-# Snake animation (ouroboros - snake eating its tail)
-ANIMATION_PID=""
-ANIMATION_ENABLED=false
-
-# Check if terminal supports cursor positioning
-if [ -t 1 ] && command -v tput &>/dev/null; then
-    ANIMATION_ENABLED=true
-fi
-
-start_animation() {
-    if [ "$ANIMATION_ENABLED" = false ]; then
-        return
-    fi
-    
-    # Animation frames (ouroboros - snake in a circle eating its tail)
-    local frames=(
-        "    ╭─○"
-        "   ╭──○"
-        "  ╭───○"
-        " ╭────○"
-        "╭─────○"
-        "│─────○"
-        "╰─────○"
-        " ╰────○"
-        "  ╰───○"
-        "   ╰──○"
-        "    ╰─○"
-        "    ○─╯"
-        "    ○──╯"
-        "    ○───╯"
-        "    ○────╯"
-        "    ○─────╯"
-        "    ○─────│"
-        "    ○─────╮"
-        "    ○────╮"
-        "    ○───╮"
-        "    ○──╮"
-        "    ○─╮"
-    )
-    
-    (
-        local cols=$(tput cols)
-        local lines=$(tput lines)
-        local frame_idx=0
-        local total_frames=${#frames[@]}
-        
-        while true; do
-            # Calculate position (top-right corner with padding)
-            local x=$((cols - 15))
-            local y=2
-            
-            # Save cursor position
-            tput sc
-            
-            # Move to animation position
-            tput cup $y $x
-            
-            # Draw snake frame in Hyphaed green
-            echo -ne "${HYPHAED_GREEN}${frames[$frame_idx]}${NC}"
-            
-            # Draw "Hyphaed" text below snake
-            tput cup $((y + 1)) $((x + 1))
-            echo -ne "${HYPHAED_GREEN}Hyphaed${NC}"
-            
-            # Restore cursor position
-            tput rc
-            
-            # Next frame
-            frame_idx=$(( (frame_idx + 1) % total_frames ))
-            
-            # Animation speed
-            sleep 0.1
-        done
-    ) &
-    
-    ANIMATION_PID=$!
-}
-
-stop_animation() {
-    if [ -n "$ANIMATION_PID" ]; then
-        kill $ANIMATION_PID 2>/dev/null || true
-        wait $ANIMATION_PID 2>/dev/null || true
-        ANIMATION_PID=""
-        
-        # Clear animation area
-        if [ "$ANIMATION_ENABLED" = true ]; then
-            local cols=$(tput cols)
-            local x=$((cols - 15))
-            local y=2
-            
-            tput sc
-            tput cup $y $x
-            echo -ne "          "
-            tput cup $((y + 1)) $x
-            echo -ne "          "
-            tput rc
-        fi
-    fi
-}
-
 # Cleanup function in case of error
 cleanup_on_error() {
-    stop_animation
     error "Error detected. Cleaning up..."
     cd "$HOME"
     rm -rf "$WORK_DIR"
     exit 1
 }
 
-# Cleanup function on normal exit
-cleanup_on_exit() {
-    stop_animation
-}
-
 trap cleanup_on_error ERR
-trap cleanup_on_exit EXIT
 
 echo -e "${CYAN}"
 cat << 'EOF'
@@ -157,9 +50,6 @@ cat << 'EOF'
 ╚══════════════════════════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
-
-# Start the Hyphaed snake animation in top-right corner
-start_animation
 
 echo ""
 echo -e "${CYAN}═══════════════════════════════════════${NC}"
