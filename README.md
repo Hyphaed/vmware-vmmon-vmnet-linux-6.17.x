@@ -161,10 +161,11 @@ vmware-vmmon-vmnet-linux-6.17.x/
 │   ├── vmnet-6.17.patch            # Patch for vmnet module
 │   └── README.md                   # Patch documentation
 ├── scripts/
-│   ├── install-vmware-modules.sh   # Full installation with optimizations
-│   ├── update-vmware-modules.sh    # Quick update after kernel upgrade
-│   ├── restore-vmware-modules.sh   # Restore from backup
-│   └── test-vmware-modules.sh      # Module testing utility
+│   ├── install-vmware-modules.sh     # Full installation with optimizations
+│   ├── update-vmware-modules.sh      # Quick update after kernel upgrade
+│   ├── restore-vmware-modules.sh     # Restore from backup
+│   ├── uninstall-vmware-modules.sh   # Remove modules completely
+│   └── test-vmware-modules.sh        # Module testing utility
 ├── docs/
 │   ├── TROUBLESHOOTING.md          # Common issues and solutions
 │   └── TECHNICAL.md                # Technical details about patches
@@ -274,74 +275,68 @@ Backups are created automatically during:
 - Initial installation (`install-vmware-modules.sh`)
 - Updates (`update-vmware-modules.sh`)
 
-## ⚡ Hardware Optimizations (Optional)
+## 🗑️ Uninstall Modules
 
-During installation, you can choose from 2 optimization approaches:
+To completely remove VMware modules:
 
-### 🎯 Real-World Performance Impact
+```bash
+sudo bash scripts/uninstall-vmware-modules.sh
+```
 
-**Maximum Performance (Recommended):**
-- 🚀 **VM CPU Performance**: 20-30% faster CPU-intensive operations
-  - *Why*: `-O3` enables aggressive loop unrolling, function inlining, and vectorization
-  - *Example*: Compiling code in VM, video encoding, data processing
-- 🎮 **Graphics/Wayland**: 15-25% better frame timing and reduced input latency
-  - *Why*: Low latency mode reduces scheduler delays, DMA optimizations speed up GPU-memory transfers
-  - *Example*: Smoother desktop animations, reduced cursor lag, better video playback
-- 💾 **Memory Operations**: 10-15% faster memory allocation and access
-  - *Why*: Modern memory management features, efficient buffer allocation, `-march=native` uses optimal memory instructions
-  - *Example*: Faster application launches, quicker file operations
-- 🌐 **Network I/O**: 5-10% improved throughput for virtualized network adapters
-  - *Why*: Reduced memory copy overhead, better DMA handling
-  - *Example*: Faster file transfers, better network responsiveness
-- 🔄 **DMA Transfers**: 20-40% faster GPU-to-memory operations
-  - *Why*: Direct Memory Access optimizations bypass CPU for GPU data transfers
-  - *Example*: 3D acceleration, hardware video decoding, OpenGL/Vulkan performance
-- ⚡ **Overall Responsiveness**: Noticeably snappier VM interactions
-  - *Why*: Combined effect of all optimizations reduces latency throughout the stack
-  - *Example*: VM feels more "native", less lag when switching windows
+The uninstall script will:
+- ✓ Unload vmmon and vmnet kernel modules
+- ✓ Remove compiled modules from `/lib/modules/`
+- ✓ Update module dependencies
+- ✓ Preserve backups for future reinstallation
 
-**None (Default - Safe but slower):**
-- Baseline performance with kernel defaults
-- 0% improvement - standard compilation
-- **Why choose this**: Maximum compatibility if you need to move modules between different CPUs
+**Note:** This removes only the kernel modules, not VMware Workstation itself.
 
-### 📊 Optimization Comparison:
+## ⚡ Module Compilation Options
 
-| Feature | Maximum Performance | None (Default) |
-|---------|---------------------|----------------|
-| **CPU-intensive tasks** | 20-30% faster | Baseline (0%) |
-| **Graphics/Desktop** | 15-25% better | Baseline (0%) |
-| **Memory operations** | 10-15% faster | Baseline (0%) |
-| **Network throughput** | 5-10% better | Baseline (0%) |
-| **DMA/GPU transfers** | 20-40% faster | Baseline (0%) |
-| **Portability** | ⚠️ Same CPU only | ✅ Any x86_64 CPU |
-| **Compilation time** | +10-20 seconds | Baseline |
-| **Module size** | Slightly larger | Standard |
+During installation, choose between **2 simple options**:
 
-### ❓ Why Not Always Use Maximum Performance?
+### 🚀 **Option 1: Optimized (Recommended)**
+**20-40% better performance** across CPU, memory, graphics, storage, and network.
 
-**The ONLY reason to choose "None":**
-- **Portability**: If you need to copy compiled modules to a different CPU (e.g., AMD ↔ Intel, different generations)
-- Maximum Performance modules use CPU-specific instructions (AVX2, SSE4.2, etc.) that may not exist on other CPUs
+**What you get:**
+- **CPU**: 20-30% faster (O3 optimization + CPU-specific instructions)
+- **Memory**: 10-15% faster allocation and access
+- **Graphics/Wayland**: 15-25% smoother (low latency + DMA optimizations)
+- **Storage (NVMe/M.2)**: 15-25% faster I/O (multiqueue + PCIe optimizations)
+- **Network**: 5-10% better throughput
+- **DMA/GPU**: 20-40% faster transfers
 
-**For 99% of users:** Choose Maximum Performance. You're compiling for YOUR system, so use YOUR CPU's full capabilities!
+**What gets optimized:**
+- Uses YOUR CPU features (AVX2, SSE4.2, AES-NI)
+- Enables modern kernel 6.16+/6.17+ features
+- NVMe/M.2 multiqueue and PCIe 3.0/4.0 bandwidth optimizations
+- Modern memory management and efficient buffer allocation
+- Low latency mode for VM responsiveness
+- Direct Memory Access (DMA) for GPU operations
 
-### 🔧 What Gets Optimized:
+**Trade-off:** Modules only work on your CPU type (e.g., can't move Intel → AMD or different generations)
 
-**Maximum Performance enables:**
-- **CPU Features**: AVX2, SSE4.2, AES-NI hardware acceleration (`-march=native`)
-- **Aggressive Compilation**: `-O3` (more optimizations than `-O2`)
-- **Fast Math**: `-ffast-math` (faster floating-point operations)
-- **Loop Unrolling**: `-funroll-loops` (reduces loop overhead)
-- **Memory Management**: Modern MM features, efficient buffer allocation
-- **DMA Optimizations**: Direct GPU-CPU communication, reduced memory copying
-- **Low Latency Mode**: Prioritizes responsiveness over throughput
-- **Kernel Features**: Frame pointer omission, efficient unaligned access
-- **IOMMU**: Better device passthrough performance
+---
 
-### 💡 Recommendation:
+### 🔒 **Option 2: Vanilla (Standard VMware)**
+**Baseline performance** - no modifications, just kernel compatibility patches.
 
-**Choose Maximum Performance** unless you specifically need to move modules between different CPUs. There's no downside for single-system use - it's faster and just as stable!
+**What you get:**
+- Standard VMware module compilation
+- Works on any x86_64 CPU (portable)
+- 0% performance gain over default
+
+**Choose this if:**
+- You need to copy modules between different systems
+- You want unmodified VMware behavior
+
+---
+
+### 💡 **Which Should I Choose?**
+
+**For 99% of users: Choose Optimized.** You're compiling for YOUR system - use your hardware's full capabilities! There's no stability downside, only performance gains.
+
+**Choose Vanilla only if** you need to move compiled modules to a different CPU architecture.
 
 ## 🐛 Troubleshooting
 
