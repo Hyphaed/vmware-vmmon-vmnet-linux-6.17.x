@@ -19,8 +19,9 @@ This project provides:
 1. **🐍 Interactive Python Wizard** - Beautiful terminal UI that guides you through installation
 2. **🔬 Advanced Hardware Detection** - Deep analysis of CPU, GPU, storage, virtualization features
 3. **⚡ Performance Optimizations** - 20-40% faster VMs through hardware-specific compilation
-4. **🐧 Universal Linux Support** - Works on 18+ distributions (Ubuntu, Fedora, Arch, Gentoo, etc.)
-5. **🛡️ Smart Backup System** - Hash-verified backups with automatic cleanup
+4. **✨ Wayland Fix** - Top bar hiding works perfectly (as fluid as Xorg, even better!)
+5. **🐧 Universal Linux Support** - Works on 18+ distributions (Ubuntu, Fedora, Arch, Gentoo, etc.)
+6. **🛡️ Smart Backup System** - Hash-verified backups with automatic cleanup
 
 ## 📦 Quick Install
 
