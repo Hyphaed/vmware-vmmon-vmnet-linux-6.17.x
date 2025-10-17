@@ -222,9 +222,7 @@ class SystemOptimizer:
             opts.append("   • amd_iommu=on - Enable AMD-Vi for device passthrough")
         
         opts.append("   • iommu=pt - IOMMU pass-through mode (best for VMs)")
-        opts.append("   • default_hugepagesz=1G hugepagesz=1G - 1GB huge pages")
-        opts.append(f"   • hugepages={int(self.hw_info['total_ram_gb'] * 0.25)} - Reserve 25% RAM")
-        opts.append("   • transparent_hugepage=never - Disable THP (better for VMs)")
+        opts.append("   • transparent_hugepage=madvise - THP on-demand (better for VMs)")
         
         # Kernel parameters
         opts.append("")
@@ -318,14 +316,8 @@ class SystemOptimizer:
         
         opt_params.append('iommu=pt')
         
-        # Huge pages
-        hugepages_count = int(self.hw_info['total_ram_gb'] * 0.25)
-        opt_params.extend([
-            'default_hugepagesz=1G',
-            'hugepagesz=1G',
-            f'hugepages={hugepages_count}',
-            'transparent_hugepage=never'
-        ])
+        # Transparent huge pages (on-demand, doesn't reserve RAM)
+        opt_params.append('transparent_hugepage=madvise')
         
         # Performance optimizations (removed mitigations=off for security)
         
@@ -683,7 +675,7 @@ ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
         self.ui.console.print()
         
         self.ui.console.print("[dim]To verify changes after reboot:[/dim]")
-        self.ui.console.print("  [dim]• Check huge pages: cat /proc/meminfo | grep Huge[/dim]")
+        self.ui.console.print("  [dim]• Check THP: cat /sys/kernel/mm/transparent_hugepage/enabled[/dim]")
         self.ui.console.print("  [dim]• Check IOMMU: dmesg | grep -i iommu[/dim]")
         self.ui.console.print("  [dim]• Check CPU governor: cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor[/dim]")
         self.ui.console.print()
