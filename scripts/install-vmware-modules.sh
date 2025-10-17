@@ -1510,22 +1510,33 @@ if [ -d "$LOCAL_PATCHES" ] && [ -d "$LOCAL_PATCHES/vmmon-only" ] && [ -d "$LOCAL
     mv "$PATCH_DIR/vmware-vmmon-vmnet-linux-6.16.x-source" "$PATCH_DIR/vmware-vmmon-vmnet-linux-6.16.x/modules/17.6.4/source"
     log "✓ Local patches loaded (no internet required)"
 else
-    # Fallback to GitHub download
-    PATCH_REPO="https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x"
-    info "Downloading base patches from GitHub (6.16.x)..."
-    info "Tip: Local patches available in patches/upstream/6.16.x/ for offline use"
+    # Fallback to GitHub download from our repository
+    PATCH_REPO="https://github.com/Hyphaed/vmware-vmmon-vmnet-linux-6.17.x"
+    info "Downloading base patches from GitHub (6.16.x from our repository)..."
+    info "Fetching from: patches/upstream/6.16.x/ branch"
     
-    if [ -d "vmware-vmmon-vmnet-linux-6.16.x" ]; then
-        rm -rf vmware-vmmon-vmnet-linux-6.16.x
+    if [ -d "vmware-vmmon-vmnet-linux-6.17.x-temp" ]; then
+        rm -rf vmware-vmmon-vmnet-linux-6.17.x-temp
     fi
     
-    if git clone --depth 1 "$PATCH_REPO" 2>/dev/null; then
-        log "✓ Base patches downloaded from GitHub"
+    # Clone our repository which contains the 6.16.x patches
+    if git clone --depth 1 "$PATCH_REPO" vmware-vmmon-vmnet-linux-6.17.x-temp 2>/dev/null; then
+        # Extract just the patches we need
+        if [ -d "vmware-vmmon-vmnet-linux-6.17.x-temp/patches/upstream/6.16.x" ]; then
+            mkdir -p vmware-vmmon-vmnet-linux-6.16.x/modules/17.6.4
+            cp -r vmware-vmmon-vmnet-linux-6.17.x-temp/patches/upstream/6.16.x vmware-vmmon-vmnet-linux-6.16.x/modules/17.6.4/source
+            rm -rf vmware-vmmon-vmnet-linux-6.17.x-temp
+            log "✓ Base patches downloaded from our GitHub repository"
+        else
+            error "Repository structure unexpected - patches/upstream/6.16.x/ not found"
+            exit 1
+        fi
     else
         error "Failed to download patches from GitHub and no local patches found"
         error "Please ensure:"
         error "  1. Internet connection is working, OR"
         error "  2. Local patches exist in: $SCRIPT_DIR/patches/upstream/6.16.x/"
+        error "  3. Repository is accessible: $PATCH_REPO"
         exit 1
     fi
 fi
