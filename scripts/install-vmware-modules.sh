@@ -1,16 +1,20 @@
 #!/bin/bash
 # Enhanced script to compile VMware modules for kernel 6.16.x and 6.17.x
-# Supports Ubuntu and Fedora
+# Supports Ubuntu, Fedora, and Gentoo
 # Uses specific patches according to kernel version
-# Date: 2025-10-07
+# Optional hardware-specific optimizations
+# Date: 2025-10-15
 
 set -e
 
 # Detectar automáticamente el directorio del script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="/tmp/vmware_build_$$"
-BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
 LOG_FILE="$SCRIPT_DIR/vmware_build_$(date +%Y%m%d_%H%M%S).log"
+
+# Will be set after distro detection
+BACKUP_DIR=""
+VMWARE_MOD_DIR=""
 
 # Colors
 GREEN='\033[0;32m'
@@ -40,7 +44,7 @@ cat << 'EOF'
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║     VMWARE MODULES COMPILER FOR KERNEL 6.16/6.17            ║
-║                 (Ubuntu/Fedora Compatible)                   ║
+║           (Ubuntu/Fedora/Gentoo Compatible)                  ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 EOF
@@ -104,17 +108,29 @@ info "Detected kernel: $KERNEL_VERSION"
 info "Version: $KERNEL_MAJOR.$KERNEL_MINOR"
 
 # Detect distribution
-if [ -f /etc/fedora-release ]; then
+if [ -f /etc/gentoo-release ]; then
+    DISTRO="gentoo"
+    PKG_MANAGER="emerge"
+    VMWARE_MOD_DIR="/opt/vmware/lib/vmware/modules/source"
+    BACKUP_DIR="/tmp/vmware-backup-$(date +%Y%m%d-%H%M%S)"
+    info "Distribution: Gentoo Linux"
+elif [ -f /etc/fedora-release ]; then
     DISTRO="fedora"
     PKG_MANAGER="dnf"
+    VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
+    BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
     info "Distribution: Fedora"
 elif [ -f /etc/debian_version ]; then
     DISTRO="debian"
     PKG_MANAGER="apt"
+    VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
+    BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
     info "Distribution: Debian/Ubuntu"
 else
     DISTRO="unknown"
     PKG_MANAGER="unknown"
+    VMWARE_MOD_DIR="/usr/lib/vmware/modules/source"
+    BACKUP_DIR="/usr/lib/vmware/modules/source/backup-$(date +%Y%m%d-%H%M%S)"
     warning "Unrecognized distribution"
 fi
 
@@ -140,7 +156,10 @@ if [ "$KERNEL_MAJOR" = "6" ]; then
 fi
 
 # Detect kernel compiler
-KERNEL_COMPILER=$(cat /proc/version | grep -oP '(?<=\().*?(?=\))' | head -1)
+KERNEL_COMPILER=$(cat /proc/version | grep -oP '(?<=\().*?(?=\))' | grep -Ei 'gcc|clang' | head -1)
+if [ -z "$KERNEL_COMPILER" ]; then
+    KERNEL_COMPILER=$(cat /proc/version | grep -oP '(?<=\().*?(?=\))' | head -1)
+fi
 info "Kernel compiler: $KERNEL_COMPILER"
 
 # Determine if using GCC or Clang
@@ -172,6 +191,93 @@ lsmod | grep -E "vmmon|vmnet" | sed 's/^/  /' || warning "No modules loaded"
 log "✓ System verification completed"
 
 # ============================================
+# 1.5. HARDWARE DETECTION & OPTIMIZATION
+# ============================================
+echo ""
+echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo -e "${YELLOW}HARDWARE OPTIMIZATION (OPTIONAL)${NC}"
+echo -e "${CYAN}════════════════════════════════════════${NC}"
+echo ""
+
+# Detect CPU
+CPU_MODEL=$(lscpu | grep "Model name" | cut -d: -f2 | sed 's/^[ \t]*//')
+CPU_ARCH=$(lscpu | grep "Architecture" | cut -d: -f2 | sed 's/^[ \t]*//')
+CPU_FLAGS=$(grep -m1 flags /proc/cpuinfo | cut -d: -f2)
+
+info "CPU: $CPU_MODEL"
+info "Architecture: $CPU_ARCH"
+
+# Detect available optimizations
+OPTIM_FLAGS=""
+OPTIM_DESC=""
+
+# Check for CPU features
+if echo "$CPU_FLAGS" | grep -q "avx2"; then
+    OPTIM_FLAGS="$OPTIM_FLAGS -mavx2"
+    OPTIM_DESC="$OPTIM_DESC\n  • AVX2 (Advanced Vector Extensions 2)"
+fi
+
+if echo "$CPU_FLAGS" | grep -q "sse4_2"; then
+    OPTIM_FLAGS="$OPTIM_FLAGS -msse4.2"
+    OPTIM_DESC="$OPTIM_DESC\n  • SSE4.2 (Streaming SIMD Extensions)"
+fi
+
+# Native architecture optimization
+NATIVE_OPTIM="-march=native -mtune=native"
+
+# Conservative safe flags
+SAFE_FLAGS="-O2 -pipe"
+
+if [ -n "$OPTIM_FLAGS" ]; then
+    echo -e "${GREEN}Hardware-Specific Optimizations Available:${NC}"
+    echo -e "$OPTIM_DESC"
+    echo ""
+    echo -e "${YELLOW}Optimization Options:${NC}"
+    echo ""
+    echo -e "${GREEN}  1)${NC} Native (Recommended for this CPU)"
+    echo "     Flags: $SAFE_FLAGS $NATIVE_OPTIM"
+    echo "     • Optimized specifically for your CPU architecture"
+    echo "     • Best performance for this system"
+    echo "     • Modules will only work on similar CPUs"
+    echo ""
+    echo -e "${GREEN}  2)${NC} Conservative (Safe, portable)"
+    echo "     Flags: $SAFE_FLAGS"
+    echo "     • Standard optimization level"
+    echo "     • Works on any x86_64 CPU"
+    echo "     • Slightly lower performance"
+    echo ""
+    echo -e "${GREEN}  3)${NC} No optimizations (Default kernel flags)"
+    echo "     • Uses same flags as your kernel"
+    echo "     • Safest option"
+    echo ""
+    
+    read -p "Select optimization level (1=Native / 2=Conservative / 3=None) [3]: " OPTIM_CHOICE
+    OPTIM_CHOICE=${OPTIM_CHOICE:-3}
+    
+    case $OPTIM_CHOICE in
+        1)
+            EXTRA_CFLAGS="$SAFE_FLAGS $NATIVE_OPTIM"
+            info "Selected: Native optimization for $CPU_MODEL"
+            echo -e "${YELLOW}Note:${NC} Modules compiled with these flags may not work on different CPUs"
+            ;;
+        2)
+            EXTRA_CFLAGS="$SAFE_FLAGS"
+            info "Selected: Conservative optimization (portable)"
+            ;;
+        3|*)
+            EXTRA_CFLAGS=""
+            info "Selected: No additional optimizations (kernel defaults)"
+            ;;
+    esac
+else
+    warning "No specific CPU optimizations detected"
+    EXTRA_CFLAGS=""
+fi
+
+echo ""
+log "✓ Hardware detection completed"
+
+# ============================================
 # 2. INSTALL DEPENDENCIES
 # ============================================
 log "2. Verifying dependencies..."
@@ -200,6 +306,13 @@ elif [ "$DISTRO" = "debian" ]; then
     # Build tools
     info "Verifying build tools..."
     sudo apt install -y build-essential git wget tar
+
+elif [ "$DISTRO" = "gentoo" ]; then
+    if [ ! -d "/usr/src/linux-$KERNEL_VERSION" ] && [ ! -d "/usr/src/linux" ]; then
+        warning "Kernel sources not found"
+        info "Gentoo users: ensure kernel sources are installed"
+    fi
+    log "✓ Gentoo: Assuming build tools are available"
 fi
 
 log "✓ Build tools verified"
@@ -222,18 +335,18 @@ log "✓ Directory prepared"
 log "4. Extracting original VMware modules..."
 
 # Backup current modules
-if [ -f "/usr/lib/vmware/modules/source/vmmon.tar" ]; then
+if [ -f "$VMWARE_MOD_DIR/vmmon.tar" ]; then
     info "Creating backup of current modules..."
     sudo mkdir -p "$BACKUP_DIR"
-    sudo cp /usr/lib/vmware/modules/source/vmmon.tar "$BACKUP_DIR/" 2>/dev/null || true
-    sudo cp /usr/lib/vmware/modules/source/vmnet.tar "$BACKUP_DIR/" 2>/dev/null || true
+    sudo cp "$VMWARE_MOD_DIR/vmmon.tar" "$BACKUP_DIR/" 2>/dev/null || true
+    sudo cp "$VMWARE_MOD_DIR/vmnet.tar" "$BACKUP_DIR/" 2>/dev/null || true
     info "Backup saved to: $BACKUP_DIR"
 fi
 
 # Extract modules in current working directory
 info "Extracting vmmon.tar..."
-if [ ! -f "/usr/lib/vmware/modules/source/vmmon.tar" ]; then
-    error "vmmon.tar not found at /usr/lib/vmware/modules/source/vmmon.tar"
+if [ ! -f "$VMWARE_MOD_DIR/vmmon.tar" ]; then
+    error "vmmon.tar not found at $VMWARE_MOD_DIR/vmmon.tar"
     error "Please verify VMware Workstation is properly installed"
     echo ""
     warning "POSSIBLE CAUSES:"
@@ -252,7 +365,7 @@ if [ ! -f "/usr/lib/vmware/modules/source/vmmon.tar" ]; then
     exit 1
 fi
 
-if ! tar -xf /usr/lib/vmware/modules/source/vmmon.tar 2>&1 | tee -a "$LOG_FILE"; then
+if ! tar -xf "$VMWARE_MOD_DIR/vmmon.tar" 2>&1 | tee -a "$LOG_FILE"; then
     error "Failed to extract vmmon.tar"
     error "The tar file is corrupted or inaccessible"
     echo ""
@@ -274,8 +387,8 @@ if ! tar -xf /usr/lib/vmware/modules/source/vmmon.tar 2>&1 | tee -a "$LOG_FILE";
 fi
 
 info "Extracting vmnet.tar..."
-if [ ! -f "/usr/lib/vmware/modules/source/vmnet.tar" ]; then
-    error "vmnet.tar not found at /usr/lib/vmware/modules/source/vmnet.tar"
+if [ ! -f "$VMWARE_MOD_DIR/vmnet.tar" ]; then
+    error "vmnet.tar not found at $VMWARE_MOD_DIR/vmnet.tar"
     error "Please verify VMware Workstation is properly installed"
     echo ""
     warning "POSSIBLE CAUSES:"
@@ -294,7 +407,7 @@ if [ ! -f "/usr/lib/vmware/modules/source/vmnet.tar" ]; then
     exit 1
 fi
 
-if ! tar -xf /usr/lib/vmware/modules/source/vmnet.tar 2>&1 | tee -a "$LOG_FILE"; then
+if ! tar -xf "$VMWARE_MOD_DIR/vmnet.tar" 2>&1 | tee -a "$LOG_FILE"; then
     error "Failed to extract vmnet.tar"
     error "The tar file is corrupted or inaccessible"
     echo ""
@@ -534,6 +647,13 @@ log "9. Compiling modules..."
 # Configure compilation variables
 if [ "$DISTRO" = "fedora" ]; then
     export KERNEL_DIR="/usr/src/kernels/$KERNEL_VERSION"
+elif [ "$DISTRO" = "gentoo" ]; then
+    # Try versioned kernel directory first, fallback to /usr/src/linux
+    if [ -d "/usr/src/linux-$KERNEL_VERSION" ]; then
+        export KERNEL_DIR="/usr/src/linux-$KERNEL_VERSION"
+    else
+        export KERNEL_DIR="/usr/src/linux"
+    fi
 else
     export KERNEL_DIR="/lib/modules/$KERNEL_VERSION/build"
 fi
@@ -547,6 +667,13 @@ else
     export CC=gcc
     export LD=ld
     info "Using toolchain: GCC/GNU"
+fi
+
+# Apply optimization flags if selected
+if [ -n "$EXTRA_CFLAGS" ]; then
+    export CFLAGS_EXTRA="$EXTRA_CFLAGS"
+    export CFLAGS="$EXTRA_CFLAGS"
+    info "Applying optimization flags: $EXTRA_CFLAGS"
 fi
 
 # Compile vmmon
@@ -637,6 +764,16 @@ log "✓ Modules installed and loaded"
 # ============================================
 # 11. CREATE TARBALL FOR VMWARE
 # ============================================
+
+# Skip tarball creation for Gentoo (modules already installed)
+if [ "$DISTRO" = "gentoo" ]; then
+    log "11. Gentoo detected - skipping tarball creation"
+    info "Modules have been installed directly to /lib/modules"
+    echo ""
+    log "✓ Gentoo installation completed successfully!"
+    exit 0
+fi
+
 log "11. Creating tarballs for VMware..."
 
 cd "$WORK_DIR"
@@ -667,8 +804,8 @@ tar -cf vmnet.tar vmnet-only
 
 # Copy to VMware directory
 info "Installing tarballs to VMware..."
-sudo cp vmmon.tar /usr/lib/vmware/modules/source/
-sudo cp vmnet.tar /usr/lib/vmware/modules/source/
+sudo cp vmmon.tar "$VMWARE_MOD_DIR/"
+sudo cp vmnet.tar "$VMWARE_MOD_DIR/"
 
 log "✓ Tarballs installed (cleaned source code only)"
 
