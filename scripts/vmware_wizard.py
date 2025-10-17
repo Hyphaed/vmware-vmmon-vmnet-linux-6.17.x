@@ -627,7 +627,13 @@ class VMwareWizard:
         if self.optimization_mode == "optimized" and self.hw_capabilities:
             flags = self.hw_capabilities.get('compilation_flags', {})
             if flags.get('make_flags'):
-                summary.add_row("Make flags", flags['make_flags'])
+                # Convert dict to string format
+                make_flags_dict = flags['make_flags']
+                if isinstance(make_flags_dict, dict):
+                    make_flags_str = " ".join(f"{k}={v}" for k, v in make_flags_dict.items())
+                else:
+                    make_flags_str = str(make_flags_dict)
+                summary.add_row("Make flags", make_flags_str)
         
         self.console.print(summary)
         self.console.print()

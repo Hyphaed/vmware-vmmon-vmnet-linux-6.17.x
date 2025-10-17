@@ -126,7 +126,14 @@ else
     # Check for Python 3
     if command -v python3 &>/dev/null; then
         # Determine which Python to use (prefer conda environment)
-        MINIFORGE_DIR="$HOME/.miniforge3"
+        # Use actual user's home when running with sudo
+        if [ -n "$SUDO_USER" ]; then
+            ACTUAL_HOME=$(eval echo ~$SUDO_USER)
+        else
+            ACTUAL_HOME="$HOME"
+        fi
+        
+        MINIFORGE_DIR="$ACTUAL_HOME/.miniforge3"
         ENV_NAME="vmware-optimizer"
         
         # Check if miniforge and environment exist
@@ -653,7 +660,15 @@ PYTHON_DETECTOR="$SCRIPT_DIR/detect_hardware.py"
 PYTHON_ENV_SETUP="$SCRIPT_DIR/setup_python_env.sh"
 PYTHON_ENV_ACTIVATE="$SCRIPT_DIR/activate_optimizer_env.sh"
 USE_PYTHON_DETECTION=false
-MINIFORGE_DIR="$HOME/.miniforge3"
+
+# Use actual user's home when running with sudo (same as wizard section)
+if [ -n "$SUDO_USER" ]; then
+    ACTUAL_HOME=$(eval echo ~$SUDO_USER)
+else
+    ACTUAL_HOME="$HOME"
+fi
+
+MINIFORGE_DIR="$ACTUAL_HOME/.miniforge3"
 ENV_NAME="vmware-optimizer"
 
 if [ -f "$PYTHON_DETECTOR" ]; then
