@@ -94,9 +94,8 @@ Then **auto-generates optimal compilation flags** for your hardware!
 
 ### 🛡️ **Safety Features**
 - **Smart backup management:** Hash-verified backup system with clean extraction
-  - **Oldest backup = Original factory modules:** First backup always preserved
-  - **Clean source guarantee:** Patches always applied to backup copy (never to dirty system modules)
-  - **Hash verification:** Confirms module integrity before use
+- **Clean source guarantee:** Patches always applied to backup copy (never to dirty system modules)
+- **Hash verification:** Confirms module integrity before use
 - **VMware process detection:** Prevents installation conflicts
 - **Automatic initramfs update:** Ensures modules load on boot
 - **Comprehensive testing:** Verifies everything works after installation
