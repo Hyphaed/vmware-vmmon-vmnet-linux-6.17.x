@@ -235,10 +235,17 @@ class VMwareWizard:
         self.console.print()
         self.console.print("[dim]Enter comma-separated numbers (e.g., '1,2') or 'all'[/dim]")
         
+        # Find current kernel index for default
+        current_idx = "1"
+        for idx, kernel in enumerate(supported_kernels, 1):
+            if kernel.is_current and kernel.headers_installed:
+                current_idx = str(idx)
+                break
+        
         while True:
             choice = Prompt.ask(
                 f"[{HYPHAED_GREEN}]Select kernel(s)[/{HYPHAED_GREEN}]",
-                default=str(len(supported_kernels) + 1)
+                default=current_idx
             )
             
             selected_kernels = []
