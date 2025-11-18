@@ -62,7 +62,6 @@ class VMwareWizard:
             
             # Parse version
             try:
-                #version_parts = full_version.split('-')[0].split('.')
                 ver = semver.Version.parse(full_version)
                 major = int(ver.major)
                 minor = int(ver.minor) if len(str(ver.minor)) > 1 else 0
