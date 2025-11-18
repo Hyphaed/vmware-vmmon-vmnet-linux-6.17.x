@@ -22,7 +22,7 @@ This project provides:
 3. **⚡ Performance Optimizations** - 20-35% faster VMs through hardware-specific compilation
 4. **✨ Better Wayland Support** - Top bar hiding works ~90% of the time (includes automatic race condition fix)
 5. **🎯 System Optimizer** - Automatically tune GRUB, kernel parameters, CPU governor, I/O scheduler for VMware
-6. **🐧 Universal Linux Support** - Works on 18+ distributions (Ubuntu, Fedora, Arch, Gentoo, etc.)
+6. **🐧 Universal Linux Support** - Works on 18+ distributions (Ubuntu, Fedora, Arch, Gentoo, Debian etc.)
 7. **🛡️ Smart Backup System** - Hash-verified backups with automatic cleanup
 
 ## 📦 Quick Install
