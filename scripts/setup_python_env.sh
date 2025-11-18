@@ -104,7 +104,8 @@ mamba install -y \
     pyyaml \
     click \
     rich \
-    tabulate
+    tabulate \
+    semver
 
 # Hardware detection packages
 pip install --upgrade \

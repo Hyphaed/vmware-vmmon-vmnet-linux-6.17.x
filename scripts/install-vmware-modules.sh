@@ -1,9 +1,9 @@
 #!/bin/bash
 # Enhanced script to compile VMware modules for kernel 6.16.x and 6.17.x
-# Supports Ubuntu, Fedora, and Gentoo
+# Supports Ubuntu, Fedora, Gentoo and Debian
 # Uses specific patches according to kernel version
 # Optional hardware-specific optimizations
-# Date: 2025-10-15
+# Date: 2025-11-18
 
 set -e
 
