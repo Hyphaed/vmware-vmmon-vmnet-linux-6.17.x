@@ -61,7 +61,7 @@ class VMwareWizard:
             
             # Parse version
             try:
-                version_parts = full_version.split('-')[0].split('.')
+                version_parts = full_version.split("-")[0].split("+")[0].split(".")
                 major = int(version_parts[0])
                 minor = int(version_parts[1]) if len(version_parts) > 1 else 0
                 patch = int(version_parts[2]) if len(version_parts) > 2 else 0
