@@ -91,7 +91,7 @@ echo -e "${HYPHAED_GREEN}══════════════════�
 echo ""
 echo "This script will:"
 echo -e "  1. ${HYPHAED_GREEN}Launch interactive Python wizard${NC} (with beautiful TUI)"
-echo "  2. Detect all installed kernels (6.16.x and 6.17.x)"
+echo "  2. Detect all installed kernels (6.16.x, 6.17.x, 6.18.x or 6.19.x)"
 echo "  3. Analyze your hardware with Python detection engine"
 echo "  4. Let you choose: Optimized (20-35% faster + better Wayland) or Vanilla (portable)"
 echo "  5. Automatically rebuild modules for selected kernel(s)"
