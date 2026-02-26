@@ -1,9 +1,9 @@
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
-[![Kernel](https://img.shields.io/badge/Kernel-6.16.x%20%7C%206.17.x%20%7C%206.18.x-orange.svg)](https://kernel.org/)
+[![Kernel](https://img.shields.io/badge/Kernel-6.16.x%20|%206.17.x%20|%206.18.x|%206.19.x-orange.svg)](https://kernel.org/)
 [![VMware](https://img.shields.io/badge/VMware-17.6.4-green.svg)](https://www.vmware.com/)
 [![Gentoo](https://img.shields.io/badge/Gentoo-Supported-purple.svg)](https://www.gentoo.org/)
 
-### ⚡ VMware Workstation Modules for Linux Kernel 6.16.x, 6.17.x & 6.18.x
+### ⚡ VMware Workstation Modules for Linux Kernel 6.16.x, 6.17.x, 6.18.x & 6.19.x
 ### 🐍 **Interactive Python Wizard** that guides you through installation
 ### 🚀 **Enjoy 20-35% faster VMware performance**
 ### ✨ **Better Wayland integration - top bar hiding works ~90% of the time**
@@ -48,7 +48,7 @@ sudo ./scripts/install-vmware-modules.sh
 
 ### 🐍 **Interactive Python Wizard**
 - **Beautiful terminal UI** using Rich library
-- **Auto-detects all installed kernels** (6.16.x, 6.17.x & 6.18.x)
+- **Auto-detects all installed kernels** (6.16.x, 6.17.x, 6.18.x & 6.19.x)
 - **Smart defaults:** Current kernel + Optimized mode
 - Multi-kernel selection or "all at once"
 - **All interaction in unified Python UI** - no more bash prompts!
@@ -111,7 +111,7 @@ Then **auto-generates optimal compilation flags** for your hardware!
 
 ### ⚙️ **Smart Patching**
 - **Dual kernel support:** 6.16.x and 6.17.x with appropriate patches
-- **Objtool auto-detection:** Applies objtool patches when needed (6.16.3+ / 6.17.x / 6.18.x)
+- **Objtool auto-detection:** Applies objtool patches when needed (6.16.3+ / 6.17.x / 6.18.x / 6.19.x)
 - **Compiler detection:** Works with GCC or Clang toolchains
 - **VMware 17.5.x & 17.6.x compatible**
 

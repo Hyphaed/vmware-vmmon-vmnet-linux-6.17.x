@@ -70,7 +70,7 @@ class VMwareWizard:
                 continue
             
             # Check if supported (6.16 or 6.17)
-            supported = (major == 6 and minor in [16, 17, 18])
+            supported = (major == 6 and minor in [16, 17, 18,19])
             
             # Check for headers
             headers_path = kernel_dir / "build"
@@ -188,7 +188,7 @@ class VMwareWizard:
             # Welcome banner
             self.ui.show_banner(
                 "VMware Module Installation Wizard",
-                "Automated Kernel Module Compilation for Linux 6.16/6.17/6.18",
+                "Automated Kernel Module Compilation for Linux 6.16/6.17/6.18/6.19",
                 icon="⚙️"
             )
             
@@ -218,7 +218,7 @@ class VMwareWizard:
             supported_kernels = [k for k in self.detected_kernels if k.supported and k.headers_installed]
             
             if not supported_kernels:
-                self.ui.show_error("No supported kernels (6.16.x, 6.17.x or 6.18.x) with headers found!")
+                self.ui.show_error("No supported kernels (6.16.x, 6.17.x, 6.18.x or 6.19.x) with headers found!")
                 self.ui.show_info("Please install kernel headers: sudo apt install linux-headers-$(uname -r)")
                 return 1
             

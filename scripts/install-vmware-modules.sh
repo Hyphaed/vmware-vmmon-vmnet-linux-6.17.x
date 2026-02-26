@@ -144,7 +144,7 @@ trap cleanup_on_error ERR
 
 echo -e "${HYPHAED_GREEN}$(draw_box_top)${NC}"
 echo -e "${HYPHAED_GREEN}$(draw_box_line "")${NC}"
-echo -e "${HYPHAED_GREEN}$(draw_box_line "VMWARE MODULES COMPILER FOR KERNEL 6.16/6.17/6.18")${NC}"
+echo -e "${HYPHAED_GREEN}$(draw_box_line "VMWARE MODULES COMPILER FOR KERNEL 6.16/6.17/6.18/6.19")${NC}"
 echo -e "${HYPHAED_GREEN}$(draw_box_line "(Multi-Distribution Linux Compatible)")${NC}"
 echo -e "${HYPHAED_GREEN}$(draw_box_line "")${NC}"
 echo -e "${HYPHAED_GREEN}$(draw_box_bottom)${NC}"
@@ -345,6 +345,8 @@ else
                         TARGET_KERNEL="6.17"
 					elif [ "$FIRST_KERNEL_MINOR" = "18" ]; then
                         TARGET_KERNEL="6.18"
+                    elif [ "$FIRST_KERNEL_MINOR" = "19" ]; then
+                        TARGET_KERNEL="6.19"
                     else
                         error "Unsupported kernel minor version: $FIRST_KERNEL_MINOR"
                         warning "Falling back to legacy installation mode..."
@@ -521,8 +523,13 @@ while true; do
             info "Selected: Kernel 6.18.x"
             break
             ;;
+        4)
+            TARGET_KERNEL="6.19"
+            info "Selected: Kernel 6.19.x"
+            break
+            ;;
         *)
-            warning "Invalid option. Please select 1,2 or 3."
+            warning "Invalid option. Please select 1,2, 3 or 4."
             ;;
     esac
 done
