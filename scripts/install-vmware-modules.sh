@@ -1,9 +1,9 @@
 #!/bin/bash
-# Enhanced script to compile VMware modules for kernel 6.16.x and 6.17.x
+# Enhanced script to compile VMware modules for kernel 6.16.x, 6.17.x, 6.18.x and 6.19.x
 # Supports Ubuntu, Fedora, Gentoo and Debian
 # Uses specific patches according to kernel version
 # Optional hardware-specific optimizations
-# Date: 2025-11-18
+# Date: 2026-03-19
 
 set -e
 
@@ -84,7 +84,7 @@ draw_box_line() {
     local text_len=${#text}
     local padding=$(( (width - text_len - 2) / 2 ))
     local right_padding=$(( width - text_len - padding - 2 ))
-    
+
     echo -n "│"
     printf ' %.0s' $(seq 1 $padding)
     echo -n "$text"
@@ -144,7 +144,7 @@ trap cleanup_on_error ERR
 
 echo -e "${HYPHAED_GREEN}$(draw_box_top)${NC}"
 echo -e "${HYPHAED_GREEN}$(draw_box_line "")${NC}"
-echo -e "${HYPHAED_GREEN}$(draw_box_line "VMWARE MODULES COMPILER FOR KERNEL 6.16/6.17")${NC}"
+echo -e "${HYPHAED_GREEN}$(draw_box_line "VMWARE MODULES COMPILER FOR KERNEL 6.16/6.17/6.18/6.19")${NC}"
 echo -e "${HYPHAED_GREEN}$(draw_box_line "(Multi-Distribution Linux Compatible)")${NC}"
 echo -e "${HYPHAED_GREEN}$(draw_box_line "")${NC}"
 echo -e "${HYPHAED_GREEN}$(draw_box_bottom)${NC}"
@@ -343,6 +343,10 @@ else
                         TARGET_KERNEL="6.16"
                     elif [ "$FIRST_KERNEL_MINOR" = "17" ]; then
                         TARGET_KERNEL="6.17"
+		            elif [ "$FIRST_KERNEL_MINOR" = "18" ]; then
+                        TARGET_KERNEL="6.18"
+                    elif [ "$FIRST_KERNEL_MINOR" = "19" ]; then
+                        TARGET_KERNEL="6.19"
                     else
                         error "Unsupported kernel minor version: $FIRST_KERNEL_MINOR"
                         warning "Falling back to legacy installation mode..."
@@ -493,6 +497,10 @@ echo -e "${GREEN}  2)${NC} Kernel 6.17.x"
 echo "     • Uses patches from 6.16.x + additional objtool patches"
 echo "     • Additional patches: OBJECT_FILES_NON_STANDARD, returns in void functions"
 echo ""
+echo -e "${GREEN}  2)${NC} Kernel 6.18.x"
+echo "     • Uses patches from 6.16.x + additional objtool patches"
+echo "     • Additional patches: OBJECT_FILES_NON_STANDARD, returns in void functions"
+echo ""
 echo -e "${BLUE}Kernel detected on your system:${NC} $(uname -r)"
 echo ""
 
@@ -510,8 +518,18 @@ while true; do
             info "Selected: Kernel 6.17.x"
             break
             ;;
+	    3)
+            TARGET_KERNEL="6.18"
+            info "Selected: Kernel 6.18.x"
+            break
+            ;;
+        4)
+            TARGET_KERNEL="6.19"
+            info "Selected: Kernel 6.19.x"
+            break
+            ;;
         *)
-            warning "Invalid option. Please select 1 or 2."
+            warning "Invalid option. Please select 1,2,3 or 4."
             ;;
     esac
 done
