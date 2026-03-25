@@ -21,3 +21,7 @@ scripts/*.log.*
 
 # System-specific utility scripts (not for distribution)
 scripts/disable-ollama.sh
+
+# ignore the python cache
+scripts/__pycache__/
+
