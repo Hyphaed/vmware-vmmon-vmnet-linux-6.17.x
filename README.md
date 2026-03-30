@@ -13,9 +13,7 @@
 ---
 
 <div align="center">
-
-[![Sponsor](https://img.shields.io/badge/Sponsor_this_project-❤️-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/Hyphaed)
-
+[![Sponsor](https://img.shields.io/badge/Sponsor_this_project-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/Hyphaed)
 </div>
 
 ## 😤 Sound familiar?
