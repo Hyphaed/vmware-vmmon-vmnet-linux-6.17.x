@@ -14,7 +14,7 @@
 
 <div align="center">
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/nvidia_greenboost)
+[![Contributors](https://contrib.rocks/image?repo=Hyphaed/vmware-vmmon-vmnet-linux-6.17.x)](https://github.com/Hyphaed/vmware-vmmon-vmnet-linux-6.17.x/graphs/contributors)
 
 </div>
 
