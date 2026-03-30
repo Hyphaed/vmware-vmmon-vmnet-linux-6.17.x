@@ -14,7 +14,7 @@
 
 <div align="center">
 
-[![Contributors](https://contrib.rocks/image?repo=Hyphaed/vmware-vmmon-vmnet-linux-6.17.x)](https://github.com/Hyphaed/vmware-vmmon-vmnet-linux-6.17.x/graphs/contributors)
+[![Sponsor](https://img.shields.io/badge/Sponsor_this_project-❤️-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/Hyphaed)
 
 </div>
 
