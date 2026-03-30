@@ -1,0 +1,33 @@
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026 Ferran Duarri
+
+Subject: [PATCH AP-07] vmmon: add task->__state compat guard in hostif.c (kernel >= 5.14)
+
+Linux 5.14 renamed task->state to task->__state and required direct reads
+to use READ_ONCE(). VMware's hostif.c reads task state; without a version
+guard, this causes a build error on kernel >= 5.14.
+
+The fix adds a get_task_state() macro that selects the correct field name
+and access method based on the kernel version. This guard is already present
+in the community 6.16.x overlay and in VMware 25H2u1 sources — this patch
+applies only when the guard is absent.
+
+Applied by: _autopatch_hostif_task_state() in vmware_module_builder.py
+Condition:  source does NOT already have the get_task_state compat guard
+
+---
+ vmmon-only/linux/hostif.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/vmmon-only/linux/hostif.c b/vmmon-only/linux/hostif.c
+--- a/vmmon-only/linux/hostif.c
++++ b/vmmon-only/linux/hostif.c
+@@ -<N>+<N>,7 @@
+ #include "hostif.h"
++
++/* [autopatch] kernel 5.14+ renamed task->state to task->__state */
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0) || defined(get_current_state)
++#define get_task_state(task) READ_ONCE((task)->__state)
++#else
++#define get_task_state(task) ((task)->state)
++#endif

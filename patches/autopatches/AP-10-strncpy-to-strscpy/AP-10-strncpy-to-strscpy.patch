@@ -1,0 +1,38 @@
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026 Ferran Duarri
+
+Subject: [PATCH AP-10] vmmon/vmnet: replace strncpy with strscpy (kernel >= 6.8)
+
+Linux 6.8 added deprecation warnings for strncpy() under W=1 (and the kernel
+now defaults to enabling these warnings during module builds). While not an
+immediate build error, strncpy() deprecation warnings clutter the build output
+and may become errors in future kernels.
+
+strscpy() is a safe drop-in replacement for the common usage pattern of
+strncpy(dst, src, sizeof(dst)): it copies at most N-1 bytes, guarantees
+NUL-termination, and does not pad the remainder of the destination buffer
+(unlike strncpy). This makes strscpy() strictly better for kernel module code.
+
+The script scans all .c files in vmmon-only/ and vmnet-only/ for strncpy()
+calls and replaces them with strscpy(). This patch shows the affected file
+found in the community 6.16.x overlay:
+
+  vmnet-only/vnet.h:354  strncpy(info.ctl_name, ...) → strscpy(...)
+
+Applied by: _autopatch_strncpy_to_strscpy() in vmware_module_builder.py
+Condition:  kernel >= 6.8
+
+---
+ vmnet-only/vnet.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/vmnet-only/vnet.h b/vmnet-only/vnet.h
+--- a/vmnet-only/vnet.h
++++ b/vmnet-only/vnet.h
+@@ -351,7 +351,7 @@ vnet_log_ctlinfo(const char *prefix, const VNetPort *port)
+    VNetPortInterface info;
+    VNetPort_GetPortInterface(port, &info);
+    LOG(4, (KERN_DEBUG "%s: name=%s flags=0x%x bridge=%d\n", prefix, info.name, info.flags, info.bridge));
+-   strncpy(info.ctl_name, VMNET_KEXT_NAME, sizeof info.ctl_name);
++   strscpy(info.ctl_name, VMNET_KEXT_NAME, sizeof info.ctl_name);
+    info.id = port->id;

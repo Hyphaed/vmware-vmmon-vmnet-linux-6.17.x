@@ -1,0 +1,45 @@
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026 Ferran Duarri
+
+Subject: [PATCH AP-03] vmnet: fix netif_napi_add 4-arg -> 3-arg for kernel >= 6.1
+
+Linux 6.1 removed the `weight` parameter from netif_napi_add(), making it a
+3-argument function. VMware's compat_netdevice.h still wraps it with 4
+arguments via compat_netif_napi_add(dev, napi, poll, quota). On kernel 6.1+
+this causes a compile error:
+
+  error: too many arguments to function 'netif_napi_add'
+
+The fix appends a LINUX_VERSION_CODE >= 6.1.0 guard that undefines the
+existing 4-arg macro and redefines it as a 3-arg call, dropping the quota
+(weight) parameter which the kernel now ignores entirely.
+
+Source note: VMware Workstation Pro 25H2u1 vmnet-only/compat_netdevice.h is
+a simplified file (80 lines) compared to the community 6.16.x overlay. It
+still defines compat_netif_napi_add as a 4-arg macro (line 45), so this patch
+applies to both source variants. The diff context below targets 25H2u1 sources.
+
+Applied by: _autopatch_napi_add_compat() in vmware_module_builder.py
+Condition:  source has old 4-arg compat_netif_napi_add AND not already fixed
+
+---
+ vmnet-only/compat_netdevice.h | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/vmnet-only/compat_netdevice.h b/vmnet-only/compat_netdevice.h
+--- a/vmnet-only/compat_netdevice.h
++++ b/vmnet-only/compat_netdevice.h
+@@ -76,4 +76,14 @@
+ #define compat_netif_trans_update(d) do { (d)->trans_start = jiffies; } while (0)
+ #endif
+ 
++/* [autopatch] kernel 6.1+ dropped the weight param from netif_napi_add */
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
++#  ifdef compat_netif_napi_add
++#    undef compat_netif_napi_add
++#  endif
++#  define compat_netif_napi_add(dev, napi, poll, quota) \
++       netif_napi_add((dev), (napi), (poll))
++#endif
++
+ #endif /* __COMPAT_NETDEVICE_H__ */

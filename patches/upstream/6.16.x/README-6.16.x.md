@@ -1,10 +1,19 @@
-# VMware Workstation 17.6.4 - Linux Kernel 6.16.x Compatibility Fixes
+# Community VMware Kernel 6.16.x Patches — Pre-VMware 25H2u1 Source
 
 ![VMware](https://img.shields.io/badge/VMware-Workstation_17.6.4-blue)
 ![Kernel](https://img.shields.io/badge/Linux_Kernel-6.16.x-green)
 ![Status](https://img.shields.io/badge/Status-✅_WORKING-success)
 
-This repository contains **fully patched and working** VMware host modules with all necessary fixes applied to make VMware Workstation 17.6.4 compatible with Linux kernel 6.16.x and potentially newer kernels.
+> **VMware Workstation Pro 25H2u1 users:** This source tree targets VMware
+> **17.6.4**, which was released **before VMware Workstation Pro 25H2u1**.
+> VMware 25H2u1 ships these same fixes natively in its own tarballs.
+> `vmware_module_builder.py` automatically detects 25H2u1 and skips this
+> overlay. It is kept here as a fallback for older VMware 17.6.x installs.
+
+This directory contains **fully patched and working** VMware host modules
+(community source) with all necessary fixes applied to make VMware Workstation
+17.6.4 compatible with Linux kernel 6.16.x and potentially newer kernels.
+Source: [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x).
 
 ### **Fixed Issues:**
 

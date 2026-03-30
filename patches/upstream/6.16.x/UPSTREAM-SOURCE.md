@@ -1,9 +1,18 @@
-# Upstream Source: VMware Kernel 6.16.x Patches
+# Upstream Source: Community VMware Kernel 6.16.x Patches (Pre-25H2u1)
+
+> **IMPORTANT — VMware Workstation Pro 25H2u1 users:**
+> VMware 25H2u1 ships its own tarballs with these fixes already applied
+> (`ccflags-y`, `timer_delete_sync`, `module_init`, etc.).
+> `vmware_module_builder.py` **automatically detects this and skips this
+> overlay entirely** when 25H2u1 sources are present.
+> This directory is retained only as a fallback for older VMware 17.6.x
+> installations that predate 25H2u1.
 
 ## Original Repository
 
 **Source**: [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x)  
 **Forked from**: [64kramsystem/vmware-host-modules-fork](https://github.com/64kramsystem/vmware-host-modules-fork)  
+**Targets**: VMware Workstation **17.6.4** (released **before** VMware Workstation Pro 25H2u1)  
 **License**: GPL-2.0  
 **Copied on**: 2025-10-17  
 **Purpose**: Local backup to ensure script continues working if upstream repository becomes unavailable
@@ -117,5 +126,6 @@ diff -r patches/upstream/6.16.x/ /tmp/verify/modules/17.6.4/source/
 
 **Last Updated**: 2025-10-17  
 **Upstream Commit**: Latest from master branch  
-**Status**: ✅ Verified working on Ubuntu 25.10 + Kernel 6.17.0-5-generic
+**Status**: ✅ Verified working on Ubuntu 25.10 + Kernel 6.17.0-5-generic with VMware 17.6.4  
+**Note**: For VMware Workstation Pro 25H2u1, this overlay is auto-skipped — 25H2u1 ships equivalent fixes natively.
 

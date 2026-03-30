@@ -1,0 +1,33 @@
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026 Ferran Duarri
+
+Subject: [PATCH AP-12] vmmon: add MODULE_IMPORT_NS for symbol namespace (kernel >= 5.15)
+
+Linux 5.15 introduced symbol namespaces for kernel-exported symbols. When a
+kernel is built with CONFIG_MODULE_ALLOW_MISSING_NAMESPACE_IMPORTS=n (the
+stricter setting), modules that use symbols from a namespace must declare
+MODULE_IMPORT_NS() or they will fail to load with a taint or outright refusal.
+
+This is distribution-specific: most distros do not enforce strict namespace
+imports for external modules, but some (especially those with hardened
+configurations) do.
+
+The fix adds MODULE_IMPORT_NS("VMWCORE") before the existing MODULE_LICENSE()
+line in vmmon's driver.c. The script applies this patch only when the kernel
+headers indicate that symbol namespaces are in use (heuristic: EXPORT_SYMBOL_NS
+present in kernel include tree).
+
+Applied by: _autopatch_module_import_ns() in vmware_module_builder.py
+Condition:  kernel >= 5.15 AND kernel uses symbol namespaces
+
+---
+ vmmon-only/linux/driver.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/vmmon-only/linux/driver.c b/vmmon-only/linux/driver.c
+--- a/vmmon-only/linux/driver.c
++++ b/vmmon-only/linux/driver.c
+@@ -1422,6 +1422,7 @@ MODULE_AUTHOR("VMware, Inc.");
+ MODULE_DESCRIPTION("VMware Virtual Machine Monitor.");
++MODULE_IMPORT_NS("VMWCORE");
+ MODULE_LICENSE("GPL v2");

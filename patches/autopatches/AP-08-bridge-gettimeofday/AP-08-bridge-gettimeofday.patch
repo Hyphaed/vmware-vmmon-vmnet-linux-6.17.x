@@ -1,0 +1,73 @@
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026 Ferran Duarri
+
+Subject: [PATCH AP-08] vmnet: replace do_gettimeofday with ktime_get_real_ts64 (kernel >= 5.0)
+
+do_gettimeofday() was removed in Linux 5.0. vmnet's bridge.c calls it in
+debug-logging code paths (inside #if LOGLEVEL >= 4 blocks) to timestamp
+bridge events.
+
+The fix wraps all three affected sites with LINUX_VERSION_CODE guards:
+- The static `struct timeval vnetTime` variable is conditionalized to use
+  `struct timespec64` on kernel >= 5.0
+- The two `do_gettimeofday()` call sites are replaced with `ktime_get_real_ts64()`
+  on kernel >= 5.0
+
+Note: These code paths are only active when LOGLEVEL >= 4, which is not set
+in normal builds. However, the fix ensures the code compiles cleanly even
+if someone enables debug logging.
+
+Source note: In VMware Workstation Pro 25H2u1, the static vnetTime declaration
+is wrapped inside an existing '#if LOGLEVEL >= 4 ... #endif' block (lines ~73-75
+of vmnet-only/bridge.c). The patch therefore replaces the entire LOGLEVEL guard
+block with a nested LINUX_VERSION_CODE guard inside it, rather than replacing
+just the bare declaration. For the older 6.16.x community overlay the declaration
+is not wrapped and the replacement targets the bare line directly.
+
+Applied by: _autopatch_bridge_gettimeofday() in vmware_module_builder.py
+Condition:  source contains do_gettimeofday AND not already guarded AND kernel >= 5.0
+
+---
+ vmnet-only/bridge.c | 28 +++++++++++++++++++-------
+ 1 file changed, 21 insertions(+), 7 deletions(-)
+
+diff --git a/vmnet-only/bridge.c b/vmnet-only/bridge.c
+--- a/vmnet-only/bridge.c
++++ b/vmnet-only/bridge.c
+@@ -71,8 +71,14 @@ static int         vnetBridgeFakeEthEncap = 0;
+ #endif
+ 
+-#if LOGLEVEL >= 4
+-static struct timeval vnetTime;
+-#endif
++#if LOGLEVEL >= 4
++#  if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
++static struct timeval vnetTime;
++#  else
++static struct timespec64 vnetTime;
++#  endif
++#endif
+ 
+@@ -695,7 +701,11 @@ VNetBridgeReceiveFromVNet(VNetJack *this, struct sk_buff *skb)
+ #      if LOGLEVEL >= 4
+-      do_gettimeofday(&vnetTime);
++      /* [autopatch] */\
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
++         do_gettimeofday(&vnetTime)
++#else
++         ktime_get_real_ts64(&vnetTime)
++#endif
+ #      endif
+ 
+@@ -1491,8 +1506,12 @@ VNetBridgeReceiveFromDev(VNetJack *this, struct sk_buff *skb)
+ #  if LOGLEVEL >= 4
+    {
+-      struct timeval now;
+-      do_gettimeofday(&now);
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
++      struct timeval now;
++      do_gettimeofday(&now);
++#else
++      struct timespec64 now;
++      ktime_get_real_ts64(&now);
++#endif

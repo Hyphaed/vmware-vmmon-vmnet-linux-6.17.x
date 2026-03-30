@@ -1,0 +1,31 @@
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026 Ferran Duarri
+
+Subject: [PATCH AP-01b] vmnet: add OBJECT_FILES_NON_STANDARD objtool bypass (kernel >= 6.17)
+
+vmnet's userif.c contains non-standard assembly or control flow patterns
+that objtool in kernel 6.17+ flags as invalid. Mark userif.o with
+OBJECT_FILES_NON_STANDARD so the kernel build excludes it from objtool
+validation while keeping all other compilation checks active.
+
+Applied by: _autopatch_objtool_vmnet() in vmware_module_builder.py
+Condition:  kernel >= 6.17 or >= 7.x  (KernelVersion.needs_objtool_patches())
+
+---
+ vmnet-only/Makefile.kernel | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/vmnet-only/Makefile.kernel b/vmnet-only/Makefile.kernel
+--- a/vmnet-only/Makefile.kernel
++++ b/vmnet-only/Makefile.kernel
+@@ -27,6 +27,10 @@ obj-m += $(DRIVER).o
+ $(DRIVER)-y := driver.o hub.o userif.o netif.o bridge.o procfs.o smac_compat.o \
+ 	       smac.o vnetEvent.o vnetUserListener.o
+ 
++# Disable objtool for files using non-standard asm (kernel 6.17+)
++OBJECT_FILES_NON_STANDARD_userif.o := y
++OBJECT_FILES_NON_STANDARD := y
++
+ ####
+ #### Make Targets are beneath here.
+ ####

@@ -1,0 +1,36 @@
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026 Ferran Duarri
+
+Subject: [PATCH AP-01a] vmmon: add OBJECT_FILES_NON_STANDARD objtool bypass (kernel >= 6.17)
+
+vmmon's phystrack.c and task.c use VMware-internal assembly constructs
+(custom stack frame setup, non-standard control flow) that confuse objtool's
+static analysis in kernel 6.17+. Rather than modifying proprietary VMware
+code, mark those object files with OBJECT_FILES_NON_STANDARD so the kernel
+build system excludes them from objtool validation.
+
+This is the same approach used by other out-of-tree modules that contain
+legitimate but non-standard assembly patterns.
+
+Applied by: _autopatch_objtool_vmmon() in vmware_module_builder.py
+Condition:  kernel >= 6.17 or >= 7.x  (KernelVersion.needs_objtool_patches())
+
+---
+ vmmon-only/Makefile.kernel | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/vmmon-only/Makefile.kernel b/vmmon-only/Makefile.kernel
+--- a/vmmon-only/Makefile.kernel
++++ b/vmmon-only/Makefile.kernel
+@@ -28,6 +28,11 @@ obj-m += $(DRIVER).o
+ $(DRIVER)-y := $(subst $(SRCROOT)/, , $(patsubst %.c, %.o, \
+ 		$(wildcard $(SRCROOT)/linux/*.c $(SRCROOT)/common/*.c \
+ 		$(SRCROOT)/bootstrap/*.c)))
++
++# Disable objtool for files using non-standard asm (kernel 6.17+)
++OBJECT_FILES_NON_STANDARD_common/phystrack.o := y
++OBJECT_FILES_NON_STANDARD_common/task.o := y
++OBJECT_FILES_NON_STANDARD := y
+ 
+ clean:
+ 	rm -rf $(wildcard $(DRIVER).mod.c $(DRIVER).ko .tmp_versions \

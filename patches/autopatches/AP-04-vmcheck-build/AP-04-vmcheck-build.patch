@@ -1,0 +1,38 @@
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026 Ferran Duarri
+
+Subject: [PATCH AP-04] vmnet: inject vm_check_build macro into Makefile.kernel
+
+vmnet's Makefile.kernel uses $(call vm_check_build, ...) to detect kernel API
+availability at compile time. However, vm_check_build is defined only in
+Makefile.normal (used for direct `make` invocations) and is NOT present in
+Makefile.kernel (used by the kernel kbuild system).
+
+When kbuild calls Makefile.kernel, any $(call vm_check_build, ...) expression
+silently expands to an empty string, disabling the feature detection without
+any error or warning. This causes compile-time checks to be silently skipped
+and capabilities like VMW_NETIF_TRANS_UPDATE or VMW_NETIF_SINGLE_NAPI_PARM
+to never be set.
+
+This patch injects the vm_check_build definition into Makefile.kernel so that
+feature-detection calls work correctly under kbuild.
+
+Applied by: _autopatch_vmcheck_build() in vmware_module_builder.py
+Condition:  Always applied when vm_check_build is referenced but not defined
+
+---
+ vmnet-only/Makefile.kernel | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/vmnet-only/Makefile.kernel b/vmnet-only/Makefile.kernel
+--- a/vmnet-only/Makefile.kernel
++++ b/vmnet-only/Makefile.kernel
+@@ -20,6 +20,11 @@ INCLUDE := -I$(SRCROOT)
+ 
+ ccflags-y := $(CC_OPTS) $(INCLUDE)
++
++# vm_check_build: compile-test a C snippet; yields flag2 on success, flag3 on error
++vm_check_build = $(shell if $(CC) $(ccflags-y) -Werror -S -o /dev/null -xc $(1) \
++    > /dev/null 2>&1; then echo "$(2)"; else echo "$(3)"; fi)
++
+ ccflags-y += $(call vm_check_build, $(SRCROOT)/netif_trans_update.c,-DVMW_NETIF_TRANS_UPDATE, )

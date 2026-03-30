@@ -1,0 +1,38 @@
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026 Ferran Duarri
+
+Subject: [PATCH AP-13] vmmon/vmnet: ensure -DVMMON / -DVMNET identity flags in Makefile.kernel
+
+Some VMware source tarballs (particularly third-party rebuilds or community
+overlays) omit the CC_OPTS += -DVMMON or -DVMNET line from Makefile.kernel.
+These defines are the module's own identity flags — they guard code sections
+that should only compile for one specific module (vmmon vs vmnet).
+
+Without -DVMMON, vmmon may compile code paths intended only for vmnet, and
+vice versa. The modules may compile but behave incorrectly at runtime, or
+fail to compile due to missing symbols from the wrong module's namespace.
+
+The community 6.16.x overlay's vmmon/Makefile.kernel already has
+CC_OPTS += -DVMMON -DVMCORE on line 21. However, the vmnet overlay's
+Makefile.kernel does not have -DVMNET. This patch documents the fix for
+both modules.
+
+Applied by: _autopatch_module_define() in vmware_module_builder.py
+Condition:  Always applied when -DVMMON or -DVMNET is absent from Makefile.kernel
+
+---
+ vmmon-only/Makefile.kernel | 3 +++   (if -DVMMON missing)
+ vmnet-only/Makefile.kernel | 3 +++   (if -DVMNET missing)
+
+Note: The vmmon overlay already has CC_OPTS += -DVMMON -DVMCORE.
+The patch below shows the vmnet case (most commonly needed).
+
+diff --git a/vmnet-only/Makefile.kernel b/vmnet-only/Makefile.kernel
+--- a/vmnet-only/Makefile.kernel
++++ b/vmnet-only/Makefile.kernel
+@@ -20,6 +20,9 @@ INCLUDE := -I$(SRCROOT)
+ 
+ ccflags-y := $(CC_OPTS) $(INCLUDE)
++
++# Module identity define
++CC_OPTS += -DVMNET

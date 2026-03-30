@@ -1,202 +1,138 @@
-# Patches for Kernel 6.17.x
+# VMware Module Builder — Patches Directory
 
-This directory documents the patches needed to make VMware Workstation modules compatible with Linux kernel 6.17.x.
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026 Ferran Duarri
 
-## Patch Files (For Research/Manual Patching)
+---
 
-This directory contains `.patch` files as reference for researchers or those who want to manually apply patches:
+This directory contains two categories of patch material used by
+`vmware_module_builder.py` to build VMware Workstation kernel modules on
+modern Linux kernels.
 
-- **vmmon-6.17-makefile.patch** - Adds objtool bypass to vmmon Makefile.kernel
-- **vmmon-6.17-phystrack.patch** - Removes unnecessary return statements from phystrack.c
-- **vmnet-6.17-makefile.patch** - Adds objtool bypass to vmnet Makefile.kernel
+---
 
-**Note:** These `.patch` files are provided for reference and research purposes. The recommended method is to use the automated script (see below), which handles all patches comprehensively.
+## Directory Layout
 
-### Manual Patching (Alternative Method)
-
-If you prefer to apply patches manually:
-
-```bash
-cd vmmon-only
-patch -p1 < /path/to/patches/vmmon-6.17-makefile.patch
-patch -p1 < /path/to/patches/vmmon-6.17-phystrack.patch
-
-cd ../vmnet-only
-patch -p1 < /path/to/patches/vmnet-6.17-makefile.patch
+```
+patches/
+├── upstream/
+│   └── 6.16.x/          # Community source backup (ngodn, pre-VMware 25H2u1)
+│       ├── vmmon-only/
+│       └── vmnet-only/
+└── autopatches/          # Individual reference patches (one per autopatch function)
+    ├── AP-01-objtool-vmmon/
+    ├── AP-01-objtool-vmnet/
+    ├── AP-02-phystrack-bare-returns/
+    ├── AP-03-napi-add-3arg/
+    ├── AP-04-vmcheck-build/
+    ├── AP-05-napi-single-parm/
+    ├── AP-06-napi-guard/
+    ├── AP-07-task-state-guard/
+    ├── AP-08-bridge-gettimeofday/
+    ├── AP-09-hostif-gup/
+    ├── AP-10-strncpy-to-strscpy/
+    ├── AP-11-userif-gup/
+    ├── AP-12-module-import-ns/
+    └── AP-13-module-define/
 ```
 
-## Recommended: Automated Patching
+---
 
-The patches for kernel 6.17.x are best applied automatically using the script:
-```bash
-../scripts/apply-patches-6.17.sh /path/to/vmmon-only /path/to/vmnet-only
-```
+## 1. `upstream/6.16.x/` — Community Source Backup
 
-This script applies the following modifications:
+A local copy of the community-patched VMware kernel module source from
+[ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x),
+which itself is based on
+[64kramsystem/vmware-host-modules-fork](https://github.com/64kramsystem/vmware-host-modules-fork).
 
-## vmmon Module Patches
+**Important:** This source targets VMware Workstation **17.6.4** and was
+created **before VMware Workstation Pro 25H2u1** was released.
+VMware 25H2u1 already ships equivalent fixes (`ccflags-y`, `timer_delete_sync`,
+`module_init`, etc.) in its own tarballs. The script auto-detects this and
+**skips the overlay automatically** when 25H2u1 sources are present.
 
-### 1. Makefile.kernel - Disable objtool validation
+The overlay is only applied when the extracted VMware tarballs are old enough
+to lack those fixes (e.g. an older VMware 17.6.x installation).
 
-The script replaces the entire `Makefile.kernel` file to add objtool bypass flags:
+See `upstream/6.16.x/UPSTREAM-SOURCE.md` for full attribution and details.
 
-```makefile
-# Deshabilitar objtool para archivos problemáticos en kernel 6.17+
-OBJECT_FILES_NON_STANDARD_common/phystrack.o := y
-OBJECT_FILES_NON_STANDARD_common/task.o := y
-OBJECT_FILES_NON_STANDARD := y
-```
+---
 
-**Why:** Kernel 6.17.x has stricter objtool validation that VMware's proprietary code doesn't pass.
+## 2. `autopatches/` — Individual Reference Patches
 
-### 2. common/phystrack.c - Remove unnecessary return statements
+Each subdirectory corresponds to one `_autopatch_*` function in
+`vmware_module_builder.py`. Every directory contains:
 
-Removes `return;` statements at lines 324 and 368 in void functions.
+- A `.patch` file in unified diff format showing exactly what the patch
+  inserts or replaces.
+- A `README.md` explaining the problem, which kernel versions trigger it,
+  which VMware source versions are affected, and how to apply it manually.
 
-**Before:**
-```c
-void PhysTrack_Test(void) {
-    // ... code ...
-    return;  // Line 324 - Unnecessary
-}
+**These files are reference artefacts.** The script does not read them at
+runtime — it applies all patches as in-memory string transformations via its
+built-in `_autopatch_*` functions (idempotent, probe-driven). The `.patch`
+files exist so that a user can inspect, understand, or manually apply any
+individual patch without running the full script.
 
-void PhysTrack_Cleanup(void) {
-    // ... code ...
-    return;  // Line 368 - Unnecessary
-}
-```
+### Autopatch Index
 
-**After:**
-```c
-void PhysTrack_Test(void) {
-    // ... code ...
-    // Implicit return
-}
+| ID | Directory | Applied when | What it fixes | Author |
+|----|-----------|-------------|--------------|--------|
+| AP-01a | `AP-01-objtool-vmmon/` | Kernel ≥ 6.17 / 7.x | `OBJECT_FILES_NON_STANDARD` bypass in vmmon `Makefile.kernel` | Ferran Duarri |
+| AP-01b | `AP-01-objtool-vmnet/` | Kernel ≥ 6.17 / 7.x | `OBJECT_FILES_NON_STANDARD` bypass in vmnet `Makefile.kernel` | Ferran Duarri |
+| AP-02 | `AP-02-phystrack-bare-returns/` | Kernel ≥ 6.17 / 7.x | Removes bare `return;` at end of void functions in `phystrack.c` | Ferran Duarri |
+| AP-03 | `AP-03-napi-add-3arg/` | Source has old 4-arg `netif_napi_add` | Rewrites `compat_netif_napi_add` to 3-arg form for kernel ≥ 6.1 | Ferran Duarri |
+| AP-04 | `AP-04-vmcheck-build/` | Always | Injects `vm_check_build` macro into `vmnet/Makefile.kernel` | Ferran Duarri |
+| AP-05 | `AP-05-napi-single-parm/` | Kernel ≥ 6.1 | Adds `VMW_NETIF_SINGLE_NAPI_PARM` detection via `vm_check_build` | Ferran Duarri |
+| AP-06 | `AP-06-napi-guard/` | (No-op) | Documentation: AP-03 covers the `compat_netdevice.h` guard | — |
+| AP-07 | `AP-07-task-state-guard/` | Source lacks guard | `task->__state` compat guard in `hostif.c` for kernel ≥ 5.14 | Ferran Duarri¹ |
+| AP-08 | `AP-08-bridge-gettimeofday/` | Source uses `do_gettimeofday` | Replaces with `ktime_get_real_ts64` (removed in kernel 5.0) | Ferran Duarri |
+| AP-09 | `AP-09-hostif-gup/` | (No-op) | Documentation: `get_user_pages_fast` API compatible, no change needed | — |
+| AP-10 | `AP-10-strncpy-to-strscpy/` | Kernel ≥ 6.8 | `strncpy → strscpy` deprecation fix | Ferran Duarri |
+| AP-11 | `AP-11-userif-gup/` | (No-op) | Documentation: `userif.c` `get_user_pages_fast(FOLL_WRITE)` compatible | — |
+| AP-12 | `AP-12-module-import-ns/` | Kernel ≥ 5.15 | `MODULE_IMPORT_NS` symbol namespace declaration in `driver.c` | Ferran Duarri |
+| AP-13 | `AP-13-module-define/` | Always | Ensures `-DVMMON` / `-DVMNET` identity flags in `Makefile.kernel` | Ferran Duarri |
 
-void PhysTrack_Cleanup(void) {
-    // ... code ...
-    // Implicit return
-}
-```
+> ¹ The `task->__state` guard was first introduced in the 6.16.x community
+> overlay by [ngodn](https://github.com/ngodn) and
+> [64kramsystem](https://github.com/64kramsystem). AP-07 re-applies the
+> equivalent fix as a standalone autopatch for VMware sources that do not use
+> that overlay.
 
-**Why:** Kernel 6.17's objtool flags unnecessary explicit returns in void functions.
+---
 
-### 3. common/task.c - Remove unnecessary return statements (if present)
+## Credits
 
-Removes any `return;` statements in void functions if they exist.
+All autopatches (AP-01 through AP-13) are authored by **Ferran Duarri**
+(© 2026, GPL-2.0-only).
 
-**Why:** Same as phystrack.c - objtool validation.
+The `upstream/6.16.x/` base overlay is community work:
 
-## vmnet Module Patches
+- **[ngodn](https://github.com/ngodn)** —
+  [vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x):
+  build system, timer API, MSR API, module init, `task->__state` guard.
+- **[64kramsystem](https://github.com/64kramsystem)** —
+  [vmware-host-modules-fork](https://github.com/64kramsystem/vmware-host-modules-fork):
+  original fork base.
 
-### 1. Makefile.kernel - Disable objtool validation
-
-Adds objtool bypass flags to the existing Makefile.kernel:
-
-```makefile
-# Deshabilitar objtool para archivos problemáticos en kernel 6.17+
-OBJECT_FILES_NON_STANDARD_userif.o := y
-OBJECT_FILES_NON_STANDARD := y
-```
-
-**Why:** Same reason as vmmon - objtool validation bypass.
-
-## Complete Workflow
-
-The recommended installation workflow is:
-
-1. **Extract VMware modules:**
-```bash
-tar -xf /usr/lib/vmware/modules/source/vmmon.tar
-tar -xf /usr/lib/vmware/modules/source/vmnet.tar
-```
-
-2. **Apply base patches (6.16.x):**
-```bash
-# Clone the 6.16.x repository
-git clone https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x.git
-
-# Copy patched files from 6.16.x repo
-cp vmware-vmmon-vmnet-linux-6.16.x/modules/17.6.4/source/vmmon-only/* vmmon-only/
-cp vmware-vmmon-vmnet-linux-6.16.x/modules/17.6.4/source/vmnet-only/* vmnet-only/
-```
-
-3. **Apply 6.17.x specific patches:**
-```bash
-bash scripts/apply-patches-6.17.sh vmmon-only vmnet-only
-```
-
-4. **Compile:**
-```bash
-cd vmmon-only && make && sudo make install
-cd ../vmnet-only && make && sudo make install
-```
-
-## Automated Installation
-
-For automated installation, use the main installation script:
-```bash
-sudo bash scripts/install-vmware-modules.sh
-```
-
-This script handles all steps automatically:
-- Checks prerequisites
-- Downloads base patches (6.16.x)
-- Applies 6.17.x specific patches
-- Compiles and installs modules
-- Loads modules and starts VMware services
-
-## Technical Details
-
-### Why These Patches Are Needed
-
-Kernel 6.17.x introduced several changes that break VMware module compilation:
-
-1. **Stricter objtool validation**: The kernel's objtool now performs more thorough validation of object files, catching issues that were previously ignored.
-
-2. **Stack frame validation**: Enhanced checks for proper stack frame setup and teardown.
-
-3. **Return statement validation**: Objtool now flags unnecessary explicit `return;` statements in void functions as potential control flow issues.
-
-### What objtool Does
-
-Objtool is a kernel build-time tool that validates:
-- Stack frame correctness
-- Control flow integrity
-- Proper function entry/exit sequences
-- Unannotated indirect jumps
-
-VMware's proprietary code contains patterns that objtool flags as suspicious, even though they work correctly. Rather than modify the proprietary code (which we can't), we disable objtool validation for specific problematic files.
-
-### Why This Is Safe
-
-Disabling objtool for these files is safe because:
-1. VMware's code has been tested extensively by Broadcom
-2. The code works correctly despite objtool warnings
-3. We only disable objtool, not actual compilation checks
-4. The modules still undergo all other kernel validation
-
-## Compatibility
-
-These patches are specifically for:
-- **Kernel:** 6.17.x series (tested on 6.17.0-5-generic)
-- **VMware:** 17.6.4 (may work with other 17.x versions)
-- **Based on:** 6.16.x patches from [ngodn/vmware-vmmon-vmnet-linux-6.16.x](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x)
-
-For other kernel versions:
-- **6.16.x:** https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x
-- **6.18.x:** Check this repository for updates
+---
 
 ## License
 
-These patches are provided under GPL v2, matching the Linux kernel license.
+All patch files and documentation in this directory are released under the
+GNU General Public License, version 2 only (GPL-2.0-only), matching the
+Linux kernel license under which these patches are applied.
 
-## Contributing
+    Copyright (C) 2026 Ferran Duarri
 
-Found an issue or improvement? Please submit a pull request or open an issue on GitHub.
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; version 2 of the License only.
 
-## References
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
 
-- [Linux kernel objtool documentation](https://www.kernel.org/doc/html/latest/dev-tools/objtool.html)
-- [VMware Workstation for Linux](https://www.vmware.com/products/workstation-for-linux.html)
-- [Base 6.16.x patches](https://github.com/ngodn/vmware-vmmon-vmnet-linux-6.16.x)
+The `upstream/6.16.x/` subtree retains the GPL-2.0 license of its original
+upstream sources (ngodn / 64kramsystem / VMware).

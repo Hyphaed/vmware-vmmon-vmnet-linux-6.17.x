@@ -1,0 +1,43 @@
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026 Ferran Duarri
+
+Subject: [PATCH AP-02] vmmon: remove bare return; at end of void functions in phystrack.c
+
+Kernel 6.17+ objtool treats an explicit `return;` at the very end of a void
+function as dead code after a RET instruction, causing a build failure:
+
+  phystrack.o: error: objtool: PhysTrack_Test()+0x...: unreachable instruction
+
+The fix removes the redundant bare `return;` statements that immediately
+precede the closing `}` of void functions. The compiler generates identical
+code either way; the only difference is whether objtool finds the return
+reachable.
+
+This patch shows the canonical removal for the two affected void functions
+in phystrack.c. The script uses a regex (`\s+return;\n(\s*\})`) to find
+and remove all such occurrences idempotently.
+
+Applied by: _autopatch_phystrack_bare_returns() in vmware_module_builder.py
+Condition:  kernel >= 6.17 or >= 7.x  (KernelVersion.needs_objtool_patches())
+
+---
+ vmmon-only/common/phystrack.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/vmmon-only/common/phystrack.c b/vmmon-only/common/phystrack.c
+--- a/vmmon-only/common/phystrack.c
++++ b/vmmon-only/common/phystrack.c
+@@ -321,7 +321,6 @@ PhysTrack_Test(void)
+          printk(KERN_DEBUG "PhysTracker: All tests passed\n");
+       }
+    }
+-   return;
+ }
+ 
+ 
+@@ -365,7 +364,6 @@ PhysTrack_Cleanup(void)
+       Hash_Free(physTracker.hash);
+       physTracker.hash = NULL;
+    }
+-   return;
+ }
